@@ -1,0 +1,75 @@
+# Irreversible: destroys every Terraform-managed resource of the chosen environment, data included.
+# The typed confirmation is checked at job level so a wrong value never triggers prod approval.
+# Resource groups (data sources) and the bootstrap stack are untouched; bootstrap is destroyed from a laptop.
+name: destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to destroy
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      confirm:
+        description: Type the environment name again to confirm
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  destroy:
+    name: destroy
+    if: inputs.confirm == inputs.environment && ((inputs.environment == 'dev' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')) || (inputs.environment == 'prod' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    # Same group as the deploy of that environment, so destroy queues behind a running deploy.
+    concurrency:
+      group: deploy-${{ inputs.environment == 'prod' && 'main' || 'dev' }}
+      cancel-in-progress: false
+    env:
+      ENVIRONMENT: ${{ inputs.environment }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      TFSTATE_RESOURCE_GROUP: ${{ vars.TFSTATE_RESOURCE_GROUP }}
+      TFSTATE_ACCOUNT: ${{ vars.TFSTATE_ACCOUNT }}
+      TF_VAR_alert_email: ${{ vars.ALERT_EMAIL }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ">= 1.12, < 2.0"
+          terraform_wrapper: false
+      - name: Terraform destroy
+        run: |
+          cd "infra/envs/$ENVIRONMENT"
+          terraform init -input=false \
+            -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
+            -backend-config="storage_account_name=$TFSTATE_ACCOUNT" \
+            -backend-config="container_name=tfstate-$ENVIRONMENT"
+          terraform destroy -auto-approve -input=false
+
+  guard:
+    name: guard
+    if: "!(inputs.confirm == inputs.environment && ((inputs.environment == 'dev' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')) || (inputs.environment == 'prod' && github.ref == 'refs/heads/main')))"
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Refuse destroy
+        run: |
+          echo "::error::Destroy skipped: confirm must equal the environment, dev runs from dev or main, prod runs from main"
+          exit 1

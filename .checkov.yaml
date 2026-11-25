@@ -1,0 +1,6 @@
+directory:
+  - infra
+framework:
+  - terraform
+# No global skips. Justified skips live inline as `#checkov:skip=ID:reason` on the resource.
+skip-check: []

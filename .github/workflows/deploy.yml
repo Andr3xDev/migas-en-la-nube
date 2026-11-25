@@ -1,0 +1,123 @@
+name: deploy
+
+on:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/build-artifacts
+
+  deploy:
+    name: deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ENVIRONMENT: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      TFSTATE_RESOURCE_GROUP: ${{ vars.TFSTATE_RESOURCE_GROUP }}
+      TFSTATE_ACCOUNT: ${{ vars.TFSTATE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ">= 1.12, < 2.0"
+          terraform_wrapper: false
+      - name: Terraform apply
+        run: |
+          cd "infra/envs/$ENVIRONMENT"
+          terraform init -input=false \
+            -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
+            -backend-config="storage_account_name=$TFSTATE_ACCOUNT" \
+            -backend-config="container_name=tfstate-$ENVIRONMENT"
+          terraform apply -auto-approve -input=false -var "app_version=${GITHUB_SHA::7}"
+      - name: Read outputs
+        id: tf
+        run: |
+          cd "infra/envs/$ENVIRONMENT"
+          api_key="$(terraform output -raw api_key)"
+          echo "::add-mask::$api_key"
+          echo "api_key=$api_key" >> "$GITHUB_OUTPUT"
+          echo "swa_url=$(terraform output -raw swa_url)" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v8
+        with:
+          name: api
+          path: dist/api
+      - uses: actions/download-artifact@v8
+        with:
+          name: web
+          path: dist/web
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.tf.outputs.api_key }}
+          action: upload
+          app_location: dist/web
+          api_location: dist/api
+          output_location: ""
+          skip_app_build: true
+      - name: Smoke test
+        env:
+          SWA_URL: ${{ steps.tf.outputs.swa_url }}
+        run: bash smoke/health.sh "$SWA_URL" "$ENVIRONMENT"
+
+  release:
+    name: release
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: v${{ github.run_number }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: api
+          path: release/api
+      - uses: actions/download-artifact@v8
+        with:
+          name: web
+          path: release/web
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ env.RELEASE_TAG }}
+          path: release
+          retention-days: 90
+          if-no-files-found: error
+      - name: Create tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/refs/tags/$RELEASE_TAG" --jq .object.sha 2>/dev/null || true)
+          if [ -z "$existing_sha" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$RELEASE_TAG" -f sha="$GITHUB_SHA"
+          elif [ "$existing_sha" != "$GITHUB_SHA" ]; then
+            echo "Tag $RELEASE_TAG already exists at $existing_sha, expected $GITHUB_SHA" >&2
+            exit 1
+          fi

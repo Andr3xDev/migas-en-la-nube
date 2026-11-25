@@ -45,6 +45,8 @@ gh variable set AZURE_CLIENT_ID --repo $REPO --env dev --body "$(terraform outpu
 gh variable set AZURE_CLIENT_ID --repo $REPO --env prod --body "$(terraform output -raw deploy_prod_client_id)"
 ```
 
+After the first bootstrap apply, run `terraform init` once in `infra/envs/dev` and `infra/envs/prod` as the owner (same `-backend-config` values as CI) so the state blobs exist before the read-only CI plan.
+
 ## Destroy
 
 ```bash

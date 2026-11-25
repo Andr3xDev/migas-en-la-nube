@@ -1,0 +1,30 @@
+name: build-artifacts
+description: Check API dependencies resolve, stage api/ and web/ into dist/, and upload them as artifacts.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v7
+      with:
+        python-version: "3.11"
+    - name: Check API dependencies resolve
+      shell: bash
+      run: pip install -r api/requirements.txt
+    - name: Stage artifacts
+      shell: bash
+      run: |
+        mkdir -p dist/api dist/web
+        cp -r api/. dist/api/
+        cp -r web/. dist/web/
+        find dist -name '__pycache__' -type d -prune -exec rm -rf {} +
+        rm -f dist/api/.gitkeep dist/web/.gitkeep
+    - uses: actions/upload-artifact@v7
+      with:
+        name: api
+        path: dist/api
+        if-no-files-found: error
+    - uses: actions/upload-artifact@v7
+      with:
+        name: web
+        path: dist/web
+        if-no-files-found: error

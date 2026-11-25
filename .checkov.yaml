@@ -1,0 +1,6 @@
+directory:
+  - infra
+framework:
+  - terraform
+# Every skipped check ID needs a justification comment on the line above it.
+skip-check: []

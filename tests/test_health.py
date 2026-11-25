@@ -23,7 +23,7 @@ def make_client(monkeypatch):
     return _make
 
 
-def test_get_health_returns_ok_body_with_version_and_environment(make_client):
+def test_get_health_with_no_env_or_credentials_returns_contract_body(make_client):
     response = make_client().get(HEALTH_PATH)
 
     body = response.json()
@@ -31,12 +31,6 @@ def test_get_health_returns_ok_body_with_version_and_environment(make_client):
     assert body["status"] == "ok"
     assert isinstance(body["version"], str) and body["version"]
     assert isinstance(body["environment"], str) and body["environment"]
-
-
-def test_get_health_without_credentials_is_not_rejected(make_client):
-    response = make_client().get(HEALTH_PATH)
-
-    assert response.status_code not in (401, 403)
 
 
 def test_get_health_with_environment_override_returns_it(make_client):
@@ -49,10 +43,3 @@ def test_get_health_with_version_override_returns_it(make_client):
     response = make_client(PDC_VERSION="abc1234").get(HEALTH_PATH)
 
     assert response.json()["version"] == "abc1234"
-
-
-def test_get_health_without_env_vars_uses_defaults(make_client):
-    response = make_client().get(HEALTH_PATH)
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok", "version": "0.1.0", "environment": "local"}

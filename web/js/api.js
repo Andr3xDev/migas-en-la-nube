@@ -1,5 +1,7 @@
 export const TOKEN_KEY = "pdc.token";
 
+const LOGIN_REQUIRED_PREFIXES = ["/api/me/", "/api/admin/"];
+
 export class ApiError extends Error {
   constructor(status, message) {
     super(message);
@@ -30,10 +32,10 @@ export async function apiFetch(path, { method = "GET", body } = {}) {
 
   const payload = await response.json().catch(() => null);
   if (response.status === 401 && token) {
-    // An expired or invalid token would also fail guest calls such as checkout; drop it.
+    // Drop the stale token so a retry goes out as a guest.
     localStorage.removeItem(TOKEN_KEY);
-    // Auth pages must keep their own error message instead of reloading.
-    if (!path.startsWith("/api/auth/")) {
+    // Only login-required routes redirect; guest-capable ones (checkout) show the error instead.
+    if (LOGIN_REQUIRED_PREFIXES.some((prefix) => path.startsWith(prefix))) {
       window.location.assign("/login.html");
       // Never settle so callers do not flash an error while the page navigates.
       return new Promise(() => {});

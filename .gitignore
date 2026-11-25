@@ -7,7 +7,6 @@ local.settings.json
 *.tfvars.json
 *.pem
 *.key
-.python_packages/
 
 # Terraform
 terraform.tfstate*
@@ -24,6 +23,7 @@ __pycache__/
 .coverage
 htmlcov/
 .venv*/
+.python_packages/
 
 # Build output
 dist/

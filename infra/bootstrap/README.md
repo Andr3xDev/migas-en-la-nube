@@ -1,6 +1,6 @@
 # Bootstrap
 
-One-time Terraform root, applied locally by the repository owner. It creates the resource providers, resource groups (`rg-<prefix>-tfstate`, `-dev`, `-prod`), the hardened Terraform state storage account, three GitHub-federated managed identities, least-privilege roles and a subscription budget. State is local and gitignored.
+One-time Terraform root, applied locally by the repository owner. It registers the resource providers (through the provider block), creates the resource groups (`rg-<prefix>-tfstate`, `-dev`, `-prod`), the hardened Terraform state storage account, three GitHub-federated managed identities, least-privilege roles and a subscription budget. State is local and gitignored.
 
 "Public access disabled" on the state account means anonymous blob access is off; the network endpoint stays public so the laptop and GitHub-hosted runners can reach it (Entra auth only).
 

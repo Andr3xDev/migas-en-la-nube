@@ -64,6 +64,7 @@ class ProductResponse(CamelModel):
     image_url: str | None
     prep_minutes: int
     variants: list[VariantResponse]
+    etag: str | None
 
 
 class OrderItemRequest(CamelModel):
@@ -108,6 +109,10 @@ class ProductRequest(CamelModel):
     image_url: str | None
     prep_minutes: int = Field(le=MAX_PREP_MINUTES)
     variants: list[VariantRequest]
+
+
+class ProductUpdateRequest(ProductRequest):
+    etag: str
 
 
 class ImageUploadRequest(CamelModel):

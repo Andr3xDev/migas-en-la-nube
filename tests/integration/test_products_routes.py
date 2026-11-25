@@ -27,7 +27,7 @@ def make_product(product_id: str, stock: int = 5):
 
 
 def test_list_products_without_token_returns_public_shape(client, repo):
-    repo.create(make_product("croissant"))
+    created = repo.create(make_product("croissant"))
 
     response = client.get("/api/products")
 
@@ -40,6 +40,7 @@ def test_list_products_without_token_returns_public_shape(client, repo):
             "description": "Buttery",
             "imageUrl": None,
             "prepMinutes": 90,
+            "etag": created.etag,
             "variants": [
                 {
                     "name": "Single",

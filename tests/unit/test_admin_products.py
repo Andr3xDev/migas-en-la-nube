@@ -99,7 +99,11 @@ def test_create_and_update_reject_image_url_outside_images_container(products, i
         create(products, make_data(image_url=image_url))
     with pytest.raises(RuleViolationError):
         catalog.update_product(
-            products, product.id, make_data(image_url=image_url), images_container_url=CONTAINER_URL
+            products,
+            product.id,
+            make_data(image_url=image_url),
+            etag=product.etag,
+            images_container_url=CONTAINER_URL,
         )
 
     assert len(products.list_all()) == 1
@@ -114,7 +118,9 @@ def test_update_product_replaces_fields_and_keeps_id(products):
     product = create(products)
     data = make_data(variants=[Variant("Single", 7000, 9)])
 
-    updated = catalog.update_product(products, product.id, data, images_container_url=CONTAINER_URL)
+    updated = catalog.update_product(
+        products, product.id, data, etag=product.etag, images_container_url=CONTAINER_URL
+    )
 
     assert updated.id == product.id
     assert products.get(product.id).variants == [Variant("Single", 7000, 9)]
@@ -124,7 +130,11 @@ def test_update_product_changing_category_keeps_one_product_with_same_id(product
     product = create(products)
 
     catalog.update_product(
-        products, product.id, make_data(category="drinks"), images_container_url=CONTAINER_URL
+        products,
+        product.id,
+        make_data(category="drinks"),
+        etag=product.etag,
+        images_container_url=CONTAINER_URL,
     )
 
     assert [(p.id, p.category) for p in products.list_all()] == [(product.id, "drinks")]
@@ -132,7 +142,9 @@ def test_update_product_changing_category_keeps_one_product_with_same_id(product
 
 def test_update_unknown_product_raises_not_found(products):
     with pytest.raises(NotFoundError):
-        catalog.update_product(products, "nope", make_data(), images_container_url=CONTAINER_URL)
+        catalog.update_product(
+            products, "nope", make_data(), etag="x", images_container_url=CONTAINER_URL
+        )
 
 
 def test_delete_product_removes_it_and_its_images(products, images):

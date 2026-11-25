@@ -17,6 +17,7 @@ from app.api.schemas import (
     ImageUploadResponse,
     ProductRequest,
     ProductResponse,
+    ProductUpdateRequest,
     StatusRequest,
 )
 from app.core.settings import Settings, get_settings
@@ -63,12 +64,13 @@ def create_product(
 
 @router.put("/products/{product_id}")
 def update_product(
-    product_id: str, request: ProductRequest, products: Products, settings: AppSettings
+    product_id: str, request: ProductUpdateRequest, products: Products, settings: AppSettings
 ) -> ProductResponse:
     product = catalog.update_product(
         products,
         product_id,
         to_product_data(request),
+        etag=request.etag,
         images_container_url=settings.images_container_url,
     )
     return product_to_response(product)

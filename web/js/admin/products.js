@@ -4,6 +4,8 @@ import { requireAdmin } from "./guard.js";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const STALE_PRODUCT_MESSAGE =
+  "El producto cambió (por ejemplo, por un pedido). Recarga la página e inténtalo de nuevo.";
 
 const panel = document.getElementById("panel");
 const guardMessage = document.getElementById("guard-message");
@@ -215,7 +217,7 @@ async function save(file) {
       const newUrl = await uploadImage(saved.id, file);
       saved = await apiFetch(`/api/admin/products/${saved.id}`, {
         method: "PUT",
-        body: readPayload(newUrl),
+        body: { ...readPayload(newUrl), etag: saved.etag },
       });
     } catch (error) {
       // The product exists already: keep the form in edit mode so the upload can be retried.
@@ -225,7 +227,10 @@ async function save(file) {
     return saved;
   }
   const newUrl = file ? await uploadImage(editing.id, file) : imageUrl;
-  return apiFetch(`/api/admin/products/${editing.id}`, { method: "PUT", body: readPayload(newUrl) });
+  return apiFetch(`/api/admin/products/${editing.id}`, {
+    method: "PUT",
+    body: { ...readPayload(newUrl), etag: editing.etag },
+  });
 }
 
 function startEditKeepingValues(product) {
@@ -254,7 +259,7 @@ form.addEventListener("submit", async (event) => {
     if (error instanceof UploadError) {
       showMessage(feedback, `${error.message} El producto no se guardó con la nueva imagen.`);
     } else if (error instanceof ApiError) {
-      showMessage(feedback, error.message);
+      showMessage(feedback, error.status === 409 ? STALE_PRODUCT_MESSAGE : error.message);
     } else {
       throw error;
     }

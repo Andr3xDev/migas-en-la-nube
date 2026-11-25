@@ -157,16 +157,31 @@ def test_create_invalid_product_returns_422_and_stores_nothing(client, admin, ch
     assert [p["id"] for p in client.get("/api/products").json()] == ["croissant"]
 
 
+def current_etag(client) -> str:
+    return client.get("/api/products/croissant").json()["etag"]
+
+
 def test_update_product_returns_200_and_public_detail_shows_new_values(client, admin):
-    response = client.put("/api/admin/products/croissant", json=PRODUCT_BODY, headers=admin)
+    body = {**PRODUCT_BODY, "etag": current_etag(client)}
+    response = client.put("/api/admin/products/croissant", json=body, headers=admin)
 
     assert response.status_code == 200
     detail = client.get("/api/products/croissant").json()
     assert (detail["name"], detail["variants"][0]["stock"]) == ("Pan de bono", 4)
 
 
+def test_update_product_with_stale_etag_returns_409_and_keeps_stock(client, admin):
+    stale = {**PRODUCT_BODY, "etag": current_etag(client)}
+    assert client.put("/api/admin/products/croissant", json=stale, headers=admin).status_code == 200
+
+    response = client.put("/api/admin/products/croissant", json=stale, headers=admin)
+
+    assert response.status_code == 409
+
+
 def test_update_unknown_product_returns_404(client, admin):
-    response = client.put("/api/admin/products/nope", json=PRODUCT_BODY, headers=admin)
+    body = {**PRODUCT_BODY, "etag": "any"}
+    response = client.put("/api/admin/products/nope", json=body, headers=admin)
 
     assert response.status_code == 404
 

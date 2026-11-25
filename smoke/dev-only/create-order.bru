@@ -33,4 +33,9 @@ script:pre-request {
 
 assert {
   res.status: eq 201
+  res.body.code: isString
+}
+
+script:post-response {
+  bru.setVar("orderCode", res.body.code);
 }

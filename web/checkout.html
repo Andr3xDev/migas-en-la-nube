@@ -9,7 +9,12 @@
   <body>
     <header>
       <a href="/">Pan de la Casa</a>
-      <a href="/cart.html">Carrito</a>
+      <nav>
+        <a href="/cart.html">Carrito</a>
+        <a href="/login.html" data-guest>Ingresar</a>
+        <a href="/register.html" data-guest>Crear cuenta</a>
+        <a href="/" id="logout" data-user hidden>Salir</a>
+      </nav>
     </header>
     <main>
       <h1>Hacer pedido</h1>
@@ -31,6 +36,7 @@
       </form>
       <div id="feedback" aria-live="polite"></div>
     </main>
+    <script type="module" src="/js/nav.js"></script>
     <script type="module" src="/js/checkout.js"></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from app.domain.models import Order, Product
+from app.domain.models import Order, Product, User
 
 
 class ProductRepository(Protocol):
@@ -27,3 +27,11 @@ class OrderRepository(Protocol):
     def list_by_date(self, pickup_date: str) -> list[Order]: ...
 
     def list_by_user(self, user_id: str) -> list[Order]: ...
+
+
+class UserRepository(Protocol):
+    def get_by_email(self, email: str) -> User | None: ...
+
+    def create(self, user: User) -> User: ...
+
+    def replace(self, user: User) -> User: ...

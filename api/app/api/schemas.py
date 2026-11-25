@@ -17,6 +17,25 @@ class CamelModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
+Email = Annotated[str, StringConstraints(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
+Password = Annotated[str, StringConstraints(min_length=8, max_length=1024)]
+
+
+class Credentials(CamelModel):
+    email: Email
+    password: Password
+
+
+class UserResponse(CamelModel):
+    id: str
+    email: str
+    role: str
+
+
+class TokenResponse(CamelModel):
+    access_token: str
+
+
 class AvailabilityResponse(CamelModel):
     status: str
     ready_minutes: int | None

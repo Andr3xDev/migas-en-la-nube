@@ -22,6 +22,15 @@ class Product:
 
 
 @dataclass
+class User:
+    id: str
+    email: str
+    password_hash: str
+    role: str = "customer"
+    etag: str | None = None
+
+
+@dataclass
 class OrderItem:
     product_id: str
     product_name: str

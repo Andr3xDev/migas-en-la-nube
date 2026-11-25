@@ -64,6 +64,17 @@ module "static_web_app" {
   }
 }
 
+module "alerts" {
+  source = "../../modules/alerts"
+
+  name                = local.name
+  resource_group_name = data.azurerm_resource_group.this.name
+  location            = data.azurerm_resource_group.this.location
+  app_insights_id     = module.observability.app_insights_id
+  probe_url           = "${module.static_web_app.default_host_name}/api/health"
+  alert_email         = var.alert_email
+}
+
 resource "azapi_update_resource" "images_cors" {
   type        = "Microsoft.Storage/storageAccounts/blobServices@2023-05-01"
   resource_id = "${module.storage.account_id}/blobServices/default"

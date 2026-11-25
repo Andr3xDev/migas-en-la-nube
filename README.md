@@ -79,6 +79,8 @@ All routes are under `/api`. Errors are JSON `{"detail": "..."}`.
 
 Authenticated calls send `X-Pdc-Token: Bearer <jwt>`. The standard `Authorization` header is not used because SWA managed Functions overwrite it (see [ADR 0003](docs/adr/0003-own-jwt-authentication.md)).
 
+Admin `PUT /admin/products/{id}` requires the `etag` from the product response; a stale `etag` returns 409.
+
 Status codes: 401 for any login or token problem, 403 for the wrong role, 404 not found, 409 conflict (duplicate email, stock conflict), 422 rule or validation error.
 
 ## Environments

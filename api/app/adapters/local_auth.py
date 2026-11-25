@@ -9,7 +9,12 @@ from uuid import uuid4
 
 import jwt
 
-from app.domain.errors import INVALID_CREDENTIALS, AuthenticationError
+from app.domain.errors import (
+    INVALID_CREDENTIALS,
+    AuthenticationError,
+    ConcurrencyConflictError,
+    ConflictError,
+)
 from app.domain.models import User
 from app.ports.auth import Principal
 from app.ports.repositories import UserRepository
@@ -83,7 +88,13 @@ class LocalAuthProvider:
         def attempt() -> User:
             user = self._users.get_by_email(email.strip().lower())
             if user is None:
-                return self.register(email, password, role="admin")
+                try:
+                    return self.register(email, password, role="admin")
+                except ConflictError:
+                    # Created concurrently after our read; retry re-reads and promotes.
+                    raise ConcurrencyConflictError(email) from None
+            if user.role == "admin" and verify_password(password, user.password_hash):
+                return user
             user.role = "admin"
             user.password_hash = hash_password(password)
             return self._users.replace(user)

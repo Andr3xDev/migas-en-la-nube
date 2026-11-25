@@ -23,3 +23,16 @@ curl http://localhost:8000/api/health
 ```
 
 Settings come from `PDC_VERSION` (default `0.1.0`) and `PDC_ENVIRONMENT` (default `local`). Run the tests from the repo root with `pytest --cov`.
+
+## Deploy
+
+`.github/workflows/deploy.yml` deploys on push:
+
+| Branch | GitHub environment | Approval |
+| --- | --- | --- |
+| `dev` | `dev` | none |
+| `main` | `prod` | required reviewers |
+
+Each run builds the artifacts, applies Terraform for the environment, deploys `web/` and `api/` to Static Web Apps, then runs `smoke/health.sh <url> <environment>` (up to 12 attempts, 10 s apart) against `/api/health`. After a successful `prod` deploy and smoke, the `release` job tags the commit `v<run number>` and stores the artifacts as `release-v<run number>` for 90 days.
+
+Risk 1 fallback: if managed Static Web Apps rejects Python 3.11 or the ASGI app, stop and move the API to a linked Function App before continuing.

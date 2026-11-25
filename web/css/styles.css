@@ -622,6 +622,19 @@ form p {
   align-items: flex-start;
 }
 
+/* Fills the space between header and footer. "safe" keeps overflow scrollable on short screens. */
+.page-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  text-align: center;
+}
+
+.page-centered > * {
+  width: 100%;
+}
+
 .auth-card {
   width: 100%;
   max-width: var(--width-card-form);

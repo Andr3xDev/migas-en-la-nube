@@ -1,4 +1,7 @@
 locals {
+  # GitHub OIDC subjects embed the immutable owner and repo ids: owner@id/repo@id.
+  oidc_repo_claim = "${split("/", var.repo)[0]}@${var.github_owner_id}/${split("/", var.repo)[1]}@${var.github_repo_id}"
+
   identity_subjects = {
     ci-plan     = "pull_request"
     deploy-dev  = "environment:dev"
@@ -22,5 +25,5 @@ resource "azurerm_federated_identity_credential" "this" {
   parent_id           = azurerm_user_assigned_identity.this[each.key].id
   issuer              = "https://token.actions.githubusercontent.com"
   audience            = ["api://AzureADTokenExchange"]
-  subject             = "repo:${var.repo}:${each.value}"
+  subject             = "repo:${local.oidc_repo_claim}:${each.value}"
 }

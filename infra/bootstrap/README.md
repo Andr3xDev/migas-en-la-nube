@@ -16,10 +16,12 @@ az login
 az account set --subscription <subscription-id>
 
 cd infra/bootstrap
-cp terraform.tfvars.example terraform.tfvars   # edit repo, budget_amount, budget_email
+cp terraform.tfvars.example terraform.tfvars   # edit repo, github_owner_id, github_repo_id, budget_amount, budget_email
 terraform init
 terraform apply
 ```
+
+Get the ids with `gh api repos/<owner>/<name> --jq '.owner.id, .id'` (GitHub OIDC subjects use `owner@owner_id/repo@repo_id`).
 
 If the apply fails with a permission or role error right after creating roles, wait a few minutes and run `terraform apply` again (role propagation delay).
 
@@ -42,6 +44,8 @@ gh variable set TFSTATE_ACCOUNT --repo $REPO --body "$(terraform output -raw tfs
 gh variable set AZURE_CLIENT_ID --repo $REPO --env dev --body "$(terraform output -raw deploy_dev_client_id)"
 gh variable set AZURE_CLIENT_ID --repo $REPO --env prod --body "$(terraform output -raw deploy_prod_client_id)"
 ```
+
+After the first bootstrap apply, run `terraform init` once in `infra/envs/dev` and `infra/envs/prod` as the owner (same `-backend-config` values as CI) so the state blobs exist before the read-only CI plan.
 
 ## Destroy
 

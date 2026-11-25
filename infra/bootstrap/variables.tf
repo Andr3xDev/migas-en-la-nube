@@ -9,6 +9,16 @@ variable "repo" {
   type        = string
 }
 
+variable "github_owner_id" {
+  description = "Numeric GitHub owner id: gh api repos/<repo> --jq .owner.id"
+  type        = number
+}
+
+variable "github_repo_id" {
+  description = "Numeric GitHub repository id: gh api repos/<repo> --jq .id"
+  type        = number
+}
+
 variable "prefix" {
   description = "Short prefix for resource names."
   type        = string

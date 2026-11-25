@@ -28,6 +28,7 @@ class User:
     password_hash: str
     role: str = "customer"
     etag: str | None = None
+    favorites: list[str] = field(default_factory=list)
 
 
 @dataclass

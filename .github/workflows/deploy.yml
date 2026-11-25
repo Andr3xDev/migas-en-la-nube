@@ -113,11 +113,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          existing_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/refs/tags/$RELEASE_TAG" --jq .object.sha 2>/dev/null || true)
-          if [ -z "$existing_sha" ]; then
-            gh api "repos/$GITHUB_REPOSITORY/git/refs" \
-              -f ref="refs/tags/$RELEASE_TAG" -f sha="$GITHUB_SHA"
-          elif [ "$existing_sha" != "$GITHUB_SHA" ]; then
+          if existing_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/refs/tags/$RELEASE_TAG" --jq .object.sha 2>/dev/null); then
+            if [ "$existing_sha" = "$GITHUB_SHA" ]; then
+              echo "Tag $RELEASE_TAG already at $GITHUB_SHA"
+              exit 0
+            fi
             echo "Tag $RELEASE_TAG already exists at $existing_sha, expected $GITHUB_SHA" >&2
             exit 1
           fi
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$RELEASE_TAG" -f sha="$GITHUB_SHA"

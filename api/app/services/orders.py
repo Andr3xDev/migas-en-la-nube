@@ -173,6 +173,7 @@ def create_order(
         return orders.create(build())
     except Exception as error:
         for failure in restore_stock(products, applied):
+            logger.warning("Stock restore failed after a failed order: %r", failure)
             error.add_note(f"Stock restore failed: {failure!r}")
         raise
 

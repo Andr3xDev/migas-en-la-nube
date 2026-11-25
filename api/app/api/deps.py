@@ -81,6 +81,8 @@ def get_auth_provider(
     users: Annotated[UserRepository, Depends(get_user_repository)],
 ) -> AuthProvider:
     settings = get_settings()
+    if not settings.jwt_key and settings.environment != LOCAL_ENVIRONMENT:
+        raise RuntimeError("PDC_JWT_KEY is required outside the local environment")
     return LocalAuthProvider(
         users,
         settings.jwt_key,

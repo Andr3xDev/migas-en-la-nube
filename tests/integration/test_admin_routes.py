@@ -137,8 +137,18 @@ def test_create_product_returns_201_and_public_detail_shows_it(client, admin):
         {"variants": []},
         {"variants": [{"name": "A", "price": -1, "stock": 1}]},
         {"imageUrl": "https://evil.example.com/images/a.png"},
+        {"variants": [{"name": "A", "price": 10_000_001, "stock": 1}]},
+        {"variants": [{"name": "A", "price": 1, "stock": 10_001}]},
+        {"prepMinutes": 1441},
     ],
-    ids=["no variants", "negative price", "foreign image host"],
+    ids=[
+        "no variants",
+        "negative price",
+        "foreign image host",
+        "price over max",
+        "stock over max",
+        "prep over max",
+    ],
 )
 def test_create_invalid_product_returns_422_and_stores_nothing(client, admin, changes):
     response = client.post("/api/admin/products", json={**PRODUCT_BODY, **changes}, headers=admin)

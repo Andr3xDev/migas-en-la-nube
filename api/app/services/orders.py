@@ -23,6 +23,7 @@ ORDER_STATUSES = set(ALLOWED_TRANSITIONS)
 SHOP_TIMEZONE = timezone(timedelta(hours=-5))
 OPENING_TIME = time(6, 0)
 CLOSING_TIME = time(20, 0)
+MAX_PICKUP_HORIZON = timedelta(days=30)
 # Crockford base32 (no I, L, O, U) so a code read aloud or handwritten stays unambiguous.
 CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 CODE_LENGTH = 8
@@ -72,6 +73,8 @@ def validate_pickup(pickup: datetime, now: datetime, wait_minutes: int) -> None:
         raise RuleViolationError("Pickup time is in the past")
     if pickup < now + timedelta(minutes=wait_minutes):
         raise RuleViolationError("Pickup is before the preparation time")
+    if pickup > now + MAX_PICKUP_HORIZON:
+        raise RuleViolationError(f"Pickup cannot be more than {MAX_PICKUP_HORIZON.days} days ahead")
 
 
 def decrement_product(

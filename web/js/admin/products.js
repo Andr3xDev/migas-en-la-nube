@@ -206,6 +206,17 @@ function upsertLocal(saved) {
   renderList();
 }
 
+async function updateProduct(id, body) {
+  try {
+    return await apiFetch(`/api/admin/products/${id}`, { method: "PUT", body });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) {
+      throw new ApiError(409, STALE_PRODUCT_MESSAGE);
+    }
+    throw error;
+  }
+}
+
 async function save(file) {
   const imageUrl = editing ? editing.imageUrl : null;
   let saved;
@@ -215,10 +226,7 @@ async function save(file) {
     if (!file) return saved;
     try {
       const newUrl = await uploadImage(saved.id, file);
-      saved = await apiFetch(`/api/admin/products/${saved.id}`, {
-        method: "PUT",
-        body: { ...readPayload(newUrl), etag: saved.etag },
-      });
+      saved = await updateProduct(saved.id, { ...readPayload(newUrl), etag: saved.etag });
     } catch (error) {
       // The product exists already: keep the form in edit mode so the upload can be retried.
       startEditKeepingValues(saved);
@@ -227,10 +235,7 @@ async function save(file) {
     return saved;
   }
   const newUrl = file ? await uploadImage(editing.id, file) : imageUrl;
-  return apiFetch(`/api/admin/products/${editing.id}`, {
-    method: "PUT",
-    body: { ...readPayload(newUrl), etag: editing.etag },
-  });
+  return updateProduct(editing.id, { ...readPayload(newUrl), etag: editing.etag });
 }
 
 function startEditKeepingValues(product) {
@@ -259,7 +264,7 @@ form.addEventListener("submit", async (event) => {
     if (error instanceof UploadError) {
       showMessage(feedback, `${error.message} El producto no se guardó con la nueva imagen.`);
     } else if (error instanceof ApiError) {
-      showMessage(feedback, error.status === 409 ? STALE_PRODUCT_MESSAGE : error.message);
+      showMessage(feedback, error.message);
     } else {
       throw error;
     }

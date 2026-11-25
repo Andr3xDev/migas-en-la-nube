@@ -250,3 +250,22 @@ def test_create_order_when_a_restore_fails_still_restores_the_rest_and_raises_or
     assert stock_of(products, "a") == 4
     assert any("Stock restore failed" in note for note in raised.value.__notes__)
     assert orders.list_by_date(DAY) == []
+
+
+def test_create_order_retries_with_new_code_when_code_collides(products, orders, monkeypatch):
+    products.create(make_product(stock=5))
+    codes = iter(["TAKEN000", "FRESH000"])
+    monkeypatch.setattr(orders_service, "generate_code", lambda: next(codes))
+    real_create = orders.create
+
+    def conflict_on_first_code(order):
+        if order.id == "TAKEN000":
+            raise ConflictError(order.id)
+        return real_create(order)
+
+    monkeypatch.setattr(orders, "create", conflict_on_first_code)
+
+    order = place(products, orders, order_for(local(12, 10), ("croissant", "Single", 1)))
+
+    assert order.id == "FRESH000"
+    assert stock_of(products) == 4

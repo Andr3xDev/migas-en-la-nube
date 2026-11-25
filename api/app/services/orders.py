@@ -26,6 +26,7 @@ CLOSING_TIME = time(20, 0)
 # Crockford base32 (no I, L, O, U) so a code read aloud or handwritten stays unambiguous.
 CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 CODE_LENGTH = 8
+CODE_ATTEMPTS = 3
 
 
 @dataclass
@@ -147,8 +148,9 @@ def create_order(
             # A lost stock race leaves the item made-to-order; prep time is not re-checked.
             applied += decrement_with_retry(products, product_id, quantities)
         local_pickup = pickup.astimezone(SHOP_TIMEZONE)
-        return orders.create(
-            Order(
+
+        def build() -> Order:
+            return Order(
                 id=generate_code(),
                 customer_name=order.customer_name,
                 phone=order.phone,
@@ -159,7 +161,13 @@ def create_order(
                 user_id=user_id,
                 stock_decrements=applied,
             )
-        )
+
+        for _ in range(CODE_ATTEMPTS - 1):
+            try:
+                return orders.create(build())
+            except ConflictError:
+                continue  # code collision: retry with a fresh code
+        return orders.create(build())
     except Exception as error:
         for failure in restore_stock(products, applied):
             error.add_note(f"Stock restore failed: {failure!r}")

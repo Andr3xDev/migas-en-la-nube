@@ -29,6 +29,11 @@ export async function apiFetch(path, { method = "GET", body } = {}) {
   }
 
   const payload = await response.json().catch(() => null);
+  if (response.status === 401 && token) {
+    // An expired or invalid token would also fail guest calls such as checkout; drop it.
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.assign("/login.html");
+  }
   if (!response.ok) {
     const detail = payload && payload.detail;
     const message = Array.isArray(detail)

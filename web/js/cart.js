@@ -1,4 +1,5 @@
 const CART_KEY = "pdc.cart";
+export const LAST_ORDER_KEY = "pdc.lastOrder";
 
 const isValidLine = (item) =>
   item !== null &&
@@ -42,6 +43,7 @@ export function addItem({ productId, variantName, name, price }, quantity = 1) {
 }
 
 export function setQuantity(productId, variantName, quantity) {
+  if (!Number.isInteger(quantity)) return;
   if (quantity < 1) return removeItem(productId, variantName);
   const items = load();
   const existing = items.find((item) => sameLine(item, productId, variantName));

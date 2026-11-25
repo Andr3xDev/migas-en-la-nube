@@ -20,9 +20,12 @@ export function createFavoriteButton(productId, favorites) {
     button.setAttribute("aria-pressed", String(marked));
   };
   refresh();
+  const status = document.createElement("span");
+  status.setAttribute("role", "status");
   button.addEventListener("click", async () => {
     const marked = favorites.has(productId);
     button.disabled = true;
+    status.textContent = "";
     try {
       await apiFetch(`/api/me/favorites/${encodeURIComponent(productId)}`, {
         method: marked ? "DELETE" : "PUT",
@@ -31,10 +34,12 @@ export function createFavoriteButton(productId, favorites) {
       else favorites.add(productId);
       refresh();
     } catch {
-      button.textContent = "No se pudo actualizar. Intenta de nuevo.";
+      status.textContent = "No se pudo actualizar. Intenta de nuevo.";
     } finally {
       button.disabled = false;
     }
   });
-  return button;
+  const wrapper = document.createElement("span");
+  wrapper.append(button, status);
+  return wrapper;
 }

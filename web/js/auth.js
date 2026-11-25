@@ -1,6 +1,4 @@
-import { getToken } from "./api.js";
-
-const TOKEN_KEY = "pdc.token";
+import { getToken, TOKEN_KEY } from "./api.js";
 
 export function setToken(token) {
   localStorage.setItem(TOKEN_KEY, token);

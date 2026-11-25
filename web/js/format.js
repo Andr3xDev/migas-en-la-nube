@@ -13,6 +13,15 @@ export function formatAvailability(availability) {
   return `Por encargo (listo en ${availability.readyMinutes} min)`;
 }
 
+const MINUTES_PER_HOUR = 60;
+
+export function formatMinutes(minutes) {
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+  const rest = minutes % MINUTES_PER_HOUR;
+  if (hours === 0) return `${minutes} min`;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
 export function availabilityBadgeClass(inStock) {
   return `badge ${inStock ? "badge-in-stock" : "badge-made-to-order"}`;
 }

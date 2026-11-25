@@ -4,22 +4,51 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Carrito - Pan de la Casa</title>
+    <link rel="icon" href="/img/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/css/styles.css" />
   </head>
   <body>
     <header>
-      <a href="/" class="brand">Pan de la Casa<small>Panadería artesanal</small></a>
+      <a href="/" class="brand"><img src="/img/logo.svg" alt="Pan de la Casa" /></a>
       <nav>
-        <a href="/cart.html">Carrito</a>
-        <a href="/login.html" data-guest>Ingresar</a>
-        <a href="/register.html" data-guest>Crear cuenta</a>
-        <a href="/account.html" data-user hidden>Mi cuenta</a>
-        <a href="/" id="logout" data-user hidden>Salir</a>
+        <a href="/" data-icon="utensils">Menú</a>
+        <a href="/cart.html" data-icon="shopping-cart">Carrito<span class="nav-badge" id="cart-count" hidden></span></a>
+        <a href="/login.html" data-icon="log-in" data-guest>Ingresar</a>
+        <a href="/register.html" data-icon="user-plus" data-guest>Crear cuenta</a>
+        <a href="/account.html" data-icon="user" data-user hidden>Mi cuenta</a>
+        <a href="/" id="logout" data-icon="log-out" data-user hidden>Salir</a>
       </nav>
     </header>
     <main>
-      <h1>Carrito</h1>
-      <div id="cart" aria-live="polite"></div>
+      <h1 id="cart-heading" tabindex="-1">Carrito</h1>
+      <div id="add-status" class="visually-hidden" role="status"></div>
+      <div class="cart-layout">
+        <section id="cart-items" class="cart-items" aria-label="Productos del carrito"></section>
+        <aside class="cart-side">
+          <div id="cart-summary"></div>
+          <form id="order-form" class="order-form">
+            <h2>Datos del pedido</h2>
+            <p>
+              <label for="customer-name">Nombre</label>
+              <input id="customer-name" name="customerName" type="text" required maxlength="100" />
+            </p>
+            <p>
+              <label for="phone">Teléfono</label>
+              <input id="phone" name="phone" type="tel" required maxlength="20" />
+            </p>
+            <p>
+              <label for="pickup-time">Hora de recogida</label>
+              <input id="pickup-time" name="pickupTime" type="datetime-local" required />
+            </p>
+            <button type="submit" class="button" id="submit">Enviar pedido</button>
+            <div id="feedback" aria-live="polite"></div>
+          </form>
+          <section id="recommendations" class="recommendations" hidden>
+            <h2>También te puede gustar</h2>
+            <div id="recommendation-list" class="recommendation-list"></div>
+          </section>
+        </aside>
+      </div>
     </main>
     <footer><p>Pan de la Casa · Horneado con cariño cada mañana</p></footer>
     <script type="module" src="/js/nav.js"></script>

@@ -1,4 +1,5 @@
 import { apiFetch, getToken } from "./api.js";
+import { createIconButton } from "./icons.js";
 
 // Anonymous users and failed loads both yield null: no toggles are shown.
 export async function loadFavorites() {
@@ -10,14 +11,17 @@ export async function loadFavorites() {
   }
 }
 
-export function createFavoriteButton(productId, favorites) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "button button-secondary";
+export function createFavoriteButton(product, favorites) {
+  const productId = product.id;
+  const label = document.createElement("span");
+  const button = createIconButton({ icon: "heart", text: label });
   const refresh = () => {
     const marked = favorites.has(productId);
-    button.textContent = marked ? "♥ Guardado" : "♡ Guardar";
-    button.setAttribute("aria-label", marked ? "Quitar de favoritos" : "Agregar a favoritos");
+    const text = marked ? "Guardado" : "Guardar";
+    label.textContent = text;
+    button.classList.toggle("is-active", marked);
+    // Accessible name starts with the visible text (WCAG 2.5.3).
+    button.setAttribute("aria-label", `${text} ${product.name}`);
     button.setAttribute("aria-pressed", String(marked));
   };
   refresh();

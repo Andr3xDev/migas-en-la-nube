@@ -1,6 +1,7 @@
 import { apiFetch } from "./api.js";
-import { addItem } from "./cart.js";
+import { addProductVariant } from "./cart.js";
 import { createFavoriteButton, loadFavorites } from "./favorites.js";
+import { createIconButton, createIconLink } from "./icons.js";
 import {
   availabilityBadgeClass,
   createProductImage,
@@ -16,6 +17,7 @@ function renderProduct(product, favorites) {
   title.textContent = product.name;
 
   const description = document.createElement("p");
+  description.className = "product-description";
   description.textContent = product.description;
 
   const select = document.createElement("select");
@@ -43,29 +45,33 @@ function renderProduct(product, favorites) {
   select.addEventListener("change", refresh);
   refresh();
 
-  const addButton = document.createElement("button");
-  addButton.type = "button";
-  addButton.className = "button";
-  addButton.textContent = "Agregar al carrito";
-  addButton.addEventListener("click", () => {
-    const variant = selectedVariant();
-    addItem({
-      productId: product.id,
-      variantName: variant.name,
-      name: `${product.name} (${variant.name})`,
-      price: variant.price,
-    });
-    feedback.textContent = "Agregado al carrito.";
+  const addButton = createIconButton({
+    icon: "shopping-cart",
+    label: "Agregar al carrito",
+    text: "Agregar al carrito",
+    variant: "primary",
+    onClick: () => {
+      addProductVariant(product, selectedVariant());
+      feedback.textContent = "Agregado al carrito.";
+    },
   });
 
+  const actions = document.createElement("div");
+  actions.className = "card-actions";
+  actions.append(addButton);
+  if (favorites) actions.append(createFavoriteButton(product, favorites));
+
   const info = document.createElement("div");
-  info.append(title, description, select, price, availability, addButton, feedback);
-  if (favorites) info.append(createFavoriteButton(product.id, favorites));
+  info.className = "product-info";
+  info.append(title, description, select, price, availability, actions, feedback);
 
   const detail = document.createElement("div");
   detail.className = "product-detail";
   detail.append(createProductImage(product), info);
-  container.replaceChildren(detail);
+
+  const back = createIconLink({ icon: "arrow-left", text: "Volver al menú", href: "/", variant: "secondary" });
+  back.classList.add("back-link");
+  container.replaceChildren(back, detail);
 }
 
 const productId = new URLSearchParams(location.search).get("id");

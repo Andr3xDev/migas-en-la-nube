@@ -20,8 +20,11 @@ function load() {
   }
 }
 
+export const CART_CHANGED_EVENT = "pdc:cart-changed";
+
 function save(items) {
   localStorage.setItem(CART_KEY, JSON.stringify(items));
+  window.dispatchEvent(new Event(CART_CHANGED_EVENT));
 }
 
 const sameLine = (item, productId, variantName) =>
@@ -42,6 +45,22 @@ export function addItem({ productId, variantName, name, price }, quantity = 1) {
   save(items);
 }
 
+export function addProductVariant(product, variant, quantity = 1) {
+  addItem(
+    {
+      productId: product.id,
+      variantName: variant.name,
+      name: `${product.name} (${variant.name})`,
+      price: variant.price,
+    },
+    quantity,
+  );
+}
+
+export function getItemCount() {
+  return load().reduce((sum, item) => sum + item.quantity, 0);
+}
+
 export function setQuantity(productId, variantName, quantity) {
   if (!Number.isInteger(quantity)) return;
   if (quantity < 1) return removeItem(productId, variantName);
@@ -55,10 +74,13 @@ export function removeItem(productId, variantName) {
   save(load().filter((item) => !sameLine(item, productId, variantName)));
 }
 
-export function getTotal() {
-  return load().reduce((sum, item) => sum + item.price * item.quantity, 0);
+export const lineKey = (item) => `${item.productId}\u0000${item.variantName}`;
+
+export function getTotal(items = load()) {
+  return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 }
 
 export function clearCart() {
   localStorage.removeItem(CART_KEY);
+  window.dispatchEvent(new Event(CART_CHANGED_EVENT));
 }

@@ -1,0 +1,26 @@
+meta {
+  name: register
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseURL}}/api/auth/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{smokeEmail}}",
+    "password": "{{smokePassword}}"
+  }
+}
+
+script:pre-request {
+  bru.setVar("smokeEmail", "smoke-" + Date.now() + "@example.com");
+}
+
+assert {
+  res.status: eq 201
+}

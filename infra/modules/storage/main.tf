@@ -24,6 +24,12 @@ resource "azurerm_storage_account" "this" {
     }
   }
 
+  # App SAS tokens live 5 minutes; "Log" reports longer-lived tokens without blocking them.
+  sas_policy {
+    expiration_period = "00.01:00:00"
+    expiration_action = "Log"
+  }
+
   lifecycle {
     # CORS is managed by azapi_update_resource in the env root (avoids a storage <-> SWA cycle).
     ignore_changes = [blob_properties[0].cors_rule]

@@ -6,3 +6,8 @@ output "api_key" {
   value     = module.static_web_app.api_key
   sensitive = true
 }
+
+output "cosmos_connection_string" {
+  value     = module.cosmos.connection_string
+  sensitive = true
+}

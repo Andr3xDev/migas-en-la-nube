@@ -108,6 +108,9 @@ jobs:
           terraform plan -refresh=false -lock=false -input=false
       - name: Plan prod
         working-directory: infra/envs/prod
+        env:
+          # Plan-only placeholder, never applied.
+          TF_VAR_alert_email: plan-only@example.com
         run: |
           terraform init -input=false \
             -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \

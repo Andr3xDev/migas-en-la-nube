@@ -25,6 +25,7 @@ def to_document(user: User) -> dict[str, Any]:
         "email": user.email,
         "passwordHash": user.password_hash,
         "role": user.role,
+        "favorites": user.favorites,
     }
 
 
@@ -35,6 +36,7 @@ def from_document(document: dict[str, Any]) -> User:
         password_hash=document["passwordHash"],
         role=document["role"],
         etag=document["_etag"],
+        favorites=list(document.get("favorites", [])),
     )
 
 

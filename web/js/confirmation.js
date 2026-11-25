@@ -1,6 +1,5 @@
+import { LAST_ORDER_KEY } from "./cart.js";
 import { showMessage } from "./format.js";
-
-const LAST_ORDER_KEY = "pdc.lastOrder";
 
 const container = document.getElementById("confirmation");
 const code = localStorage.getItem(LAST_ORDER_KEY);

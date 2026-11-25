@@ -1,8 +1,7 @@
 import { apiFetch, ApiError } from "./api.js";
-import { clearCart, getCart, getTotal } from "./cart.js";
+import { clearCart, getCart, getTotal, LAST_ORDER_KEY } from "./cart.js";
 import { formatPeso, showMessage } from "./format.js";
 
-const LAST_ORDER_KEY = "pdc.lastOrder";
 const SHOP_UTC_OFFSET = "-05:00";
 
 const form = document.getElementById("checkout-form");

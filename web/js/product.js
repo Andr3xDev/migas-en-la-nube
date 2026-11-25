@@ -27,7 +27,7 @@ function renderProduct(product, favorites) {
   });
 
   const price = document.createElement("p");
-  price.className = "cart-total";
+  price.className = "price";
   const availability = document.createElement("p");
   const feedback = document.createElement("p");
   feedback.setAttribute("role", "status");

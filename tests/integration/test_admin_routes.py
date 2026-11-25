@@ -42,10 +42,9 @@ def stack(client):
         get_image_store,
         get_order_repository,
         get_product_repository,
-        get_settings,
         get_user_repository,
     )
-    from app.core.settings import Settings
+    from app.core.settings import Settings, get_settings
     from app.domain.models import Order, OrderItem, Product, Variant
     from app.ports.images import ImageUpload
 

@@ -1,4 +1,5 @@
 from collections import Counter
+from itertools import islice
 
 from app.domain.errors import NotFoundError
 from app.domain.models import Order, Product, User
@@ -59,5 +60,5 @@ def top_products(
                 quantities[item.product_id] += item.quantity
     ranked = sorted(quantities, key=lambda product_id: (-quantities[product_id], product_id))
     found = (products.get(product_id) for product_id in ranked)
-    available = [product for product in found if product is not None]
-    return available[:TOP_PRODUCTS_LIMIT]
+    available = (product for product in found if product is not None)
+    return list(islice(available, TOP_PRODUCTS_LIMIT))

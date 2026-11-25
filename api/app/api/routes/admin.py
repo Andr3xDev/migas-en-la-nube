@@ -7,7 +7,6 @@ from app.api.deps import (
     get_image_store,
     get_order_repository,
     get_product_repository,
-    get_settings,
     require_role,
 )
 from app.api.routes.orders import to_response as order_to_response
@@ -20,7 +19,7 @@ from app.api.schemas import (
     ProductResponse,
     StatusRequest,
 )
-from app.core.settings import Settings
+from app.core.settings import Settings, get_settings
 from app.domain.models import Order, Variant
 from app.ports.images import ImageStore
 from app.ports.repositories import OrderRepository, ProductRepository

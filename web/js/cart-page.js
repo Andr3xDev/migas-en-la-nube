@@ -18,7 +18,10 @@ function createRow(item) {
   quantity.value = String(item.quantity);
   quantity.setAttribute("aria-label", `Cantidad de ${item.name}`);
   quantity.addEventListener("change", () => {
-    setQuantity(item.productId, item.variantName, Math.floor(Number(quantity.value)));
+    const value = quantity.valueAsNumber;
+    if (Number.isInteger(value) && value >= 1) {
+      setQuantity(item.productId, item.variantName, value);
+    }
     render();
   });
 

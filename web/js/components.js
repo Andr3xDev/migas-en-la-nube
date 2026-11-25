@@ -43,8 +43,8 @@ export function createProductCard(product, { favorites, headingLevel = 2, onAdd 
     variant: "primary",
     onClick: () => {
       addProductVariant(product, lowest);
-      feedback.textContent = `Agregado: ${lowest.name}`;
-      onAdd?.(product);
+      if (onAdd) onAdd(product);
+      else feedback.textContent = `Agregado: ${lowest.name}`;
     },
   });
 

@@ -59,7 +59,7 @@ function renderProduct(product, favorites) {
   const actions = document.createElement("div");
   actions.className = "card-actions";
   actions.append(addButton);
-  if (favorites) actions.append(createFavoriteButton(product.id, favorites));
+  if (favorites) actions.append(createFavoriteButton(product, favorites));
 
   const info = document.createElement("div");
   info.className = "product-info";

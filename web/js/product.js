@@ -2,6 +2,7 @@ import { apiFetch } from "./api.js";
 import { addItem } from "./cart.js";
 import { createFavoriteButton, loadFavorites } from "./favorites.js";
 import {
+  availabilityBadgeClass,
   createProductImage,
   formatAvailability,
   formatPeso,
@@ -35,6 +36,7 @@ function renderProduct(product, favorites) {
   const selectedVariant = () => product.variants[Number(select.value)];
   const refresh = () => {
     price.textContent = formatPeso(selectedVariant().price);
+    availability.className = availabilityBadgeClass(selectedVariant().availability.status === "in stock");
     availability.textContent = formatAvailability(selectedVariant().availability);
     feedback.textContent = "";
   };

@@ -27,7 +27,7 @@ function createRow(item) {
 
   const remove = document.createElement("button");
   remove.type = "button";
-  remove.className = "button";
+  remove.className = "button button-secondary";
   remove.textContent = "Quitar";
   remove.addEventListener("click", () => {
     removeItem(item.productId, item.variantName);
@@ -70,7 +70,11 @@ function render() {
   checkout.href = "/checkout.html";
   checkout.textContent = "Continuar con el pedido";
 
-  container.replaceChildren(table, total, checkout);
+  const scroller = document.createElement("div");
+  scroller.className = "table-scroll";
+  scroller.append(table);
+
+  container.replaceChildren(scroller, total, checkout);
 }
 
 render();

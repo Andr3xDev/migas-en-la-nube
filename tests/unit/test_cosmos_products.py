@@ -1,8 +1,12 @@
 import pytest
-from azure.cosmos.exceptions import CosmosAccessConditionFailedError, CosmosResourceExistsError
+from azure.cosmos.exceptions import (
+    CosmosAccessConditionFailedError,
+    CosmosResourceExistsError,
+    CosmosResourceNotFoundError,
+)
 
 from app.adapters.cosmos.products import CosmosProductRepository, to_document
-from app.domain.errors import ConcurrencyConflictError, ConflictError
+from app.domain.errors import ConcurrencyConflictError, ConflictError, NotFoundError
 from app.domain.models import Product
 
 
@@ -88,6 +92,31 @@ def test_move_deletes_new_copy_when_old_delete_fails():
     with pytest.raises(RuntimeError):
         CosmosProductRepository(container).move(moved(PRODUCT, "other"))
     assert list(container.documents) == [("c", "p1")]
+
+
+def test_move_keeps_original_error_when_compensating_delete_also_fails():
+    class Container(FakeContainer):
+        def delete_item(self, item, partition_key):
+            raise RuntimeError("original" if partition_key == "c" else "compensation")
+
+    container = Container()
+    container.seed(PRODUCT)
+    with pytest.raises(RuntimeError, match="original"):
+        CosmosProductRepository(container).move(moved(PRODUCT, "other"))
+
+
+def test_delete_and_move_map_missing_document_to_not_found():
+    class VanishingContainer(FakeContainer):
+        def delete_item(self, item, partition_key):
+            raise CosmosResourceNotFoundError(status_code=404, message="gone")
+
+    container = VanishingContainer()
+    container.seed(PRODUCT)
+    repository = CosmosProductRepository(container)
+    with pytest.raises(NotFoundError):
+        repository.delete("p1")
+    with pytest.raises(NotFoundError):
+        repository.move(moved(PRODUCT, "other"))
 
 
 def test_move_with_stale_etag_raises_concurrency_conflict():

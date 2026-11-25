@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from azure.core import MatchConditions
@@ -10,6 +11,8 @@ from azure.cosmos.exceptions import (
 
 from app.domain.errors import ConcurrencyConflictError, ConflictError, NotFoundError
 from app.domain.models import Product, Variant
+
+logger = logging.getLogger(__name__)
 
 CONTAINER_NAME = "products"
 
@@ -98,7 +101,10 @@ class CosmosProductRepository:
         try:
             self._container.delete_item(current.id, partition_key=current.category)
         except Exception as error:
-            self._container.delete_item(created.id, partition_key=created.category)
+            try:
+                self._container.delete_item(created.id, partition_key=created.category)
+            except Exception:
+                logger.exception("Compensating delete of product %s failed", created.id)
             if isinstance(error, CosmosResourceNotFoundError):
                 raise NotFoundError(product.id) from error
             raise

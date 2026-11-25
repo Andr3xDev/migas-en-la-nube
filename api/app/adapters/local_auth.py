@@ -19,6 +19,7 @@ JWT_ALGORITHM = "HS256"
 SCRYPT_N = 2**14
 SCRYPT_R = 8
 SCRYPT_P = 1
+SCRYPT_MAX_MEMORY = 128 * 1024 * 1024
 SALT_BYTES = 16
 
 
@@ -28,7 +29,7 @@ def _b64(raw: bytes) -> str:
 
 def _scrypt(password: str, salt: bytes, n: int, r: int, p: int) -> bytes:
     # maxmem raised: OpenSSL's 32 MiB default is too tight for n=2**14, r=8.
-    return hashlib.scrypt(password.encode(), salt=salt, n=n, r=r, p=p, maxmem=128 * 1024 * 1024)
+    return hashlib.scrypt(password.encode(), salt=salt, n=n, r=r, p=p, maxmem=SCRYPT_MAX_MEMORY)
 
 
 def hash_password(password: str) -> str:

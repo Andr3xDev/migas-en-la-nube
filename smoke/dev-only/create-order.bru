@@ -7,11 +7,11 @@ meta {
 post {
   url: {{baseURL}}/api/orders
   body: json
-  auth: bearer
+  auth: none
 }
 
-auth:bearer {
-  token: {{accessToken}}
+headers {
+  X-Pdc-Token: Bearer {{accessToken}}
 }
 
 body:json {

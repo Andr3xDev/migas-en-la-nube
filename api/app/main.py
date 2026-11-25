@@ -1,12 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api.routes import health, products
+from app.api.routes import health, orders, products
 from app.domain.errors import ConflictError, NotFoundError, RuleViolationError
 
 app = FastAPI()
 app.include_router(health.router)
 app.include_router(products.router)
+app.include_router(orders.router)
 
 
 def register_error_handler(error: type[Exception], status_code: int) -> None:

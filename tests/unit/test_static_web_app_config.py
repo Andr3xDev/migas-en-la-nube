@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-CONFIG_PATH = Path(__file__).parent.parent / "web" / "staticwebapp.config.json"
+CONFIG_PATH = Path(__file__).parents[2] / "web" / "staticwebapp.config.json"
 
 
 def test_static_web_app_config_declares_python_runtime():

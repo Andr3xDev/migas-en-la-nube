@@ -1,4 +1,4 @@
-const TOKEN_KEY = "pdc.token";
+export const TOKEN_KEY = "pdc.token";
 
 export class ApiError extends Error {
   constructor(status, message) {

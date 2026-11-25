@@ -85,3 +85,37 @@ class OrderResponse(CamelModel):
     items: list[OrderItemResponse]
     total: int
     pickup_time: datetime
+
+
+class VariantRequest(CamelModel):
+    name: RequiredText
+    price: int
+    stock: int
+
+
+class ProductRequest(CamelModel):
+    name: RequiredText
+    category: RequiredText
+    description: str
+    image_url: str | None
+    prep_minutes: int
+    variants: list[VariantRequest]
+
+
+class ImageUploadRequest(CamelModel):
+    content_type: str
+
+
+class ImageUploadResponse(CamelModel):
+    upload_url: str
+    image_url: str
+    expires_at: datetime
+
+
+class StatusRequest(CamelModel):
+    status: str
+
+
+class AdminOrderResponse(OrderResponse):
+    customer_name: str
+    phone: str

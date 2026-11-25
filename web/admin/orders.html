@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pedidos - Administración - Pan de la Casa</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <header>
+      <a href="/">Pan de la Casa</a>
+      <nav>
+        <a href="/admin/">Productos</a>
+        <a href="/admin/orders.html">Pedidos</a>
+        <a href="/" id="logout" data-user>Salir</a>
+      </nav>
+    </header>
+    <main>
+      <h1>Pedidos del día</h1>
+      <div id="guard-message" aria-live="polite"></div>
+      <div id="panel" hidden>
+        <p>
+          <label for="date">Fecha de entrega</label>
+          <input id="date" type="date" required />
+        </p>
+        <div id="orders"></div>
+        <div id="feedback" aria-live="polite"></div>
+      </div>
+    </main>
+    <script type="module" src="/js/nav.js"></script>
+    <script type="module" src="/js/admin/orders.js"></script>
+  </body>
+</html>

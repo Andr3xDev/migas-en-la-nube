@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Productos - Administración - Pan de la Casa</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <header>
+      <a href="/">Pan de la Casa</a>
+      <nav>
+        <a href="/admin/">Productos</a>
+        <a href="/admin/orders.html">Pedidos</a>
+        <a href="/" id="logout" data-user>Salir</a>
+      </nav>
+    </header>
+    <main>
+      <h1>Administrar productos</h1>
+      <div id="guard-message" aria-live="polite"></div>
+      <div id="panel" hidden>
+        <div id="product-list"></div>
+        <h2 id="form-title">Nuevo producto</h2>
+        <form id="product-form">
+          <p>
+            <label for="name">Nombre</label>
+            <input id="name" name="name" required maxlength="120" />
+          </p>
+          <p>
+            <label for="category">Categoría</label>
+            <input id="category" name="category" required maxlength="60" />
+          </p>
+          <p>
+            <label for="description">Descripción</label>
+            <textarea id="description" name="description" maxlength="1000"></textarea>
+          </p>
+          <p>
+            <label for="prep-minutes">Minutos de preparación</label>
+            <input id="prep-minutes" name="prepMinutes" type="number" min="0" step="1" required />
+          </p>
+          <fieldset>
+            <legend>Variantes (precio final en pesos, IVA incluido)</legend>
+            <div id="variants"></div>
+            <button type="button" class="button" id="add-variant">Agregar variante</button>
+          </fieldset>
+          <p>
+            <label for="image">Imagen (JPEG, PNG o WebP, máximo 2 MB)</label>
+            <input id="image" name="image" type="file" accept="image/jpeg,image/png,image/webp" />
+          </p>
+          <div id="current-image"></div>
+          <button type="submit" class="button" id="submit">Guardar</button>
+          <button type="button" class="button" id="reset" hidden>Cancelar edición</button>
+        </form>
+        <div id="feedback" aria-live="polite"></div>
+      </div>
+    </main>
+    <script type="module" src="/js/nav.js"></script>
+    <script type="module" src="/js/admin/products.js"></script>
+  </body>
+</html>

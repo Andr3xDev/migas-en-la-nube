@@ -1,13 +1,25 @@
+import logging
 import secrets
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta, timezone
 
-from app.domain.errors import RuleViolationError
+from app.domain.errors import ConflictError, NotFoundError, RuleViolationError
 from app.domain.models import Order, OrderItem, Product, StockDecrement
 from app.ports.repositories import OrderRepository, ProductRepository
 from app.services.retry import retry_on_conflict
 
+logger = logging.getLogger(__name__)
+
+CANCELLED = "cancelled"
+ALLOWED_TRANSITIONS = {
+    "received": {"preparing", CANCELLED},
+    "preparing": {"ready", CANCELLED},
+    "ready": {"delivered", CANCELLED},
+    "delivered": set(),
+    CANCELLED: set(),
+}
+ORDER_STATUSES = set(ALLOWED_TRANSITIONS)
 SHOP_TIMEZONE = timezone(timedelta(hours=-5))
 OPENING_TIME = time(6, 0)
 CLOSING_TIME = time(20, 0)
@@ -88,9 +100,15 @@ def decrement_with_retry(
 def restore_stock(products: ProductRepository, decrements: list[StockDecrement]) -> list[Exception]:
     def restore(decrement: StockDecrement) -> None:
         product = products.get(decrement.product_id)
-        if product is None:
+        # The product or variant may have been deleted since the order was placed.
+        variant = (
+            next((v for v in product.variants if v.name == decrement.variant_name), None)
+            if product
+            else None
+        )
+        if variant is None:
             return
-        find_variant(product, decrement.variant_name).stock += decrement.quantity
+        variant.stock += decrement.quantity
         products.replace(product)
 
     failures: list[Exception] = []
@@ -146,3 +164,31 @@ def create_order(
         for failure in restore_stock(products, applied):
             error.add_note(f"Stock restore failed: {failure!r}")
         raise
+
+
+def list_by_date(orders: OrderRepository, pickup_date: str) -> list[Order]:
+    return orders.list_by_date(pickup_date)
+
+
+def change_status(
+    orders: OrderRepository,
+    products: ProductRepository,
+    order_id: str,
+    pickup_date: str,
+    status: str,
+) -> Order:
+    order = orders.get(order_id, pickup_date)
+    if order is None:
+        raise NotFoundError(order_id)
+    if status not in ORDER_STATUSES:
+        raise RuleViolationError(f"Unknown status: {status}")
+    if status not in ALLOWED_TRANSITIONS[order.status]:
+        raise ConflictError(f"Cannot change status from {order.status} to {status}")
+    order.status = status
+    updated = orders.replace(order)
+    # Status is committed before restoring on purpose (a retry would restore twice);
+    # a restore failure is only logged and needs a manual stock fix.
+    if status == CANCELLED:
+        for failure in restore_stock(products, updated.stock_decrements):
+            logger.warning("Stock restore failed for order %s: %r", order_id, failure)
+    return updated

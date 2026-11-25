@@ -1,0 +1,88 @@
+# Redeploys the artifact of an earlier prod release. PDC_VERSION stays at the newest SHA, so
+# /api/health "version" will not match the rolled-back tag. Release artifacts expire after 90 days.
+name: rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to restore, for example v12
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  SWA_NAME: swa-pdc-prod
+  RESOURCE_GROUP: rg-pdc-prod
+
+jobs:
+  rollback:
+    name: rollback
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Validate tag
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+$ ]]; then
+            echo "Tag must match ^v[0-9]+$" >&2
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Download release artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id="$(gh run list --workflow deploy.yml --branch main --status success --limit 200 \
+            --json number,databaseId --jq ".[] | select(.number == ${TAG#v}) | .databaseId")"
+          if [ -z "$run_id" ]; then
+            echo "No successful deploy run on main for $TAG (unknown tag, older than the last 200 runs, or release failed)" >&2
+            exit 1
+          fi
+          gh run download "$run_id" --name "release-$TAG" --dir dist || {
+            echo "Artifact release-$TAG missing or expired (90 days)" >&2
+            exit 1
+          }
+      - name: Read SWA token
+        id: swa
+        run: |
+          api_key="$(az staticwebapp secrets list --name "$SWA_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query properties.apiKey -o tsv)"
+          [ -n "$api_key" ] || { echo "Empty SWA token" >&2; exit 1; }
+          echo "::add-mask::$api_key"
+          echo "api_key=$api_key" >> "$GITHUB_OUTPUT"
+          hostname="$(az staticwebapp show --name "$SWA_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query defaultHostname -o tsv)"
+          [ -n "$hostname" ] || { echo "Empty SWA hostname" >&2; exit 1; }
+          echo "swa_url=https://$hostname" >> "$GITHUB_OUTPUT"
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.swa.outputs.api_key }}
+          action: upload
+          app_location: dist/web
+          api_location: dist/api
+          output_location: ""
+          skip_app_build: true
+      - uses: ./.github/actions/smoke
+        with:
+          base-url: ${{ steps.swa.outputs.swa_url }}
+          environment: prod

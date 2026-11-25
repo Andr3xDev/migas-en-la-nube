@@ -2,5 +2,5 @@ directory:
   - infra
 framework:
   - terraform
-# Every skipped check ID needs a justification comment on the line above it.
+# No global skips. Justified skips live inline as `#checkov:skip=ID:reason` on the resource.
 skip-check: []

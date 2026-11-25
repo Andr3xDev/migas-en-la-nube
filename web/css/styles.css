@@ -13,6 +13,11 @@ header {
   background: #8a5a2b;
 }
 
+header nav {
+  display: flex;
+  gap: 1rem;
+}
+
 header a {
   color: #fff;
   text-decoration: none;

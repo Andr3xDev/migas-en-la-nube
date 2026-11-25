@@ -9,12 +9,18 @@
   <body>
     <header>
       <a href="/">Pan de la Casa</a>
-      <a href="/cart.html">Carrito</a>
+      <nav>
+        <a href="/cart.html">Carrito</a>
+        <a href="/login.html" data-guest>Ingresar</a>
+        <a href="/register.html" data-guest>Crear cuenta</a>
+        <a href="/" id="logout" data-user hidden>Salir</a>
+      </nav>
     </header>
     <main>
       <h1>Catálogo</h1>
       <div id="catalog" class="product-grid" aria-live="polite">Cargando...</div>
     </main>
+    <script type="module" src="/js/nav.js"></script>
     <script type="module" src="/js/catalog.js"></script>
   </body>
 </html>

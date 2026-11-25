@@ -103,7 +103,7 @@ def stack(client):
 
 def headers_for(auth, role: str) -> dict[str, str]:
     auth.register(f"{role}@example.com", PASSWORD, role=role)
-    return {"Authorization": f"Bearer {auth.login(f'{role}@example.com', PASSWORD)}"}
+    return {"X-Pdc-Token": f"Bearer {auth.login(f'{role}@example.com', PASSWORD)}"}
 
 
 @pytest.fixture

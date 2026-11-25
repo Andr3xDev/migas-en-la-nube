@@ -46,7 +46,7 @@ def stack(client):
 
 def headers_for(auth, email: str) -> dict[str, str]:
     auth.register(email, PASSWORD)
-    return {"Authorization": f"Bearer {auth.login(email, PASSWORD)}"}
+    return {"X-Pdc-Token": f"Bearer {auth.login(email, PASSWORD)}"}
 
 
 @pytest.mark.parametrize(("method", "url"), ME_ROUTES)
@@ -59,7 +59,7 @@ def test_orders_lists_only_callers_orders_in_order_response_shape(client, stack)
 
     auth, orders = stack
     ana = headers_for(auth, "ana@example.com")
-    ana_id = auth.verify_token(ana["Authorization"].split()[1]).user_id
+    ana_id = auth.verify_token(ana["X-Pdc-Token"].split()[1]).user_id
     for code, user_id in [("ANA00001", ana_id), ("OTHER001", "someone-else"), ("GUEST001", None)]:
         orders.create(
             Order(

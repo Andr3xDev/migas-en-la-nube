@@ -33,15 +33,65 @@ def test_seed_admin_first_run_creates_admin_who_can_log_in(seeding):
     assert auth.login(EMAIL, PASSWORD)
 
 
-def test_seed_admin_rerun_keeps_single_user_and_original_password(seeding):
+def test_seed_admin_rerun_is_idempotent(seeding):
     seed_admin, auth, users = seeding
-    seed_admin({"ADMIN_EMAIL": EMAIL, "ADMIN_INITIAL_PASSWORD": PASSWORD}, auth)
-    original = users.get_by_email("admin@example.com")
+    env = {"ADMIN_EMAIL": EMAIL, "ADMIN_INITIAL_PASSWORD": PASSWORD}
+    seed_admin(env, auth)
 
-    seed_admin({"ADMIN_EMAIL": EMAIL, "ADMIN_INITIAL_PASSWORD": "another-password"}, auth)
+    etag_after_first_run = users.get_by_email("admin@example.com").etag
 
-    assert users.get_by_email("admin@example.com") == original
+    seed_admin(env, auth)
+
+    admin = users.get_by_email("admin@example.com")
+    assert admin.role == "admin"
+    assert admin.etag == etag_after_first_run
     assert auth.login(EMAIL, PASSWORD)
+
+
+def test_seed_admin_retries_when_user_appears_between_read_and_create(seeding):
+    seed_admin, auth, users = seeding
+    from app.domain.errors import ConflictError
+    from app.domain.models import User
+
+    real_create = users.create
+    calls = []
+
+    def racing_create(user):
+        calls.append(user)
+        if len(calls) == 1:
+            # Another process wins the race: the customer exists before our create lands.
+            real_create(User(id="other", email=user.email, password_hash="x"))
+            raise ConflictError("exists")
+        return real_create(user)
+
+    users.create = racing_create
+
+    seed_admin({"ADMIN_EMAIL": EMAIL, "ADMIN_INITIAL_PASSWORD": PASSWORD}, auth)
+
+    promoted = users.get_by_email("admin@example.com")
+    assert promoted.id == "other"
+    assert promoted.role == "admin"
+    assert auth.login(EMAIL, PASSWORD)
+
+
+def test_seed_admin_promotes_existing_customer_and_replaces_password(seeding):
+    seed_admin, auth, users = seeding
+    from app.domain.errors import AuthenticationError
+
+    customer = auth.register(EMAIL, "old-customer-pass")
+    customer_id = customer.id
+    customer.favorites = ["product-1"]
+    users.replace(customer)
+
+    seed_admin({"ADMIN_EMAIL": EMAIL, "ADMIN_INITIAL_PASSWORD": PASSWORD}, auth)
+
+    promoted = users.get_by_email("admin@example.com")
+    assert promoted.id == customer_id
+    assert promoted.role == "admin"
+    assert promoted.favorites == ["product-1"]
+    assert auth.login(EMAIL, PASSWORD)
+    with pytest.raises(AuthenticationError):
+        auth.login(EMAIL, "old-customer-pass")
 
 
 @pytest.mark.parametrize(

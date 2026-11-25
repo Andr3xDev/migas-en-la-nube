@@ -9,10 +9,16 @@ from uuid import uuid4
 
 import jwt
 
-from app.domain.errors import INVALID_CREDENTIALS, AuthenticationError
+from app.domain.errors import (
+    INVALID_CREDENTIALS,
+    AuthenticationError,
+    ConcurrencyConflictError,
+    ConflictError,
+)
 from app.domain.models import User
 from app.ports.auth import Principal
 from app.ports.repositories import UserRepository
+from app.services.retry import retry_on_conflict
 
 TOKEN_LIFETIME = timedelta(hours=1)
 JWT_ALGORITHM = "HS256"
@@ -77,6 +83,23 @@ class LocalAuthProvider:
             role=role,
         )
         return self._users.create(user)
+
+    def ensure_admin(self, email: str, password: str) -> User:
+        def attempt() -> User:
+            user = self._users.get_by_email(email.strip().lower())
+            if user is None:
+                try:
+                    return self.register(email, password, role="admin")
+                except ConflictError:
+                    # Created concurrently after our read; retry re-reads and promotes.
+                    raise ConcurrencyConflictError(email) from None
+            if user.role == "admin" and verify_password(password, user.password_hash):
+                return user
+            user.role = "admin"
+            user.password_hash = hash_password(password)
+            return self._users.replace(user)
+
+        return retry_on_conflict(attempt)
 
     def login(self, email: str, password: str) -> str:
         user = self._users.get_by_email(email.strip().lower())

@@ -3,8 +3,7 @@ from datetime import UTC, datetime
 from functools import cache
 from typing import Annotated
 
-from fastapi import Depends, HTTPException
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Depends, Header, HTTPException
 
 from app.adapters.local_auth import LocalAuthProvider
 from app.adapters.memory.images import MemoryImageStore
@@ -82,6 +81,8 @@ def get_auth_provider(
     users: Annotated[UserRepository, Depends(get_user_repository)],
 ) -> AuthProvider:
     settings = get_settings()
+    if not settings.jwt_key and settings.environment != LOCAL_ENVIRONMENT:
+        raise RuntimeError("PDC_JWT_KEY is required outside the local environment")
     return LocalAuthProvider(
         users,
         settings.jwt_key,
@@ -89,14 +90,21 @@ def get_auth_provider(
     )
 
 
-bearer_scheme = HTTPBearer(auto_error=False)
+# Not `Authorization`: Azure SWA managed Functions overwrite it with their own token.
+TOKEN_HEADER = "X-Pdc-Token"
+BEARER_SCHEME = "bearer"
 
 
 def get_optional_principal(
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     auth: Annotated[AuthProvider, Depends(get_auth_provider)],
+    header_value: Annotated[str | None, Header(alias=TOKEN_HEADER)] = None,
 ) -> Principal | None:
-    return auth.verify_token(credentials.credentials) if credentials else None
+    if header_value is None:
+        return None
+    scheme, _, token = header_value.partition(" ")
+    if scheme.lower() != BEARER_SCHEME:
+        raise AuthenticationError(INVALID_CREDENTIALS)
+    return auth.verify_token(token.strip())
 
 
 def current_user(

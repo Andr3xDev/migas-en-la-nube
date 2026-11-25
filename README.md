@@ -79,6 +79,8 @@ All routes are under `/api`. Errors are JSON `{"detail": "..."}`.
 
 Authenticated calls send `X-Pdc-Token: Bearer <jwt>`. The standard `Authorization` header is not used because SWA managed Functions overwrite it (see [ADR 0003](docs/adr/0003-own-jwt-authentication.md)).
 
+Admin `PUT /admin/products/{id}` requires the `etag` from the product response; a stale `etag` returns 409.
+
 Status codes: 401 for any login or token problem, 403 for the wrong role, 404 not found, 409 conflict (duplicate email, stock conflict), 422 rule or validation error.
 
 ## Environments
@@ -162,7 +164,8 @@ The resource groups remain until step 3. GitHub environments and the repository 
 - Strict CSP in `web/staticwebapp.config.json`: scripts and styles only from `self`, images and uploads allowed to `*.blob.core.windows.net`. The UI renders with `textContent`, never `innerHTML`.
 - Image uploads use a SAS URL for one blob, create and write only, valid 5 minutes, https only. The browser upload needs the storage CORS rule that Terraform sets for the SWA host. The 2 MB limit is checked in the browser only.
 - Passwords use scrypt. Tokens are HS256 JWTs valid for 1 hour. See [ADR 0003](docs/adr/0003-own-jwt-authentication.md).
-- Login failures and duplicate registrations return generic 401 and 409 messages that do not reveal which accounts exist.
+- Login failures return one generic 401 that does not reveal which accounts exist. Registration answers 409 "Email already registered", so an email can be probed there (see Known limits).
+- The `ci-plan` identity has Storage Blob Data Reader on the Terraform state account, and the state contains secrets. Its federated subject is `pull_request`, so any same-repository PR can read the state. Only collaborators can open those PRs, and fork PRs get no OIDC token.
 - Destroy needs a typed confirmation, and prod destroy needs approval.
 
 ## Costs
@@ -179,6 +182,7 @@ The resource groups remain until step 3. GitHub environments and the repository 
 - Two customers can still take the last unit at the same moment: the second order is accepted as made to order.
 - Replacing a product image leaves the old blob. A product deleted by an admin is recreated by the next deploy seed.
 - The memory fallback for Cosmos and Blob exists only for `PDC_ENVIRONMENT=local`.
+- Account enumeration: registration reveals whether an email is already taken (409). This is an accepted limit.
 - The JWT lives in `localStorage` and a role change applies only after the token expires.
 
 ## Documentation

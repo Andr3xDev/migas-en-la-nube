@@ -77,11 +77,16 @@ def create_product(
 
 
 def update_product(
-    repo: ProductRepository, product_id: str, data: ProductData, *, images_container_url: str
+    repo: ProductRepository,
+    product_id: str,
+    data: ProductData,
+    *,
+    etag: str,
+    images_container_url: str,
 ) -> Product:
     validate_product_data(data, images_container_url)
     current = get_product(repo, product_id)
-    updated = build_product(product_id, data, current.etag)
+    updated = build_product(product_id, data, etag)
     return repo.move(updated) if updated.category != current.category else repo.replace(updated)
 
 

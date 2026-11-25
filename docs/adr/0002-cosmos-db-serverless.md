@@ -25,6 +25,7 @@ Images are not stored in Cosmos. The API signs a short-lived Blob SAS URL and th
 ## Consequences
 
 - Pay per request and storage, so idle cost is near zero.
+- Reading a product by id is a cross-partition query, because the partition key is `/category` and callers only know the id. This is accepted at bakery scale on serverless.
 - No schema migrations. Seeds are idempotent and run on every deploy.
 - ETag locking needs no lock service, but a crash between stock steps can leave a small inconsistency. This window is accepted.
 - The last unit can be sold twice in a race. The order is then accepted as made to order. This is accepted behavior.

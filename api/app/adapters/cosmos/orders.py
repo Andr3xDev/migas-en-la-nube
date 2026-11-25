@@ -116,5 +116,4 @@ class CosmosOrderRepository:
             parameters=[{"name": "@userId", "value": user_id}],
             enable_cross_partition_query=True,
         )
-        orders = [from_document(document) for document in documents]
-        return sorted(orders, key=lambda o: o.pickup_time, reverse=True)
+        return [from_document(document) for document in documents]

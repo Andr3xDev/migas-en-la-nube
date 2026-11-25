@@ -21,6 +21,7 @@ def to_response(product: Product) -> ProductResponse:
         description=product.description,
         image_url=product.image_url,
         prep_minutes=product.prep_minutes,
+        etag=product.etag,
         variants=[
             VariantResponse(
                 name=variant.name,

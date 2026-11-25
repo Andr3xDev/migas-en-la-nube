@@ -26,3 +26,11 @@ def test_image_store_requires_container_url_outside_local(monkeypatch):
 
     with pytest.raises(RuntimeError, match="PDC_IMAGES_CONTAINER_URL"):
         deps.get_image_store()
+
+
+def test_auth_provider_requires_jwt_key_outside_local(monkeypatch):
+    monkeypatch.setattr(deps, "get_settings", lambda: Settings(environment="prod"))
+    deps.get_auth_provider.cache_clear()
+
+    with pytest.raises(RuntimeError, match="PDC_JWT_KEY"):
+        deps.get_auth_provider(users=None)

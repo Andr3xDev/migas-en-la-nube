@@ -50,7 +50,7 @@ def stack(client):
 
 
 def bearer(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"X-Pdc-Token": f"Bearer {token}"}
 
 
 def token_for(auth, email: str, role: str = "customer") -> str:
@@ -215,6 +215,40 @@ def test_post_order_as_guest_stores_no_owner(client, stack):
     client.post("/api/orders", json=ORDER_BODY)
 
     assert [o.user_id for o in orders.list_by_date("2026-06-10")] == [None]
+
+
+def test_authorization_header_is_ignored_for_guest_order(client, stack):
+    _, _, orders = stack
+    garbage = {"Authorization": "Bearer garbage"}
+
+    response = client.post("/api/orders", json=ORDER_BODY, headers=garbage)
+
+    assert response.status_code == 201
+    assert [o.user_id for o in orders.list_by_date("2026-06-10")] == [None]
+
+
+def test_authorization_header_alone_does_not_authenticate_me_route(client, stack):
+    auth, _, _ = stack
+    valid_in_wrong_header = {"Authorization": f"Bearer {token_for(auth, 'ana@example.com')}"}
+
+    assert client.get("/api/me/orders", headers=valid_in_wrong_header).status_code == 401
+
+
+def test_token_scheme_is_case_insensitive(client, stack):
+    auth, _, _ = stack
+
+    response = client.get(
+        "/api/me/orders", headers={"X-Pdc-Token": f"bearer {token_for(auth, 'ana@example.com')}"}
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize("value", ["Bearer garbage", "Basic abc", "garbage"])
+def test_malformed_or_invalid_token_header_returns_401(client, stack, value):
+    response = client.get("/api/me/orders", headers={"X-Pdc-Token": value})
+
+    assert response.status_code == 401
 
 
 @pytest.mark.parametrize("token", [expired_token, forged_token])

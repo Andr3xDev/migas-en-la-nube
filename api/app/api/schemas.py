@@ -6,6 +6,14 @@ from pydantic.alias_generators import to_camel
 
 RequiredText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
+MAX_ITEM_QUANTITY = 50
+MAX_ORDER_ITEMS = 20
+MAX_CUSTOMER_NAME_LENGTH = 100
+MAX_PHONE_LENGTH = 30
+MAX_PRICE = 10_000_000
+MAX_STOCK = 10_000
+MAX_PREP_MINUTES = 24 * 60
+
 
 class HealthResponse(BaseModel):
     status: str
@@ -56,19 +64,20 @@ class ProductResponse(CamelModel):
     image_url: str | None
     prep_minutes: int
     variants: list[VariantResponse]
+    etag: str | None
 
 
 class OrderItemRequest(CamelModel):
     product_id: str
     variant_name: str
-    quantity: int = Field(ge=1)
+    quantity: int = Field(ge=1, le=MAX_ITEM_QUANTITY)
 
 
 class OrderRequest(CamelModel):
-    customer_name: RequiredText
-    phone: RequiredText
+    customer_name: RequiredText = Field(max_length=MAX_CUSTOMER_NAME_LENGTH)
+    phone: RequiredText = Field(max_length=MAX_PHONE_LENGTH)
     pickup_time: datetime
-    items: list[OrderItemRequest] = Field(min_length=1)
+    items: list[OrderItemRequest] = Field(min_length=1, max_length=MAX_ORDER_ITEMS)
 
 
 class OrderItemResponse(CamelModel):
@@ -89,8 +98,8 @@ class OrderResponse(CamelModel):
 
 class VariantRequest(CamelModel):
     name: RequiredText
-    price: int
-    stock: int
+    price: int = Field(le=MAX_PRICE)
+    stock: int = Field(le=MAX_STOCK)
 
 
 class ProductRequest(CamelModel):
@@ -98,8 +107,12 @@ class ProductRequest(CamelModel):
     category: RequiredText
     description: str
     image_url: str | None
-    prep_minutes: int
+    prep_minutes: int = Field(le=MAX_PREP_MINUTES)
     variants: list[VariantRequest]
+
+
+class ProductUpdateRequest(ProductRequest):
+    etag: str
 
 
 class ImageUploadRequest(CamelModel):

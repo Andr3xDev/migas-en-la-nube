@@ -122,6 +122,15 @@ def test_create_order_with_pickup_in_the_past_raises_rule_violation(products, or
         place(products, orders, order_for(local(11), ("croissant", "Single", 1)))
 
 
+def test_create_order_beyond_pickup_horizon_raises_rule_violation(products, orders):
+    products.create(make_product())
+    far_pickup = local(12) + orders_service.MAX_PICKUP_HORIZON + timedelta(minutes=1)
+
+    with pytest.raises(RuleViolationError):
+        place(products, orders, order_for(far_pickup, ("croissant", "Single", 1)))
+    assert stock_of(products) == 5
+
+
 def test_create_order_made_to_order_before_prep_time_is_rejected_and_stock_unchanged(
     products, orders
 ):

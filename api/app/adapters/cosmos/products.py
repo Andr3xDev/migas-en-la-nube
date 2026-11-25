@@ -85,6 +85,8 @@ class CosmosProductRepository:
             )
         except CosmosAccessConditionFailedError as error:
             raise ConcurrencyConflictError(product.id) from error
+        except CosmosResourceNotFoundError as error:
+            raise NotFoundError(product.id) from error
         return from_document(replaced)
 
     def move(self, product: Product) -> Product:

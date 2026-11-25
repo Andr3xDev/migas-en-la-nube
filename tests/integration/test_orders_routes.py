@@ -66,6 +66,10 @@ def test_post_order_as_guest_returns_201_with_code_and_total(client, stores):
         {"items": []},
         {"items": [{"productId": "croissant", "variantName": "Single", "quantity": 0}]},
         {"items": [{"productId": "missing", "variantName": "Single", "quantity": 1}]},
+        {"items": [{"productId": "croissant", "variantName": "Single", "quantity": 51}]},
+        {"items": [{"productId": "croissant", "variantName": "Single", "quantity": 1}] * 21},
+        {"customerName": "x" * 101},
+        {"phone": "1" * 31},
     ],
 )
 def test_post_order_with_invalid_body_or_unknown_product_returns_422_and_stores_nothing(

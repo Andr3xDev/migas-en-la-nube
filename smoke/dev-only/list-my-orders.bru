@@ -1,0 +1,26 @@
+meta {
+  name: list-my-orders
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseURL}}/api/me/orders
+  body: none
+  auth: none
+}
+
+headers {
+  X-Pdc-Token: Bearer {{accessToken}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("lists the order created by create-order", function () {
+    const codes = res.body.map((order) => order.code);
+    expect(codes).to.include(bru.getVar("orderCode"));
+  });
+}

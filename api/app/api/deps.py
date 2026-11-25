@@ -7,12 +7,14 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.adapters.local_auth import LocalAuthProvider
+from app.adapters.memory.images import MemoryImageStore
 from app.adapters.memory.orders import MemoryOrderRepository
 from app.adapters.memory.products import MemoryProductRepository
 from app.adapters.memory.users import MemoryUserRepository
-from app.core.settings import Settings
+from app.core.settings import LOCAL_ENVIRONMENT, Settings
 from app.domain.errors import INVALID_CREDENTIALS, AuthenticationError
 from app.ports.auth import AuthProvider, Principal
+from app.ports.images import ImageStore
 from app.ports.repositories import OrderRepository, ProductRepository, UserRepository
 
 
@@ -50,6 +52,20 @@ def get_user_repository() -> UserRepository:
 
         return CosmosUserRepository(get_container(CONTAINER_NAME))
     return MemoryUserRepository()
+
+
+@cache
+def get_image_store() -> ImageStore:
+    settings = get_settings()
+    if settings.storage_connection_string:
+        from app.adapters.blob.images import BlobImageStore
+
+        return BlobImageStore(settings.storage_connection_string, settings.images_container_url)
+    if settings.environment != LOCAL_ENVIRONMENT:
+        raise RuntimeError(
+            "PDC_STORAGE_CONNECTION_STRING is required outside the local environment"
+        )
+    return MemoryImageStore(settings.images_container_url)
 
 
 @cache

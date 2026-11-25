@@ -102,12 +102,10 @@ jobs:
           api_location: dist/api
           output_location: ""
           skip_app_build: true
-      - name: Smoke test
-        env:
-          SWA_URL: ${{ steps.tf.outputs.swa_url }}
-        run: |
-          bash smoke/health.sh "$SWA_URL" "$ENVIRONMENT"
-          bash smoke/catalog.sh "$SWA_URL"
+      - uses: ./.github/actions/smoke
+        with:
+          base-url: ${{ steps.tf.outputs.swa_url }}
+          environment: ${{ env.ENVIRONMENT }}
 
   release:
     name: release

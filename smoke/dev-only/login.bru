@@ -1,0 +1,27 @@
+meta {
+  name: login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseURL}}/api/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{smokeEmail}}",
+    "password": "{{smokePassword}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.accessToken: isString
+}
+
+script:post-response {
+  bru.setVar("accessToken", res.body.accessToken);
+}

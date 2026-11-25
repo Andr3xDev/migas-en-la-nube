@@ -1,0 +1,15 @@
+meta {
+  name: product-not-found
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseURL}}/api/products/smoke-unknown-product
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+}

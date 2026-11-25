@@ -1,0 +1,21 @@
+meta {
+  name: products
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseURL}}/api/products
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body: isArray
+  res.body.length: gte 1
+  res.body[0].id: isString
+  res.body[0].name: isString
+  res.body[0].variants: isArray
+  res.body[0].variants[0].price: isNumber
+}

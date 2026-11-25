@@ -1,0 +1,35 @@
+name: smoke
+description: Wait for the API, then run the Bruno smoke collection (all requests on dev, reads only on prod).
+
+inputs:
+  base-url:
+    description: Deployed site URL, for example https://example.azurestaticapps.net
+    required: true
+  environment:
+    description: dev or prod
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Wait for health
+      shell: bash
+      env:
+        BASE_URL: ${{ inputs.base-url }}
+      run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$BASE_URL/api/health"
+    - name: Install Bruno CLI
+      shell: bash
+      run: npm install -g @usebruno/cli@4.4.0
+    - name: Run Bruno collection
+      shell: bash
+      working-directory: smoke
+      env:
+        BASE_URL: ${{ inputs.base-url }}
+        SMOKE_ENV: ${{ inputs.environment }}
+      run: |
+        # Prod runs the read folder only: no writes against prod data.
+        if [ "$SMOKE_ENV" = "prod" ]; then
+          bru run read --env prod --env-var "baseURL=$BASE_URL"
+        else
+          bru run -r --env "$SMOKE_ENV" --env-var "baseURL=$BASE_URL"
+        fi

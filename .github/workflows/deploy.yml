@@ -64,25 +64,27 @@ jobs:
           echo "::add-mask::$api_key"
           echo "api_key=$api_key" >> "$GITHUB_OUTPUT"
           echo "swa_url=$(terraform output -raw swa_url)" >> "$GITHUB_OUTPUT"
-          cosmos_connection_string="$(terraform output -raw cosmos_connection_string)"
-          echo "::add-mask::$cosmos_connection_string"
-          echo "cosmos_connection_string=$cosmos_connection_string" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: pip install -r api/requirements.txt
       - name: Seed products
-        working-directory: api
-        env:
-          PDC_COSMOS_CONNECTION_STRING: ${{ steps.tf.outputs.cosmos_connection_string }}
-        run: python -m scripts.seed_products
+        run: |
+          PDC_COSMOS_CONNECTION_STRING="$(terraform -chdir="infra/envs/$ENVIRONMENT" output -raw cosmos_connection_string)"
+          echo "::add-mask::$PDC_COSMOS_CONNECTION_STRING"
+          export PDC_COSMOS_CONNECTION_STRING
+          cd api
+          python -m scripts.seed_products
       - name: Seed admin
-        working-directory: api
         env:
-          PDC_COSMOS_CONNECTION_STRING: ${{ steps.tf.outputs.cosmos_connection_string }}
           ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
           ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
-        run: python -m scripts.seed_admin
+        run: |
+          PDC_COSMOS_CONNECTION_STRING="$(terraform -chdir="infra/envs/$ENVIRONMENT" output -raw cosmos_connection_string)"
+          echo "::add-mask::$PDC_COSMOS_CONNECTION_STRING"
+          export PDC_COSMOS_CONNECTION_STRING
+          cd api
+          python -m scripts.seed_admin
       - uses: actions/download-artifact@v8
         with:
           name: api

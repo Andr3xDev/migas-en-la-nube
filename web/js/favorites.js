@@ -13,10 +13,11 @@ export async function loadFavorites() {
 export function createFavoriteButton(productId, favorites) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "button";
+  button.className = "button button-secondary";
   const refresh = () => {
     const marked = favorites.has(productId);
-    button.textContent = marked ? "Quitar de favoritos" : "Agregar a favoritos";
+    button.textContent = marked ? "♥ Guardado" : "♡ Guardar";
+    button.setAttribute("aria-label", marked ? "Quitar de favoritos" : "Agregar a favoritos");
     button.setAttribute("aria-pressed", String(marked));
   };
   refresh();
@@ -40,6 +41,7 @@ export function createFavoriteButton(productId, favorites) {
     }
   });
   const wrapper = document.createElement("span");
+  wrapper.className = "favorite-control";
   wrapper.append(button, status);
   return wrapper;
 }

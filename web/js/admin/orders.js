@@ -1,16 +1,8 @@
 import { apiFetch, ApiError } from "../api.js";
-import { formatPeso, showMessage } from "../format.js";
+import { createStatusChip, formatPeso, showMessage, STATUS_LABELS } from "../format.js";
 import { requireAdmin } from "./guard.js";
 
 const SHOP_TIMEZONE = "America/Bogota";
-
-const STATUS_LABELS = {
-  received: "Recibido",
-  preparing: "En preparación",
-  ready: "Listo",
-  delivered: "Entregado",
-  cancelled: "Cancelado",
-};
 
 const NEXT_STATUS = { received: "preparing", preparing: "ready", ready: "delivered" };
 const CANCELLABLE = ["received", "preparing", "ready"];
@@ -23,16 +15,17 @@ const feedback = document.getElementById("feedback");
 
 let orders = [];
 
-function createCell(content) {
+function createCell(content, className = "") {
   const cell = document.createElement("td");
+  cell.className = className;
   cell.append(content);
   return cell;
 }
 
-function createButton(label, onClick) {
+function createButton(label, onClick, variant = "") {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "button";
+  button.className = `button ${variant}`.trim();
   button.textContent = label;
   button.addEventListener("click", onClick);
   return button;
@@ -53,11 +46,12 @@ function describeItems(order) {
 }
 
 function createActions(order) {
-  const actions = document.createElement("span");
+  const actions = document.createElement("div");
+  actions.className = "table-actions";
   const next = NEXT_STATUS[order.status];
   if (next) actions.append(createButton(`Pasar a ${STATUS_LABELS[next]}`, () => changeStatus(order, next)));
   if (CANCELLABLE.includes(order.status)) {
-    actions.append(createButton("Cancelar", () => changeStatus(order, "cancelled")));
+    actions.append(createButton("Cancelar", () => changeStatus(order, "cancelled"), "button-danger"));
   }
   return actions;
 }
@@ -73,16 +67,19 @@ function render() {
   for (const order of sorted) {
     const row = document.createElement("tr");
     row.append(
-      createCell(formatPickup(order.pickupTime)),
+      createCell(formatPickup(order.pickupTime), "cell-time"),
       createCell(`${order.customerName} (${order.phone})`),
       createCell(describeItems(order)),
       createCell(formatPeso(order.total)),
-      createCell(STATUS_LABELS[order.status] ?? order.status),
+      createCell(createStatusChip(order.status)),
       createCell(createActions(order)),
     );
     table.append(row);
   }
-  container.replaceChildren(table);
+  const scroller = document.createElement("div");
+  scroller.className = "table-scroll";
+  scroller.append(table);
+  container.replaceChildren(scroller);
 }
 
 async function loadOrders() {

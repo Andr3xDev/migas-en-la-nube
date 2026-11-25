@@ -13,6 +13,10 @@ export function formatAvailability(availability) {
   return `Por encargo (listo en ${availability.readyMinutes} min)`;
 }
 
+export function availabilityBadgeClass(inStock) {
+  return `badge ${inStock ? "badge-in-stock" : "badge-made-to-order"}`;
+}
+
 export const PLACEHOLDER_IMAGE = "/img/placeholder.svg";
 
 export function createProductImage(product) {
@@ -29,10 +33,25 @@ export function createProductImage(product) {
   return img;
 }
 
-export function showMessage(container, text) {
+export const STATUS_LABELS = {
+  received: "Recibido",
+  preparing: "En preparación",
+  ready: "Listo",
+  delivered: "Entregado",
+  cancelled: "Cancelado",
+};
+
+export function createStatusChip(status) {
+  const chip = document.createElement("span");
+  chip.className = `chip chip-${status}`;
+  chip.textContent = STATUS_LABELS[status] ?? status;
+  return chip;
+}
+
+export function showMessage(container, text, kind = "error") {
   container.replaceChildren();
   const p = document.createElement("p");
-  p.className = "message";
+  p.className = kind === "success" ? "message message-success" : "message";
   p.textContent = text;
   container.append(p);
 }

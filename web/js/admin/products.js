@@ -20,10 +20,10 @@ const resetButton = document.getElementById("reset");
 let products = [];
 let editing = null;
 
-function createButton(label, onClick) {
+function createButton(label, onClick, variant = "") {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "button";
+  button.className = `button ${variant}`.trim();
   button.textContent = label;
   button.addEventListener("click", onClick);
   return button;
@@ -50,10 +50,11 @@ function renderList() {
   table.className = "cart-table";
   for (const product of products) {
     const row = document.createElement("tr");
-    const actions = document.createElement("span");
+    const actions = document.createElement("div");
+    actions.className = "table-actions";
     actions.append(
-      createButton("Editar", () => startEdit(product)),
-      createButton("Eliminar", () => removeProduct(product)),
+      createButton("Editar", () => startEdit(product), "button-secondary"),
+      createButton("Eliminar", () => removeProduct(product), "button-danger"),
     );
     row.append(
       createCell(createProductImage(product)),
@@ -64,7 +65,10 @@ function renderList() {
     );
     table.append(row);
   }
-  list.replaceChildren(table);
+  const scroller = document.createElement("div");
+  scroller.className = "table-scroll";
+  scroller.append(table);
+  list.replaceChildren(scroller);
 }
 
 function addVariantRow(variant = { name: "", price: "", stock: "" }) {
@@ -89,7 +93,7 @@ function addVariantRow(variant = { name: "", price: "", stock: "" }) {
     }
     row.append(input);
   }
-  row.append(createButton("Quitar", () => row.remove()));
+  row.append(createButton("Quitar", () => row.remove(), "button-secondary"));
   variantsContainer.append(row);
 }
 
@@ -245,7 +249,7 @@ form.addEventListener("submit", async (event) => {
     const saved = await save(file);
     upsertLocal(saved);
     resetForm();
-    showMessage(feedback, "Producto guardado.");
+    showMessage(feedback, "Producto guardado.", "success");
   } catch (error) {
     if (error instanceof UploadError) {
       showMessage(feedback, `${error.message} El producto no se guardó con la nueva imagen.`);

@@ -8,7 +8,7 @@
   </head>
   <body>
     <header>
-      <a href="/">Pan de la Casa</a>
+      <a href="/" class="brand">Pan de la Casa<small>Administración</small></a>
       <nav>
         <a href="/admin/">Productos</a>
         <a href="/admin/orders.html">Pedidos</a>
@@ -41,7 +41,7 @@
           <fieldset>
             <legend>Variantes (precio final en pesos, IVA incluido)</legend>
             <div id="variants"></div>
-            <button type="button" class="button" id="add-variant">Agregar variante</button>
+            <button type="button" class="button button-secondary" id="add-variant">Agregar variante</button>
           </fieldset>
           <p>
             <label for="image">Imagen (JPEG, PNG o WebP, máximo 2 MB)</label>
@@ -49,11 +49,12 @@
           </p>
           <div id="current-image"></div>
           <button type="submit" class="button" id="submit">Guardar</button>
-          <button type="button" class="button" id="reset" hidden>Cancelar edición</button>
+          <button type="button" class="button button-secondary" id="reset" hidden>Cancelar edición</button>
         </form>
         <div id="feedback" aria-live="polite"></div>
       </div>
     </main>
+    <footer><p>Pan de la Casa · Panel de administración</p></footer>
     <script type="module" src="/js/nav.js"></script>
     <script type="module" src="/js/admin/products.js"></script>
   </body>

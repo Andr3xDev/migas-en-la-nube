@@ -1,6 +1,6 @@
 import { apiFetch, getToken } from "./api.js";
 import { addItem } from "./cart.js";
-import { formatPeso, showMessage } from "./format.js";
+import { createStatusChip, formatPeso, showMessage } from "./format.js";
 
 function createProductLink(product) {
   const link = document.createElement("a");
@@ -53,7 +53,10 @@ function createOrderCard(order, catalog) {
   const heading = document.createElement("h3");
   heading.textContent = `Pedido ${order.code}`;
   const details = document.createElement("p");
-  details.textContent = `${order.status} - ${new Date(order.pickupTime).toLocaleString("es-CO")} - ${formatPeso(order.total)}`;
+  details.append(
+    createStatusChip(order.status),
+    ` ${new Date(order.pickupTime).toLocaleString("es-CO")} - ${formatPeso(order.total)}`,
+  );
 
   const lines = document.createElement("ul");
   for (const line of order.items) {

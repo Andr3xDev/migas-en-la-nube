@@ -4,33 +4,39 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Crear cuenta - Pan de la Casa</title>
+    <link rel="icon" href="/img/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/css/styles.css" />
   </head>
   <body>
     <header>
-      <a href="/" class="brand">Pan de la Casa<small>Panadería artesanal</small></a>
+      <a href="/" class="brand"><img src="/img/logo.svg" alt="Pan de la Casa" /></a>
       <nav>
-        <a href="/cart.html">Carrito</a>
-        <a href="/login.html" data-guest>Ingresar</a>
-        <a href="/register.html" data-guest>Crear cuenta</a>
-        <a href="/account.html" data-user hidden>Mi cuenta</a>
-        <a href="/" id="logout" data-user hidden>Salir</a>
+        <a href="/" data-icon="utensils">Menú</a>
+        <a href="/cart.html" data-icon="shopping-cart">Carrito<span class="nav-badge" id="cart-count" hidden></span></a>
+        <a href="/login.html" data-icon="log-in" data-guest>Ingresar</a>
+        <a href="/register.html" data-icon="user-plus" data-guest>Crear cuenta</a>
+        <a href="/account.html" data-icon="user" data-user hidden>Mi cuenta</a>
+        <a href="/" id="logout" data-icon="log-out" data-user hidden>Salir</a>
       </nav>
     </header>
-    <main>
-      <h1>Crear cuenta</h1>
-      <form id="register-form">
-        <p>
-          <label for="email">Correo</label>
-          <input id="email" name="email" type="email" required maxlength="254" />
-        </p>
-        <p>
-          <label for="password">Contraseña (mínimo 8 caracteres)</label>
-          <input id="password" name="password" type="password" required minlength="8" maxlength="1024" />
-        </p>
-        <button type="submit" class="button" id="submit">Crear cuenta</button>
-      </form>
-      <div id="feedback" aria-live="polite"></div>
+    <main class="auth-page">
+      <div class="auth-card">
+        <img class="auth-logo" src="/img/logo.svg" alt="" />
+        <h1>Crear cuenta</h1>
+        <form id="register-form">
+          <p>
+            <label for="email">Correo</label>
+            <input id="email" name="email" type="email" required maxlength="254" />
+          </p>
+          <p>
+            <label for="password">Contraseña (mínimo 8 caracteres)</label>
+            <input id="password" name="password" type="password" required minlength="8" maxlength="1024" />
+          </p>
+          <button type="submit" class="button" id="submit">Crear cuenta</button>
+        </form>
+        <div id="feedback" aria-live="polite"></div>
+        <p class="auth-alt">¿Ya tienes cuenta? <a href="/login.html">Ingresar</a></p>
+      </div>
     </main>
     <footer><p>Pan de la Casa · Horneado con cariño cada mañana</p></footer>
     <script type="module" src="/js/nav.js"></script>

@@ -1,8 +1,23 @@
+import asyncio
+import json
+from pathlib import Path
+
 import azure.functions as func
 
-import function_app
+from http_app import main
+
+FUNCTION_JSON = Path(__file__).parent.parent / "api" / "http_app" / "function.json"
 
 
-def test_function_app_exposes_anonymous_asgi_app():
-    assert isinstance(function_app.app, func.AsgiFunctionApp)
-    assert function_app.app.auth_level == func.AuthLevel.ANONYMOUS
+def test_function_json_is_anonymous_catch_all():
+    config = json.loads(FUNCTION_JSON.read_text())
+    trigger = config["bindings"][0]
+    assert config["scriptFile"] == "__init__.py"
+    assert trigger["authLevel"] == "anonymous"
+    assert trigger["route"] == "{*route}"
+
+
+def test_main_serves_health_through_asgi():
+    req = func.HttpRequest("GET", "/api/health", headers={}, body=b"")
+    response = asyncio.run(main(req, None))
+    assert response.status_code == 200

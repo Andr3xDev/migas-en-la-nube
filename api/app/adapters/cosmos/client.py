@@ -3,7 +3,7 @@ from functools import cache
 from azure.cosmos import CosmosClient
 from azure.cosmos.container import ContainerProxy
 
-from app.api.deps import get_settings
+from app.core.settings import get_settings
 
 DATABASE_NAME = "migas"
 

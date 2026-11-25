@@ -1,7 +1,8 @@
 import os
 from collections.abc import Mapping
 
-from app.api.deps import get_auth_provider, get_settings, get_user_repository
+from app.api.deps import get_auth_provider, get_user_repository
+from app.core.settings import get_settings
 from app.domain.errors import ConflictError
 from app.ports.auth import AuthProvider
 

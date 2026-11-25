@@ -2,9 +2,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.api.deps import get_settings
 from app.api.schemas import HealthResponse
-from app.core.settings import Settings
+from app.core.settings import Settings, get_settings
 
 router = APIRouter(prefix="/api")
 

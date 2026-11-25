@@ -13,6 +13,7 @@ from app.domain.errors import INVALID_CREDENTIALS, AuthenticationError
 from app.domain.models import User
 from app.ports.auth import Principal
 from app.ports.repositories import UserRepository
+from app.services.retry import retry_on_conflict
 
 TOKEN_LIFETIME = timedelta(hours=1)
 JWT_ALGORITHM = "HS256"
@@ -77,6 +78,17 @@ class LocalAuthProvider:
             role=role,
         )
         return self._users.create(user)
+
+    def ensure_admin(self, email: str, password: str) -> User:
+        def attempt() -> User:
+            user = self._users.get_by_email(email.strip().lower())
+            if user is None:
+                return self.register(email, password, role="admin")
+            user.role = "admin"
+            user.password_hash = hash_password(password)
+            return self._users.replace(user)
+
+        return retry_on_conflict(attempt)
 
     def login(self, email: str, password: str) -> str:
         user = self._users.get_by_email(email.strip().lower())

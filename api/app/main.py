@@ -1,10 +1,11 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api.routes import auth, health, orders, products
+from app.api.routes import admin, auth, health, orders, products
 from app.domain.errors import (
     INVALID_CREDENTIALS,
     AuthenticationError,
+    ConcurrencyConflictError,
     ConflictError,
     NotFoundError,
     RuleViolationError,
@@ -15,6 +16,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(products.router)
 app.include_router(orders.router)
+app.include_router(admin.router)
 
 
 def register_error_handler(error: type[Exception], status_code: int) -> None:
@@ -30,4 +32,5 @@ def handle_authentication_error(request: Request, exc: AuthenticationError) -> J
 
 register_error_handler(NotFoundError, 404)
 register_error_handler(ConflictError, 409)
+register_error_handler(ConcurrencyConflictError, 409)
 register_error_handler(RuleViolationError, 422)

@@ -6,6 +6,7 @@ resource "azurerm_storage_account" "this" {
   #checkov:skip=CKV2_AZURE_1:Customer-managed keys are out of scope for the MVP.
   #checkov:skip=CKV2_AZURE_33:Private endpoints are out of scope for the MVP; no VNet is provisioned.
   #checkov:skip=CKV2_AZURE_47:Anonymous blob read is required for the public images container.
+  #checkov:skip=CKV2_AZURE_40:Shared key is required to issue SAS tokens for browser uploads; scoped to the images account only.
   name                            = var.name
   resource_group_name             = var.resource_group_name
   location                        = var.location
@@ -13,7 +14,7 @@ resource "azurerm_storage_account" "this" {
   account_replication_type        = "LRS"
   min_tls_version                 = "TLS1_2"
   allow_nested_items_to_be_public = true
-  shared_access_key_enabled       = false
+  shared_access_key_enabled       = true
 
   blob_properties {
     versioning_enabled = true
@@ -21,6 +22,11 @@ resource "azurerm_storage_account" "this" {
     delete_retention_policy {
       days = 7
     }
+  }
+
+  lifecycle {
+    # CORS is managed by azapi_update_resource in the env root (avoids a storage <-> SWA cycle).
+    ignore_changes = [blob_properties[0].cors_rule]
   }
 }
 

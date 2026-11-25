@@ -107,7 +107,7 @@ function renderCurrentImage() {
 
 function resetForm() {
   editing = null;
-  form.reset();
+  HTMLFormElement.prototype.reset.call(form);
   variantsContainer.replaceChildren();
   addVariantRow();
   formTitle.textContent = "Nuevo producto";
@@ -117,7 +117,7 @@ function resetForm() {
 
 function startEdit(product) {
   editing = product;
-  form.reset();
+  HTMLFormElement.prototype.reset.call(form);
   form.elements.name.value = product.name;
   form.elements.category.value = product.category;
   form.elements.description.value = product.description;

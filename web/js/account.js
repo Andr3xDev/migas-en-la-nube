@@ -1,23 +1,12 @@
 import { apiFetch, getToken } from "./api.js";
-import { addItem } from "./cart.js";
+import { addProductVariant } from "./cart.js";
+import { createProductCard } from "./components.js";
 import { createStatusChip, formatPeso, showMessage } from "./format.js";
+import { createIconButton } from "./icons.js";
 
-function createProductLink(product) {
-  const link = document.createElement("a");
-  link.href = `/product.html?id=${encodeURIComponent(product.id)}`;
-  link.textContent = product.name;
-  return link;
-}
-
-function renderProductList(container, products, emptyText) {
+function renderProductCards(container, products, favorites, emptyText) {
   if (products.length === 0) return showMessage(container, emptyText);
-  const list = document.createElement("ul");
-  for (const product of products) {
-    const entry = document.createElement("li");
-    entry.append(createProductLink(product));
-    list.append(entry);
-  }
-  container.replaceChildren(list);
+  container.replaceChildren(...products.map((product) => createProductCard(product, { favorites, headingLevel: 3 })));
 }
 
 // Past lines whose product or variant left the catalog are skipped; price is always the current one.
@@ -27,15 +16,7 @@ function orderAgain(order, catalog, feedback) {
     const product = catalog.find((candidate) => candidate.id === line.productId);
     const variant = product?.variants.find((candidate) => candidate.name === line.variantName);
     if (!variant) continue;
-    addItem(
-      {
-        productId: product.id,
-        variantName: variant.name,
-        name: `${product.name} (${variant.name})`,
-        price: variant.price,
-      },
-      line.quantity,
-    );
+    addProductVariant(product, variant, line.quantity);
     added += 1;
   }
   feedback.textContent =
@@ -46,35 +27,35 @@ function orderAgain(order, catalog, feedback) {
         : "Agregamos el pedido al carrito.";
 }
 
-function createOrderCard(order, catalog) {
-  const card = document.createElement("article");
-  card.className = "product-card";
+function createOrderSummary(order, catalog) {
+  const units = order.items.reduce((sum, line) => sum + line.quantity, 0);
+  const pickup = new Date(order.pickupTime).toLocaleString("es-CO", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 
-  const heading = document.createElement("h3");
-  heading.textContent = `Pedido ${order.code}`;
+  const code = document.createElement("h3");
+  code.textContent = order.code;
   const details = document.createElement("p");
-  details.append(
-    createStatusChip(order.status),
-    ` ${new Date(order.pickupTime).toLocaleString("es-CO")} - ${formatPeso(order.total)}`,
-  );
-
-  const lines = document.createElement("ul");
-  for (const line of order.items) {
-    const entry = document.createElement("li");
-    entry.textContent = `${line.quantity} x ${line.productName} (${line.variantName})`;
-    lines.append(entry);
-  }
+  details.className = "order-meta";
+  details.textContent = `Recogida: ${pickup} · ${units} ${units === 1 ? "producto" : "productos"}`;
+  const total = document.createElement("p");
+  total.className = "card-price";
+  total.textContent = formatPeso(order.total);
 
   const feedback = document.createElement("p");
   feedback.setAttribute("role", "status");
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "button";
-  button.textContent = "Pedir de nuevo";
-  button.addEventListener("click", () => orderAgain(order, catalog, feedback));
+  const again = createIconButton({
+    icon: "shopping-cart",
+    label: "Pedir de nuevo",
+    text: "Pedir de nuevo",
+    onClick: () => orderAgain(order, catalog, feedback),
+  });
 
-  card.append(heading, details, lines, button, feedback);
-  return card;
+  const summary = document.createElement("article");
+  summary.className = "order-summary";
+  summary.append(code, createStatusChip(order.status), details, total, again, feedback);
+  return summary;
 }
 
 async function renderSection(container, load) {
@@ -94,6 +75,10 @@ async function main() {
   const ordersContainer = document.getElementById("orders");
   const favoritesContainer = document.getElementById("favorites");
   const topContainer = document.getElementById("top-products");
+  // One shared set keeps every favorite toggle on the page consistent.
+  let favoritesRequest = null;
+  const getFavorites = () =>
+    (favoritesRequest ??= apiFetch("/api/me/favorites").then((ids) => new Set(ids)));
 
   await Promise.all([
     renderSection(ordersContainer, async () => {
@@ -102,23 +87,26 @@ async function main() {
         apiFetch("/api/products"),
       ]);
       if (orders.length === 0) return showMessage(ordersContainer, "Aún no has hecho pedidos.");
-      ordersContainer.replaceChildren(...orders.map((order) => createOrderCard(order, catalog)));
+      ordersContainer.replaceChildren(...orders.map((order) => createOrderSummary(order, catalog)));
     }),
     renderSection(favoritesContainer, async () => {
-      const [ids, catalog] = await Promise.all([
-        apiFetch("/api/me/favorites"),
-        apiFetch("/api/products"),
-      ]);
-      renderProductList(
+      const [favorites, catalog] = await Promise.all([getFavorites(), apiFetch("/api/products")]);
+      renderProductCards(
         favoritesContainer,
-        catalog.filter((product) => ids.includes(product.id)),
+        catalog.filter((product) => favorites.has(product.id)),
+        favorites,
         "Aún no tienes favoritos.",
       );
     }),
     renderSection(topContainer, async () => {
-      renderProductList(
+      const [products, favorites] = await Promise.all([
+        apiFetch("/api/me/top-products"),
+        getFavorites(),
+      ]);
+      renderProductCards(
         topContainer,
-        await apiFetch("/api/me/top-products"),
+        products,
+        favorites,
         "Haz un pedido para ver tus productos más pedidos.",
       );
     }),

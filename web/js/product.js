@@ -1,5 +1,6 @@
 import { apiFetch } from "./api.js";
 import { addItem } from "./cart.js";
+import { createFavoriteButton, loadFavorites } from "./favorites.js";
 import {
   createProductImage,
   formatAvailability,
@@ -9,7 +10,7 @@ import {
 
 const container = document.getElementById("product");
 
-function renderProduct(product) {
+function renderProduct(product, favorites) {
   const title = document.createElement("h1");
   title.textContent = product.name;
 
@@ -57,6 +58,7 @@ function renderProduct(product) {
 
   const info = document.createElement("div");
   info.append(title, description, select, price, availability, addButton, feedback);
+  if (favorites) info.append(createFavoriteButton(product.id, favorites));
 
   const detail = document.createElement("div");
   detail.className = "product-detail";
@@ -68,7 +70,8 @@ const productId = new URLSearchParams(location.search).get("id");
 
 try {
   if (!productId) throw new Error("missing id");
-  renderProduct(await apiFetch(`/api/products/${encodeURIComponent(productId)}`));
+  const product = await apiFetch(`/api/products/${encodeURIComponent(productId)}`);
+  renderProduct(product, await loadFavorites());
 } catch {
   showMessage(container, "No pudimos cargar el producto. Intenta de nuevo más tarde.");
 }

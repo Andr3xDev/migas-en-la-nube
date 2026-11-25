@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mi cuenta - Pan de la Casa</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <header>
+      <a href="/">Pan de la Casa</a>
+      <nav>
+        <a href="/cart.html">Carrito</a>
+        <a href="/login.html" data-guest>Ingresar</a>
+        <a href="/register.html" data-guest>Crear cuenta</a>
+        <a href="/account.html" data-user hidden>Mi cuenta</a>
+        <a href="/" id="logout" data-user hidden>Salir</a>
+      </nav>
+    </header>
+    <main>
+      <h1>Mi cuenta</h1>
+      <section>
+        <h2>Mis pedidos</h2>
+        <div id="orders" aria-live="polite"></div>
+      </section>
+      <section>
+        <h2>Mis favoritos</h2>
+        <div id="favorites" aria-live="polite"></div>
+      </section>
+      <section>
+        <h2>Los más pedidos</h2>
+        <div id="top-products" aria-live="polite"></div>
+      </section>
+    </main>
+    <script type="module" src="/js/nav.js"></script>
+    <script type="module" src="/js/account.js"></script>
+  </body>
+</html>

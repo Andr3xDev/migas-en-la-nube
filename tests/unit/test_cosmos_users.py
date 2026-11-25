@@ -23,6 +23,9 @@ class FakeContainer:
             raise CosmosResourceExistsError(status_code=409, message="exists")
         return {**body, "_etag": "e1", "_rid": "r", "_ts": 1}
 
+    def replace_item(self, item, body, etag, match_condition):
+        return {**body, "_etag": "e2", "_rid": "r", "_ts": 1}
+
 
 def test_get_by_email_returns_none_when_missing():
     assert CosmosUserRepository(FakeContainer()).get_by_email("x@example.com") is None
@@ -32,6 +35,19 @@ def test_get_by_email_queries_its_own_partition_and_maps_document():
     container = FakeContainer([{**to_document(USER), "_etag": "e1"}])
     assert CosmosUserRepository(container).get_by_email(USER.email) == USER
     assert container.partition_key == USER.email
+
+
+def test_get_by_email_defaults_favorites_to_empty_for_legacy_documents():
+    document = {k: v for k, v in to_document(USER).items() if k != "favorites"}
+    container = FakeContainer([{**document, "_etag": "e1"}])
+    assert CosmosUserRepository(container).get_by_email(USER.email).favorites == []
+
+
+def test_create_and_replace_keep_favorites():
+    favorites = User(**{**USER.__dict__, "favorites": ["torta", "croissant"]})
+    repository = CosmosUserRepository(FakeContainer())
+    assert repository.create(favorites).favorites == ["torta", "croissant"]
+    assert repository.replace(favorites).favorites == ["torta", "croissant"]
 
 
 def test_create_round_trips_and_maps_409_to_conflict():

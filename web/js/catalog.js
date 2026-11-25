@@ -1,4 +1,5 @@
 import { apiFetch } from "./api.js";
+import { createFavoriteButton, loadFavorites } from "./favorites.js";
 import {
   createProductImage,
   formatAvailability,
@@ -6,7 +7,7 @@ import {
   showMessage,
 } from "./format.js";
 
-function createCard(product) {
+function createCard(product, favorites) {
   const card = document.createElement("a");
   card.className = "product-card";
   card.href = `/product.html?id=${encodeURIComponent(product.id)}`;
@@ -25,7 +26,11 @@ function createCard(product) {
   price.textContent = `Desde ${formatPeso(lowest)}`;
 
   card.append(createProductImage(product), name, availability, price);
-  return card;
+  if (!favorites) return card;
+
+  const item = document.createElement("div");
+  item.append(card, createFavoriteButton(product.id, favorites));
+  return item;
 }
 
 const container = document.getElementById("catalog");
@@ -35,7 +40,8 @@ try {
   if (products.length === 0) {
     showMessage(container, "Aún no hay productos disponibles.");
   } else {
-    container.replaceChildren(...products.map(createCard));
+    const favorites = await loadFavorites();
+    container.replaceChildren(...products.map((product) => createCard(product, favorites)));
   }
 } catch {
   showMessage(container, "No pudimos cargar el catálogo. Intenta de nuevo más tarde.");

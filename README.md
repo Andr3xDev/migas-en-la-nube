@@ -15,11 +15,11 @@ Pan de la Casa: bakery ordering platform on Azure. This repo starts as a walking
 
 ## Local run
 
-Placeholder: commands are finalized in PR 002 (API skeleton).
-
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-uvicorn function_app:app --app-dir api --reload
+cd api && uvicorn app.main:app --reload
 curl http://localhost:8000/api/health
 ```
+
+Settings come from `PDC_VERSION` (default `0.1.0`) and `PDC_ENVIRONMENT` (default `local`). Run the tests from the repo root with `pytest --cov`.

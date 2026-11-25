@@ -1,58 +1,37 @@
-import { apiFetch, ApiError } from "./api.js";
-import { clearCart, getCart, getTotal, LAST_ORDER_KEY } from "./cart.js";
-import { formatPeso, showMessage } from "./format.js";
+import { apiFetch } from "./api.js";
+import { LAST_ORDER_KEY } from "./cart.js";
 
 const SHOP_UTC_OFFSET = "-05:00";
-
-const form = document.getElementById("checkout-form");
-const summary = document.getElementById("summary");
-const feedback = document.getElementById("feedback");
-const submit = document.getElementById("submit");
 
 // datetime-local gives "YYYY-MM-DDTHH:mm"; the shop runs on fixed UTC-5.
 const toPickupIso = (localValue) => `${localValue}:00${SHOP_UTC_OFFSET}`;
 
-function renderSummary() {
-  if (getCart().length === 0) {
-    showMessage(summary, "Tu carrito está vacío.");
-    form.hidden = true;
-    return;
+// Mirrors create_order in api/app/services/orders.py: the wait is the longest prep time among
+// lines whose stock cannot cover the quantity. Lines of unknown products add nothing.
+export function estimateWaitMinutes(lines, catalog) {
+  let wait = 0;
+  for (const line of lines) {
+    const product = catalog.find((candidate) => candidate.id === line.productId);
+    const variant = product?.variants.find((candidate) => candidate.name === line.variantName);
+    if (variant && variant.stock < line.quantity) wait = Math.max(wait, product.prepMinutes);
   }
-  const total = document.createElement("p");
-  total.className = "cart-total";
-  total.textContent = `Total: ${formatPeso(getTotal())}`;
-  summary.replaceChildren(total);
+  return wait;
 }
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const items = getCart().map(({ productId, variantName, quantity }) => ({
-    productId,
-    variantName,
-    quantity,
-  }));
-  if (items.length === 0) return;
-
-  const data = new FormData(form);
-  submit.disabled = true;
-  try {
-    const order = await apiFetch("/api/orders", {
-      method: "POST",
-      body: {
-        customerName: data.get("customerName").trim(),
-        phone: data.get("phone").trim(),
-        pickupTime: toPickupIso(data.get("pickupTime")),
-        items,
-      },
-    });
-    localStorage.setItem(LAST_ORDER_KEY, order.code);
-    clearCart();
-    window.location.assign("/confirmation.html");
-  } catch (error) {
-    if (!(error instanceof ApiError)) throw error;
-    showMessage(feedback, error.message);
-    submit.disabled = false;
-  }
-});
-
-renderSummary();
+export async function placeOrder(formData, lines) {
+  const order = await apiFetch("/api/orders", {
+    method: "POST",
+    body: {
+      customerName: formData.get("customerName").trim(),
+      phone: formData.get("phone").trim(),
+      pickupTime: toPickupIso(formData.get("pickupTime")),
+      items: lines.map(({ productId, variantName, quantity }) => ({
+        productId,
+        variantName,
+        quantity,
+      })),
+    },
+  });
+  localStorage.setItem(LAST_ORDER_KEY, order.code);
+  return order;
+}

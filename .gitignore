@@ -1,0 +1,29 @@
+# Secrets and local config
+local.settings.json
+.env
+.env.*
+!.env.example
+*.tfvars
+*.tfvars.json
+*.pem
+*.key
+.python_packages/
+
+# Terraform
+terraform.tfstate*
+.terraform.tfstate.lock.info
+crash.log
+*.tfplan
+.terraform/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+
+# Build output
+dist/

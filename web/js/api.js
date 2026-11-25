@@ -31,9 +31,12 @@ export async function apiFetch(path, { method = "GET", body } = {}) {
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
     const detail = payload && payload.detail;
+    const message = Array.isArray(detail)
+      ? detail.map((issue) => issue.msg).filter(Boolean).join(". ")
+      : detail;
     throw new ApiError(
       response.status,
-      typeof detail === "string" ? detail : "Ocurrió un error inesperado.",
+      typeof message === "string" && message ? message : "Ocurrió un error inesperado.",
     );
   }
   return payload;

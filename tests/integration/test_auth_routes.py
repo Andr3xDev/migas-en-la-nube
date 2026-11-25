@@ -129,7 +129,8 @@ def test_register_duplicate_email_in_other_case_returns_409(client, stack):
 
 
 def test_default_auth_provider_without_jwt_key_can_register(client):
-    from app.api.deps import get_auth_provider, get_settings, get_user_repository
+    from app.api.deps import get_auth_provider, get_user_repository
+    from app.core.settings import get_settings
 
     get_settings.cache_clear()
     get_user_repository.cache_clear()

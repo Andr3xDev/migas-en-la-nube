@@ -11,21 +11,25 @@ from app.adapters.memory.images import MemoryImageStore
 from app.adapters.memory.orders import MemoryOrderRepository
 from app.adapters.memory.products import MemoryProductRepository
 from app.adapters.memory.users import MemoryUserRepository
-from app.core.settings import LOCAL_ENVIRONMENT, Settings
+from app.core.settings import LOCAL_ENVIRONMENT, LOCAL_IMAGES_CONTAINER_URL, get_settings
 from app.domain.errors import INVALID_CREDENTIALS, AuthenticationError
 from app.ports.auth import AuthProvider, Principal
 from app.ports.images import ImageStore
 from app.ports.repositories import OrderRepository, ProductRepository, UserRepository
 
 
-@cache
-def get_settings() -> Settings:
-    return Settings()
+def _has_cosmos() -> bool:
+    settings = get_settings()
+    if settings.cosmos_connection_string:
+        return True
+    if settings.environment != LOCAL_ENVIRONMENT:
+        raise RuntimeError("PDC_COSMOS_CONNECTION_STRING is required outside the local environment")
+    return False
 
 
 @cache
 def get_product_repository() -> ProductRepository:
-    if get_settings().cosmos_connection_string:
+    if _has_cosmos():
         # Imported lazily so the memory path never loads the Azure SDK.
         from app.adapters.cosmos.client import get_container
         from app.adapters.cosmos.products import CONTAINER_NAME, CosmosProductRepository
@@ -36,7 +40,7 @@ def get_product_repository() -> ProductRepository:
 
 @cache
 def get_order_repository() -> OrderRepository:
-    if get_settings().cosmos_connection_string:
+    if _has_cosmos():
         from app.adapters.cosmos.client import get_container
         from app.adapters.cosmos.orders import CONTAINER_NAME, CosmosOrderRepository
 
@@ -46,7 +50,7 @@ def get_order_repository() -> OrderRepository:
 
 @cache
 def get_user_repository() -> UserRepository:
-    if get_settings().cosmos_connection_string:
+    if _has_cosmos():
         from app.adapters.cosmos.client import get_container
         from app.adapters.cosmos.users import CONTAINER_NAME, CosmosUserRepository
 
@@ -58,6 +62,11 @@ def get_user_repository() -> UserRepository:
 def get_image_store() -> ImageStore:
     settings = get_settings()
     if settings.storage_connection_string:
+        if (
+            settings.environment != LOCAL_ENVIRONMENT
+            and settings.images_container_url == LOCAL_IMAGES_CONTAINER_URL
+        ):
+            raise RuntimeError("PDC_IMAGES_CONTAINER_URL is required outside the local environment")
         from app.adapters.blob.images import BlobImageStore
 
         return BlobImageStore(settings.storage_connection_string, settings.images_container_url)

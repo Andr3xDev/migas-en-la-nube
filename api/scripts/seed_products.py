@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
 
-from app.api.deps import get_product_repository, get_settings
+from app.api.deps import get_product_repository
+from app.core.settings import get_settings
 from app.domain.models import Product, Variant
 from app.services.catalog import seed_products
 

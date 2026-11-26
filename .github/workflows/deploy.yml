@@ -69,14 +69,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -r api/requirements.txt
-      - name: Seed products
-        run: |
-          PDC_COSMOS_CONNECTION_STRING="$(terraform -chdir="infra/envs/$ENVIRONMENT" output -raw cosmos_connection_string)"
-          echo "::add-mask::$PDC_COSMOS_CONNECTION_STRING"
-          export PDC_COSMOS_CONNECTION_STRING
-          cd api
-          python -m scripts.seed_products
-      - name: Seed admin
+      - name: Seed data
         env:
           ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
           ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
@@ -85,6 +78,7 @@ jobs:
           echo "::add-mask::$PDC_COSMOS_CONNECTION_STRING"
           export PDC_COSMOS_CONNECTION_STRING
           cd api
+          python -m scripts.seed_products
           python -m scripts.seed_admin
       - uses: actions/download-artifact@v8
         with:

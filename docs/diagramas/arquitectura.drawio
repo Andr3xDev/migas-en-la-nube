@@ -1,0 +1,72 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="arquitectura" name="Arquitectura">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="browser" value="Navegador&#xa;HTML y módulos ES" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="260" width="140" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="swa" value="Azure Static Web Apps" style="swimlane;whiteSpace=wrap;html=1;fontSize=13;startSize=28;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="340" y="140" width="320" height="400" as="geometry"/>
+        </mxCell>
+        <mxCell id="static" value="Archivos estáticos de web/&#xa;cabeceras CSP" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/preview/Static_Apps.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="swa">
+          <mxGeometry x="125" y="60" width="68" height="68" as="geometry"/>
+        </mxCell>
+        <mxCell id="func" value="Functions administradas&#xa;FastAPI (Python 3.11)" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/compute/Function_Apps.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="swa">
+          <mxGeometry x="125" y="230" width="68" height="68" as="geometry"/>
+        </mxCell>
+        <mxCell id="cosmos" value="Cosmos DB NoSQL, serverless&#xa;products, orders, users" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="900" y="230" width="68" height="68" as="geometry"/>
+        </mxCell>
+        <mxCell id="blob" value="Blob Storage&#xa;contenedor images" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/storage/Storage_Accounts.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="900" y="40" width="68" height="68" as="geometry"/>
+        </mxCell>
+        <mxCell id="ai" value="Application Insights&#xa;sobre Log Analytics" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/devops/Application_Insights.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="900" y="450" width="68" height="68" as="geometry"/>
+        </mxCell>
+        <mxCell id="probe" value="Prueba de disponibilidad&#xa;(solo prod, 2 ubicaciones)" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/management_governance/Monitor.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="560" y="660" width="68" height="68" as="geometry"/>
+        </mxCell>
+        <mxCell id="mail" value="Correo de alertas&#xa;(solo prod)" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/management_governance/Alerts.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="450" width="68" height="68" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="HTML, CSS, JS" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="browser" target="static">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="/api/* JSON&#xa;X-Pdc-Token: Bearer jwt" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="browser" target="func">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="SDK de Cosmos&#xa;ETag en stock y productos" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="func" target="cosmos">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="firma URL SAS&#xa;(5 min, https)" style="endArrow=classic;html=1;fontSize=11;dashed=1;" edge="1" parent="1" source="func" target="browser">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="110" y="460"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" value="PUT de la imagen con SAS&#xa;(regla CORS)" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="browser" target="blob">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="110" y="74"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6" value="logs JSON por petición&#xa;correlation_id" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="func" target="ai">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" value="GET /api/health cada 15 min" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="probe" target="func">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e8" value="" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="probe" target="ai">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e9" value="alertas de disponibilidad&#xa;y de errores 5xx" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="ai" target="mail">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

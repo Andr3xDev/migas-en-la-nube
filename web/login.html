@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ingresar - Pan de la Casa</title>
+    <link rel="icon" href="/img/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <header>
+      <a href="/" class="brand"><img src="/img/logo.svg" alt="Pan de la Casa" /></a>
+      <nav>
+        <a href="/" data-icon="utensils">Menú</a>
+        <a href="/cart.html" data-icon="shopping-cart">Carrito<span class="nav-badge" id="cart-count" hidden></span></a>
+        <a href="/login.html" data-icon="log-in" data-guest>Ingresar</a>
+        <a href="/register.html" data-icon="user-plus" data-guest>Crear cuenta</a>
+        <a href="/account.html" data-icon="user" data-user hidden>Mi cuenta</a>
+        <a href="/" id="logout" data-icon="log-out" data-user hidden>Salir</a>
+      </nav>
+    </header>
+    <main class="auth-page page-centered">
+      <div class="auth-card">
+        <img class="auth-logo" src="/img/logo.svg" alt="" />
+        <h1>Ingresar</h1>
+        <form id="login-form">
+          <p>
+            <label for="email">Correo</label>
+            <input id="email" name="email" type="email" required maxlength="254" />
+          </p>
+          <p>
+            <label for="password">Contraseña</label>
+            <input id="password" name="password" type="password" required maxlength="1024" />
+          </p>
+          <button type="submit" class="button" id="submit">Ingresar</button>
+        </form>
+        <div id="feedback" aria-live="polite"></div>
+        <p class="auth-alt">¿No tienes cuenta? <a href="/register.html">Crear cuenta</a></p>
+      </div>
+    </main>
+    <footer><p>Pan de la Casa · Horneado con cariño cada mañana</p></footer>
+    <script type="module" src="/js/nav.js"></script>
+    <script type="module" src="/js/login.js"></script>
+  </body>
+</html>

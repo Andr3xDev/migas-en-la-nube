@@ -6,7 +6,7 @@ import azure.functions as func
 
 from http_app import main
 
-FUNCTION_JSON = Path(__file__).parent.parent / "api" / "http_app" / "function.json"
+FUNCTION_JSON = Path(__file__).parents[2] / "api" / "http_app" / "function.json"
 
 
 def test_function_json_is_anonymous_catch_all():

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pedido recibido - Pan de la Casa</title>
+    <link rel="icon" href="/img/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <header>
+      <a href="/" class="brand"><img src="/img/logo.svg" alt="Pan de la Casa" /></a>
+      <nav>
+        <a href="/" data-icon="utensils">Menú</a>
+        <a href="/cart.html" data-icon="shopping-cart">Carrito<span class="nav-badge" id="cart-count" hidden></span></a>
+        <a href="/login.html" data-icon="log-in" data-guest>Ingresar</a>
+        <a href="/register.html" data-icon="user-plus" data-guest>Crear cuenta</a>
+        <a href="/account.html" data-icon="user" data-user hidden>Mi cuenta</a>
+        <a href="/" id="logout" data-icon="log-out" data-user hidden>Salir</a>
+      </nav>
+    </header>
+    <main class="narrow-page page-centered">
+      <h1>Pedido recibido</h1>
+      <div id="confirmation" aria-live="polite"></div>
+    </main>
+    <footer><p>Pan de la Casa · Horneado con cariño cada mañana</p></footer>
+    <script type="module" src="/js/nav.js"></script>
+    <script type="module" src="/js/confirmation.js"></script>
+  </body>
+</html>

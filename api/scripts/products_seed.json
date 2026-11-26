@@ -1,0 +1,37 @@
+[
+  {
+    "id": "croissant-mantequilla",
+    "name": "Croissant de mantequilla",
+    "category": "bakery",
+    "description": "Hojaldrado y mantequilloso, horneado cada mañana.",
+    "imageUrl": null,
+    "prepMinutes": 90,
+    "variants": [
+      { "name": "Individual", "price": 6000, "stock": 12 },
+      { "name": "Caja x6", "price": 32000, "stock": 0 }
+    ]
+  },
+  {
+    "id": "torta-chocolate",
+    "name": "Torta de chocolate",
+    "category": "cakes",
+    "description": "Bizcocho húmedo de chocolate con ganache.",
+    "imageUrl": null,
+    "prepMinutes": 240,
+    "variants": [
+      { "name": "Porción", "price": 9000, "stock": 8 },
+      { "name": "Entera", "price": 85000, "stock": 0 }
+    ]
+  },
+  {
+    "id": "galletas-avena",
+    "name": "Galletas de avena",
+    "category": "cookies",
+    "description": "Avena, canela y pasas.",
+    "imageUrl": null,
+    "prepMinutes": 60,
+    "variants": [
+      { "name": "Bolsa x4", "price": 12000, "stock": 20 }
+    ]
+  }
+]

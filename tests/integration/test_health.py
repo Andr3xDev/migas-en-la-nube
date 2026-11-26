@@ -1,24 +1,21 @@
-import importlib
-import sys
-
 import pytest
-from fastapi.testclient import TestClient
+
+from app.core.settings import Settings, get_settings
 
 HEALTH_PATH = "/api/health"
 
 
 @pytest.fixture
-def make_client(monkeypatch):
-    """Build a client from a fresh import so settings are read from the current env."""
+def make_client(client, monkeypatch):
+    """Serve settings read from the current env instead of the cached ones."""
 
-    def _make(**env: str) -> TestClient:
+    def _make(**env: str):
         for name in ("PDC_VERSION", "PDC_ENVIRONMENT"):
             monkeypatch.delenv(name, raising=False)
         for name, value in env.items():
             monkeypatch.setenv(name, value)
-        for module in [m for m in sys.modules if m == "app" or m.startswith("app.")]:
-            del sys.modules[module]
-        return TestClient(importlib.import_module("app.main").app)
+        client.app.dependency_overrides[get_settings] = lambda: Settings()
+        return client
 
     return _make
 

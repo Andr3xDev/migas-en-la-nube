@@ -1,0 +1,287 @@
+import base64
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from app.adapters.blob.images import BlobImageStore
+from app.api.deps import get_image_store, get_now
+from app.core.settings import Settings, get_settings
+from app.domain.models import ADMIN_ROLE, Order, OrderItem
+from app.ports.images import ImageUpload
+
+SHOP_TZ = timezone(timedelta(hours=-5))
+CONTAINER_URL = "https://migasdev.blob.core.windows.net/images"
+BLOB_CONNECTION_STRING = (
+    f"AccountName=migasdev;AccountKey={base64.b64encode(b'fake-account-key').decode()}"
+)
+IMAGE_URL = f"{CONTAINER_URL}/products/croissant/a.png"
+DAY = "2026-11-27"
+TODAY = datetime(2026, 11, 27, 12, 0, tzinfo=SHOP_TZ)
+PRODUCT_BODY = {
+    "name": "Pan de bono",
+    "category": "bakery",
+    "description": "Cheesy",
+    "imageUrl": IMAGE_URL,
+    "prepMinutes": 30,
+    "variants": [{"name": "Single", "price": 3000, "stock": 4}],
+}
+ADMIN_ROUTES = [
+    ("POST", "/api/admin/products", {"json": PRODUCT_BODY}),
+    ("PUT", "/api/admin/products/croissant", {"json": PRODUCT_BODY}),
+    ("DELETE", "/api/admin/products/croissant", {}),
+    (
+        "POST",
+        "/api/admin/products/croissant/image-upload-url",
+        {"json": {"contentType": "image/png"}},
+    ),
+    ("GET", f"/api/admin/orders?date={DAY}", {}),
+    ("PATCH", f"/api/admin/orders/ORDER001/status?date={DAY}", {"json": {"status": "preparing"}}),
+]
+
+
+class FakeImageStore:
+    def create_upload(self, product_id, content_type):
+        return ImageUpload(
+            "https://upload?sig=x", IMAGE_URL, datetime(2026, 11, 25, 12, 5, tzinfo=SHOP_TZ)
+        )
+
+    def delete_product_images(self, product_id):
+        pass
+
+
+@pytest.fixture
+def stack(stack, client):
+    orders = stack.orders
+    for code, day, hour in [
+        ("LATE0000", DAY, 15),
+        ("EARLY000", DAY, 9),
+        ("NEXTDAY0", "2026-11-28", 8),
+        ("PAST0001", "2026-11-26", 10),
+        ("OLD00001", "2026-11-20", 10),
+    ]:
+        orders.create(
+            Order(
+                id=code,
+                customer_name="Ana",
+                phone="300",
+                pickup_time=datetime.fromisoformat(f"{day}T{hour:02d}:00:00-05:00"),
+                pickup_date=day,
+                items=[OrderItem("croissant", "Croissant", "Single", 6000, 1)],
+                total=6000,
+            )
+        )
+    orders.create(
+        Order(
+            id="ORDER001",
+            customer_name="Beto",
+            phone="301",
+            pickup_time=datetime.fromisoformat(f"{DAY}T18:00:00-05:00"),
+            pickup_date=DAY,
+            items=[OrderItem("croissant", "Croissant", "Single", 6000, 1)],
+            total=6000,
+        )
+    )
+    overrides = client.app.dependency_overrides
+    overrides[get_now] = lambda: TODAY
+    overrides[get_image_store] = FakeImageStore
+    overrides[get_settings] = lambda: Settings(images_container_url=CONTAINER_URL)
+    return stack
+
+
+@pytest.fixture
+def admin(stack):
+    return stack.headers_for("admin@example.com", ADMIN_ROLE)
+
+
+@pytest.mark.parametrize(("method", "url", "kwargs"), ADMIN_ROUTES)
+def test_admin_route_without_token_returns_401(client, stack, method, url, kwargs):
+    assert client.request(method, url, **kwargs).status_code == 401
+
+
+@pytest.mark.parametrize(("method", "url", "kwargs"), ADMIN_ROUTES)
+def test_admin_route_with_customer_token_returns_403(client, stack, method, url, kwargs):
+    response = client.request(
+        method, url, headers=stack.headers_for("customer@example.com"), **kwargs
+    )
+
+    assert response.status_code == 403
+
+
+def test_create_product_returns_201_and_public_detail_shows_it(client, admin):
+    response = client.post("/api/admin/products", json=PRODUCT_BODY, headers=admin)
+
+    assert response.status_code == 201
+    created = response.json()
+    assert client.get(f"/api/products/{created['id']}").json() == created
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"variants": [{"name": "A", "price": 10_000_001, "stock": 1}]},
+        {"variants": [{"name": "A", "price": 1, "stock": 10_001}]},
+        {"prepMinutes": 1441},
+    ],
+    ids=["price over max", "stock over max", "prep over max"],
+)
+def test_create_invalid_product_returns_422_and_stores_nothing(client, admin, changes):
+    response = client.post("/api/admin/products", json={**PRODUCT_BODY, **changes}, headers=admin)
+
+    assert response.status_code == 422
+    assert [p["id"] for p in client.get("/api/products").json()] == ["croissant"]
+
+
+def current_etag(client) -> str:
+    return client.get("/api/products/croissant").json()["etag"]
+
+
+def test_update_product_returns_200_and_public_detail_shows_new_values(client, admin):
+    body = {**PRODUCT_BODY, "etag": current_etag(client)}
+    response = client.put("/api/admin/products/croissant", json=body, headers=admin)
+
+    assert response.status_code == 200
+    detail = client.get("/api/products/croissant").json()
+    assert (detail["name"], detail["variants"][0]["stock"]) == ("Pan de bono", 4)
+
+
+def test_update_product_with_stale_etag_returns_409_and_keeps_stock(client, admin):
+    stale = {**PRODUCT_BODY, "etag": current_etag(client)}
+    assert client.put("/api/admin/products/croissant", json=stale, headers=admin).status_code == 200
+
+    response = client.put("/api/admin/products/croissant", json=stale, headers=admin)
+
+    assert response.status_code == 409
+
+
+def test_update_unknown_product_returns_404(client, admin):
+    body = {**PRODUCT_BODY, "etag": "any"}
+    response = client.put("/api/admin/products/nope", json=body, headers=admin)
+
+    assert response.status_code == 404
+
+
+def test_delete_product_returns_204_then_public_detail_is_404(client, admin):
+    response = client.delete("/api/admin/products/croissant", headers=admin)
+
+    assert response.status_code == 204
+    assert client.get("/api/products/croissant").status_code == 404
+
+
+def test_delete_unknown_product_returns_404(client, admin):
+    assert client.delete("/api/admin/products/nope", headers=admin).status_code == 404
+
+
+def test_image_upload_url_returns_upload_and_public_urls(client, admin):
+    response = client.post(
+        "/api/admin/products/croissant/image-upload-url",
+        json={"contentType": "image/png"},
+        headers=admin,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "uploadUrl": "https://upload?sig=x",
+        "imageUrl": IMAGE_URL,
+        "expiresAt": "2026-11-25T12:05:00-05:00",
+    }
+
+
+def test_image_upload_url_with_unsupported_content_type_returns_422(client, admin):
+    client.app.dependency_overrides[get_image_store] = lambda: BlobImageStore(
+        BLOB_CONNECTION_STRING, CONTAINER_URL
+    )
+
+    response = client.post(
+        "/api/admin/products/croissant/image-upload-url",
+        json={"contentType": "image/gif"},
+        headers=admin,
+    )
+
+    assert response.status_code == 422
+
+
+def test_image_upload_url_for_unknown_product_returns_404(client, admin):
+    response = client.post(
+        "/api/admin/products/nope/image-upload-url",
+        json={"contentType": "image/png"},
+        headers=admin,
+    )
+
+    assert response.status_code == 404
+
+
+def test_list_orders_returns_only_requested_day_earliest_first_with_contact(client, admin):
+    response = client.get(f"/api/admin/orders?date={DAY}", headers=admin)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [o["code"] for o in body] == ["EARLY000", "LATE0000", "ORDER001"]
+    assert (body[0]["customerName"], body[0]["phone"]) == ("Ana", "300")
+
+
+def test_list_orders_returns_pickup_date_for_status_changes(client, admin):
+    body = client.get(f"/api/admin/orders?date={DAY}", headers=admin).json()
+
+    assert {o["pickupDate"] for o in body} == {DAY}
+
+
+def test_list_orders_defaults_to_upcoming_earliest_first_across_days(client, admin):
+    response = client.get("/api/admin/orders", headers=admin)
+
+    assert response.status_code == 200
+    assert [o["code"] for o in response.json()] == [
+        "EARLY000",
+        "LATE0000",
+        "ORDER001",
+        "NEXTDAY0",
+    ]
+
+
+def test_list_orders_history_returns_only_past_days_latest_first(client, admin):
+    response = client.get("/api/admin/orders?scope=history", headers=admin)
+
+    assert response.status_code == 200
+    assert [o["code"] for o in response.json()] == ["PAST0001", "OLD00001"]
+
+
+@pytest.mark.parametrize("query", ["?date=2026-13-40", "?scope=all"], ids=["date", "scope"])
+def test_list_orders_with_invalid_filter_returns_422(client, admin, query):
+    assert client.get(f"/api/admin/orders{query}", headers=admin).status_code == 422
+
+
+def test_change_status_returns_200_with_new_status(client, admin):
+    response = client.patch(
+        f"/api/admin/orders/ORDER001/status?date={DAY}", json={"status": "preparing"}, headers=admin
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "preparing"
+
+
+def test_change_status_with_wrong_date_returns_404(client, admin):
+    response = client.patch(
+        "/api/admin/orders/ORDER001/status?date=2026-11-28",
+        json={"status": "preparing"},
+        headers=admin,
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"), [("ready", 409), ("teleported", 422)], ids=["skipped", "unknown"]
+)
+def test_change_status_with_invalid_status_returns_error(client, admin, status, expected):
+    response = client.patch(
+        f"/api/admin/orders/ORDER001/status?date={DAY}", json={"status": status}, headers=admin
+    )
+
+    assert response.status_code == expected
+
+
+def test_change_status_with_missing_date_returns_422(client, admin):
+    response = client.patch(
+        "/api/admin/orders/ORDER001/status", json={"status": "preparing"}, headers=admin
+    )
+
+    assert response.status_code == 422

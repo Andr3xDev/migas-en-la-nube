@@ -1,0 +1,41 @@
+meta {
+  name: create-order
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseURL}}/api/orders
+  body: json
+  auth: none
+}
+
+headers {
+  X-Pdc-Token: Bearer {{accessToken}}
+}
+
+body:json {
+  {
+    "customerName": "Smoke Test",
+    "phone": "3001234567",
+    "pickupTime": "{{pickupTime}}",
+    "items": [
+      { "productId": "{{productId}}", "variantName": "{{variantName}}", "quantity": 1 }
+    ]
+  }
+}
+
+script:pre-request {
+  // Tomorrow 10:00 at -05:00 (Bogota, no DST): always future and inside 06:00-20:00 business hours.
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000 - 5 * 60 * 60 * 1000);
+  bru.setVar("pickupTime", tomorrow.toISOString().slice(0, 10) + "T10:00:00-05:00");
+}
+
+assert {
+  res.status: eq 201
+  res.body.code: isString
+}
+
+script:post-response {
+  bru.setVar("orderCode", res.body.code);
+}

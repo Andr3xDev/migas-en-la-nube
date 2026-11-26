@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pedidos - Administración - Pan de la Casa</title>
+    <link rel="icon" href="/img/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <header>
+      <a href="/" class="brand"><img src="/img/logo.svg" alt="Pan de la Casa" /><small>Administración</small></a>
+      <nav>
+        <a href="/admin/" data-icon="utensils">Productos</a>
+        <a href="/admin/orders.html" data-icon="receipt">Pedidos</a>
+        <a href="/" id="logout" data-icon="log-out" data-user>Salir</a>
+      </nav>
+    </header>
+    <main>
+      <h1>Preparación de pedidos</h1>
+      <div id="guard-message" aria-live="polite"></div>
+      <div id="panel" hidden>
+        <div class="orders-toolbar">
+          <div class="orders-views" role="group" aria-label="Vista de pedidos">
+            <button type="button" class="button button-secondary" id="view-upcoming" aria-pressed="true">Próximos</button>
+            <button type="button" class="button button-secondary" id="view-history" aria-pressed="false">Históricos</button>
+          </div>
+          <p class="orders-date">
+            <label for="date">Un solo día</label>
+            <input id="date" type="date" />
+            <button type="button" class="button button-secondary" id="clear-date" hidden>Quitar fecha</button>
+          </p>
+        </div>
+        <div id="orders"></div>
+        <div id="feedback" aria-live="polite"></div>
+      </div>
+    </main>
+    <footer><p>Pan de la Casa · Panel de administración</p></footer>
+    <script type="module" src="/js/nav.js"></script>
+    <script type="module" src="/js/admin/orders.js"></script>
+  </body>
+</html>

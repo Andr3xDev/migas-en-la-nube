@@ -49,9 +49,17 @@ After the first bootstrap apply, run `terraform init` once in `infra/envs/dev` a
 
 ## Destroy
 
+Manual cleanup order:
+
+1. Run the `destroy.yml` workflow (Actions, Run workflow, from `main`) with `environment: prod` and `confirm: prod`, then approve the `prod` environment deployment.
+2. Run `destroy.yml` with `environment: dev` and `confirm: dev`.
+3. Destroy bootstrap from the laptop:
+
 ```bash
 cd infra/bootstrap
 terraform destroy
 ```
 
-Destroy removes the resource groups with everything inside them, the state storage, identities, role assignments and budget. Destroy `infra/envs/dev` and `infra/envs/prod` first so their state is not lost, because their state lives in this storage account. Resource providers are registered by the provider block and stay registered after destroy.
+`destroy.yml` removes only the Terraform-managed resources of its environment; the resource groups stay (bootstrap owns them) until step 3. GitHub environments, their variables and the repository are never removed by any step.
+
+Bootstrap destroy removes the resource groups with everything inside them, the state storage, identities, role assignments and budget. Destroy `infra/envs/dev` and `infra/envs/prod` first so their state is not lost, because their state lives in this storage account. Resource providers are registered by the provider block and stay registered after destroy.

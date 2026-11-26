@@ -35,6 +35,7 @@ jobs:
       ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       TFSTATE_RESOURCE_GROUP: ${{ vars.TFSTATE_RESOURCE_GROUP }}
       TFSTATE_ACCOUNT: ${{ vars.TFSTATE_ACCOUNT }}
+      TF_VAR_alert_email: ${{ vars.ALERT_EMAIL }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -64,6 +65,21 @@ jobs:
           echo "::add-mask::$api_key"
           echo "api_key=$api_key" >> "$GITHUB_OUTPUT"
           echo "swa_url=$(terraform output -raw swa_url)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: pip install -r api/requirements.txt
+      - name: Seed data
+        env:
+          ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
+          ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
+        run: |
+          PDC_COSMOS_CONNECTION_STRING="$(terraform -chdir="infra/envs/$ENVIRONMENT" output -raw cosmos_connection_string)"
+          echo "::add-mask::$PDC_COSMOS_CONNECTION_STRING"
+          export PDC_COSMOS_CONNECTION_STRING
+          cd api
+          python -m scripts.seed_products
+          python -m scripts.seed_admin
       - uses: actions/download-artifact@v8
         with:
           name: api
@@ -80,10 +96,10 @@ jobs:
           api_location: dist/api
           output_location: ""
           skip_app_build: true
-      - name: Smoke test
-        env:
-          SWA_URL: ${{ steps.tf.outputs.swa_url }}
-        run: bash smoke/health.sh "$SWA_URL" "$ENVIRONMENT"
+      - uses: ./.github/actions/smoke
+        with:
+          base-url: ${{ steps.tf.outputs.swa_url }}
+          environment: ${{ env.ENVIRONMENT }}
 
   release:
     name: release

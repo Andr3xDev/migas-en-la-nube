@@ -12,6 +12,7 @@ from app.adapters.memory.products import MemoryProductRepository
 from app.adapters.memory.users import MemoryUserRepository
 from app.core.settings import LOCAL_ENVIRONMENT, LOCAL_IMAGES_CONTAINER_URL, get_settings
 from app.domain.errors import INVALID_CREDENTIALS, AuthenticationError
+from app.domain.models import ADMIN_ROLE
 from app.ports.auth import AuthProvider, Principal
 from app.ports.images import ImageStore
 from app.ports.repositories import OrderRepository, ProductRepository, UserRepository
@@ -93,7 +94,7 @@ def get_auth_provider(
 # Not `Authorization`: Azure SWA managed Functions overwrite it with their own token.
 TOKEN_HEADER = "X-Pdc-Token"
 BEARER_SCHEME = "bearer"
-ADMIN_ROLE = "admin"
+FORBIDDEN = "Forbidden"
 ADMIN_CANNOT_ORDER = "Admins cannot place orders"
 
 
@@ -120,7 +121,7 @@ def current_user(
 def require_role(role: str) -> Callable[..., Principal]:
     def check(principal: Annotated[Principal, Depends(current_user)]) -> Principal:
         if principal.role != role:
-            raise HTTPException(status_code=403, detail="Forbidden")
+            raise HTTPException(status_code=403, detail=FORBIDDEN)
         return principal
 
     return check

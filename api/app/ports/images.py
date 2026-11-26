@@ -1,6 +1,8 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Protocol
+
+UPLOAD_TTL = timedelta(minutes=5)
 
 
 @dataclass

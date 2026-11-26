@@ -4,10 +4,10 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta, timezone
 
+from app.core.retry import retry_on_conflict
 from app.domain.errors import ConflictError, NotFoundError, RuleViolationError
-from app.domain.models import Order, OrderItem, Product, StockDecrement
+from app.domain.models import Order, OrderItem, Product, StockDecrement, Variant
 from app.ports.repositories import OrderRepository, ProductRepository
-from app.services.retry import retry_on_conflict
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +57,13 @@ def aggregate_quantities(items: list[NewOrderItem]) -> dict[tuple[str, str], int
     return quantities
 
 
-def find_variant(product: Product | None, variant_name: str):
+def _variant_named(product: Product | None, name: str) -> Variant | None:
     variants = product.variants if product else []
-    variant = next((v for v in variants if v.name == variant_name), None)
+    return next((v for v in variants if v.name == name), None)
+
+
+def find_variant(product: Product | None, variant_name: str) -> Variant:
+    variant = _variant_named(product, variant_name)
     if variant is None:
         raise RuleViolationError(f"Unknown product or variant: {variant_name}")
     return variant
@@ -106,11 +110,7 @@ def restore_stock(products: ProductRepository, decrements: list[StockDecrement])
     def restore(decrement: StockDecrement) -> None:
         product = products.get(decrement.product_id)
         # The product or variant may have been deleted since the order was placed.
-        variant = (
-            next((v for v in product.variants if v.name == decrement.variant_name), None)
-            if product
-            else None
-        )
+        variant = _variant_named(product, decrement.variant_name)
         if variant is None:
             return
         variant.stock += decrement.quantity
@@ -134,11 +134,11 @@ def create_order(
     user_id: str | None = None,
 ) -> Order:
     quantities = aggregate_quantities(order.items)
-    catalog = {pid: products.get(pid) for pid, _ in quantities}
+    products_by_id = {pid: products.get(pid) for pid, _ in quantities}
     lines: list[OrderItem] = []
     wait_minutes = 0
     for (product_id, variant_name), quantity in quantities.items():
-        product = catalog[product_id]
+        product = products_by_id[product_id]
         variant = find_variant(product, variant_name)
         if variant.stock < quantity:
             wait_minutes = max(wait_minutes, product.prep_minutes)
@@ -148,7 +148,7 @@ def create_order(
 
     applied: list[StockDecrement] = []
     try:
-        for product_id in sorted(catalog):
+        for product_id in sorted(products_by_id):
             # A lost stock race leaves the item made-to-order; prep time is not re-checked.
             applied += decrement_with_retry(products, product_id, quantities)
         local_pickup = pickup.astimezone(SHOP_TIMEZONE)

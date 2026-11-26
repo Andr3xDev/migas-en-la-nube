@@ -1,9 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from uuid import uuid4
 
-from app.ports.images import ImageUpload
-
-UPLOAD_TTL = timedelta(minutes=5)
+from app.ports.images import UPLOAD_TTL, ImageUpload
 
 
 class MemoryImageStore:

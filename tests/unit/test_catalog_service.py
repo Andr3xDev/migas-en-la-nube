@@ -8,7 +8,6 @@ from app.services.catalog import (
     MADE_TO_ORDER,
     compute_availability,
     get_product,
-    list_products,
     seed_products,
 )
 from scripts.seed_products import load_products
@@ -42,14 +41,6 @@ def test_availability_when_stock_zero_is_made_to_order_with_prep_minutes():
 
     assert availability.status == MADE_TO_ORDER
     assert availability.ready_minutes == 90
-
-
-def test_list_products_returns_all_stored_products():
-    repo = MemoryProductRepository()
-    repo.create(make_product("a"))
-    repo.create(make_product("b"))
-
-    assert {p.id for p in list_products(repo)} == {"a", "b"}
 
 
 def test_get_product_when_missing_raises_not_found():

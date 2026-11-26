@@ -203,3 +203,19 @@ def test_cancel_retries_restore_after_a_stock_write_conflict(orders, products):
     change(orders, products, "cancelled")
 
     assert stock(products) == 5
+
+
+def test_cancel_keeps_status_and_logs_when_stock_restore_fails(orders, products, caplog):
+    add_order(orders, decrements=[StockDecrement("croissant", "Single", 2)])
+
+    def storage_down(product_id: str) -> None:
+        raise RuntimeError("storage down")
+
+    products.before_replace = storage_down
+
+    result = change(orders, products, "cancelled")
+
+    assert result.status == "cancelled"
+    assert orders.get("ABCD2345", DAY).status == "cancelled"
+    assert stock(products) == 3
+    assert "Stock restore failed for order ABCD2345" in caplog.text

@@ -6,6 +6,7 @@ import pytest
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
 HTML_FILES = sorted(WEB_DIR.rglob("*.html"))
 JS_FILES = sorted(WEB_DIR.rglob("*.js"))
+RAW_HTML_APIS = ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write")
 
 
 class CspViolationFinder(HTMLParser):
@@ -36,5 +37,6 @@ def test_html_has_no_inline_script_or_style(path: Path) -> None:
 
 
 @pytest.mark.parametrize("path", JS_FILES, ids=lambda p: str(p.relative_to(WEB_DIR)))
-def test_js_does_not_use_inner_html(path: Path) -> None:
-    assert "innerHTML" not in path.read_text(encoding="utf-8")
+def test_js_does_not_write_raw_html(path: Path) -> None:
+    source = path.read_text(encoding="utf-8")
+    assert [api for api in RAW_HTML_APIS if api in source] == []

@@ -113,5 +113,6 @@ def test_delete_product_images_deletes_every_blob_under_product_prefix():
         FakeContainerClient(names=["products/p1/a.png"], delete_error=RuntimeError("gone")),
     ],
 )
-def test_delete_product_images_swallows_storage_failures(container):
-    make_store(container).delete_product_images("p1")
+def test_delete_product_images_propagates_storage_failures(container):
+    with pytest.raises(RuntimeError):
+        make_store(container).delete_product_images("p1")

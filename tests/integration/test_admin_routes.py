@@ -2,8 +2,12 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-KEY = "route-test-signing-key-32-bytes-min"
-PASSWORD = "correct horse"
+from app.api.deps import get_image_store, get_now
+from app.core.settings import Settings, get_settings
+from app.domain.errors import RuleViolationError
+from app.domain.models import ADMIN_ROLE, Order, OrderItem
+from app.ports.images import ImageUpload
+
 SHOP_TZ = timezone(timedelta(hours=-5))
 CONTAINER_URL = "https://migasdev.blob.core.windows.net/images"
 IMAGE_URL = f"{CONTAINER_URL}/products/croissant/a.png"
@@ -31,40 +35,21 @@ ADMIN_ROUTES = [
 ]
 
 
+class FakeImageStore:
+    def create_upload(self, product_id, content_type):
+        if content_type != "image/png":
+            raise RuleViolationError(f"Unsupported content type: {content_type}")
+        return ImageUpload(
+            "https://upload?sig=x", IMAGE_URL, datetime(2026, 11, 25, 12, 5, tzinfo=SHOP_TZ)
+        )
+
+    def delete_product_images(self, product_id):
+        pass
+
+
 @pytest.fixture
-def stack(client):
-    # Imported after `client` so both come from the same app.* module instances.
-    from app.adapters.local_auth import LocalAuthProvider
-    from app.adapters.memory.orders import MemoryOrderRepository
-    from app.adapters.memory.products import MemoryProductRepository
-    from app.adapters.memory.users import MemoryUserRepository
-    from app.api.deps import (
-        get_auth_provider,
-        get_image_store,
-        get_now,
-        get_order_repository,
-        get_product_repository,
-        get_user_repository,
-    )
-    from app.core.settings import Settings, get_settings
-    from app.domain.models import Order, OrderItem, Product, Variant
-    from app.ports.images import ImageUpload
-
-    class FakeImageStore:
-        def create_upload(self, product_id, content_type):
-            return ImageUpload(
-                "https://upload?sig=x", IMAGE_URL, datetime(2026, 11, 25, 12, 5, tzinfo=SHOP_TZ)
-            )
-
-        def delete_product_images(self, product_id):
-            pass
-
-    users = MemoryUserRepository()
-    products = MemoryProductRepository()
-    products.create(
-        Product("croissant", "Croissant", "bakery", "d", None, 90, [Variant("Single", 6000, 5)])
-    )
-    orders = MemoryOrderRepository()
+def stack(stack, client):
+    orders = stack.orders
     for code, day, hour in [
         ("LATE0000", DAY, 15),
         ("EARLY000", DAY, 9),
@@ -94,26 +79,16 @@ def stack(client):
             total=6000,
         )
     )
-    auth = LocalAuthProvider(users, KEY, login_failure_delay_seconds=0, sleep=lambda _: None)
     overrides = client.app.dependency_overrides
-    overrides[get_user_repository] = lambda: users
-    overrides[get_auth_provider] = lambda: auth
-    overrides[get_product_repository] = lambda: products
-    overrides[get_order_repository] = lambda: orders
     overrides[get_now] = lambda: TODAY
     overrides[get_image_store] = FakeImageStore
     overrides[get_settings] = lambda: Settings(images_container_url=CONTAINER_URL)
-    return auth
-
-
-def headers_for(auth, role: str) -> dict[str, str]:
-    auth.register(f"{role}@example.com", PASSWORD, role=role)
-    return {"X-Pdc-Token": f"Bearer {auth.login(f'{role}@example.com', PASSWORD)}"}
+    return stack
 
 
 @pytest.fixture
 def admin(stack):
-    return headers_for(stack, "admin")
+    return stack.headers_for("admin@example.com", ADMIN_ROLE)
 
 
 @pytest.mark.parametrize(("method", "url", "kwargs"), ADMIN_ROUTES)
@@ -123,7 +98,9 @@ def test_admin_route_without_token_returns_401(client, stack, method, url, kwarg
 
 @pytest.mark.parametrize(("method", "url", "kwargs"), ADMIN_ROUTES)
 def test_admin_route_with_customer_token_returns_403(client, stack, method, url, kwargs):
-    response = client.request(method, url, headers=headers_for(stack, "customer"), **kwargs)
+    response = client.request(
+        method, url, headers=stack.headers_for("customer@example.com"), **kwargs
+    )
 
     assert response.status_code == 403
 
@@ -215,6 +192,29 @@ def test_image_upload_url_returns_upload_and_public_urls(client, admin):
         "imageUrl": IMAGE_URL,
         "expiresAt": "2026-11-25T12:05:00-05:00",
     }
+
+
+def test_update_product_with_foreign_image_host_returns_422_and_keeps_product(client, admin):
+    body = {
+        **PRODUCT_BODY,
+        "imageUrl": "https://evil.example.com/images/a.png",
+        "etag": current_etag(client),
+    }
+
+    response = client.put("/api/admin/products/croissant", json=body, headers=admin)
+
+    assert response.status_code == 422
+    assert client.get("/api/products/croissant").json()["name"] == "Croissant"
+
+
+def test_image_upload_url_with_unsupported_content_type_returns_422(client, admin):
+    response = client.post(
+        "/api/admin/products/croissant/image-upload-url",
+        json={"contentType": "image/gif"},
+        headers=admin,
+    )
+
+    assert response.status_code == 422
 
 
 def test_image_upload_url_for_unknown_product_returns_404(client, admin):

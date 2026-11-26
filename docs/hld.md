@@ -1,6 +1,6 @@
 # HLD Migas en la Nube
 
-Nov 25, 2026 · @Andres
+26 de noviembre de 2026 · Andrés
 
 ## 1. Contexto del negocio y alcance
 
@@ -53,7 +53,7 @@ El sistema cubre 8 requisitos funcionales y los 6 no funcionales que pide el cas
 
 | Requisito | Meta | Cómo se cumple | Cómo se comprueba |
 | --- | --- | --- | --- |
-| Presupuesto | Máximo USD 150 al mes en producción | Servicios serverless que se pagan por uso | Calculadora de Azure ([costs/azure.xlsx](costs/azure.xlsx)) y presupuesto con alertas al 50, 80 y 100 % |
+| Presupuesto | Máximo USD 150 al mes en producción | Servicios serverless que se pagan por uso | Calculadora de Azure ([costs/azure.xlsx](costs/azure.xlsx)) y presupuesto de USD 20 al mes con alertas al 50, 80 y 100 % |
 | Disponibilidad | 99,5 % en horario comercial | Servicios con SLA publicado de 99,9 % o más en la ruta del cliente (sección 5) y escalado automático | Prueba de disponibilidad en Application Insights, cada 15 minutos desde 2 ubicaciones |
 | Seguridad | HTTPS, secretos fuera del código, mínimo privilegio | HTTPS por defecto, secretos generados por Terraform, una identidad por ambiente | Checkov y CodeQL en el pipeline, escaneo de secretos activado en el repositorio |
 | Respaldo | RPO 24 h y RTO 4 h | Respaldo continuo de 7 días en Cosmos DB y toda la infraestructura en Terraform | Procedimiento de restauración documentado (sección 5), basado en la copia de seguridad continua de 7 días de Cosmos DB (restauración a un punto en el tiempo en una cuenta nueva) y Terraform. El simulacro de restauración no se ejecutó dentro del plazo del proyecto; se propone como primera tarea operativa después del lanzamiento |
@@ -109,7 +109,7 @@ Capas, de arriba hacia abajo: `api/routes` (solo HTTP) llama a `services` (catá
 
 **Concurrencia.** El stock y la edición de productos usan bloqueo optimista con el ETag de Cosmos DB: ante un conflicto el stock hace hasta 5 intentos y la edición de un producto devuelve 409. Es una limitación aceptada que dos clientes puedan tomar la última unidad a la vez: el segundo pedido se acepta como hecho por encargo.
 
-**Escalado para el pico del sábado (3x).** Con los supuestos de la sección 2, el pico es el sábado de 9:00 a 11:00, con unas 300 visitas por hora, es decir, menos de 1 visita por segundo (unas 0,08). Con un supuesto de unas 6 llamadas al API por visita son unas 0,5 llamadas por segundo, y aun con un margen de ráfaga de 5 por segundo. Functions administradas agrega instancias solo cuando la carga sube y Cosmos DB serverless admite miles de unidades de solicitud por segundo, así que el pico queda muy por debajo del límite. El costo de esto es el arranque en frío, que puede sumar algunos segundos a la primera petición después de un rato sin uso (valor estimado, no medido).
+**Escalado para el pico del sábado (3x).** Con los supuestos de la sección 2, el pico es el sábado de 9:00 a 11:00, con unas 300 visitas por hora, es decir, menos de 1 visita por segundo (unas 0,08). Con un supuesto de unas 6 llamadas al API por visita son unas 0,5 llamadas por segundo, y aun con un margen de ráfaga de 5 por segundo la carga sigue siendo baja. Functions administradas agrega instancias solo cuando la carga sube y Cosmos DB serverless admite miles de unidades de solicitud por segundo, así que el pico queda muy por debajo del límite. El costo de esto es el arranque en frío, que puede sumar algunos segundos a la primera petición después de un rato sin uso (valor estimado, no medido).
 
 **Región.** Central US: es el valor por defecto del bootstrap (`infra/bootstrap/variables.tf`) y los dos ambientes heredan la ubicación de su grupo de recursos. La elección parte de las regiones permitidas por la suscripción de estudiante. West US 3 queda como plan B y no está configurada en el código.
 
@@ -139,6 +139,8 @@ Zonas, flujos e identidades. Fuente editable: [network-security.drawio](diagrams
 | id-pdc-deploy-prod | Al desplegar a prod, con aprobación (`environment:prod`) | Contributor solo sobre `rg-pdc-prod` y escritura del estado `tfstate-prod` |
 
 Así, un error en dev no puede tocar prod, y un pull request no puede cambiar nada en Azure.
+
+El workflow manual `load.yml` (inputs `environment` y `scenario`) no usa ninguna identidad: solo llama a la URL pública del sitio. En `prod` pide aprobación del environment y corre solo desde `main`, y el escenario `orders` se rechaza en `prod`.
 
 **Secretos.**
 
@@ -177,7 +179,9 @@ La solución cumple el 99,5 % en horario comercial, el RPO de 24 horas y el RTO 
 | Cosmos DB en una región | 99,99 % solo con capacidad aprovisionada; la cuenta serverless no tiene SLA con créditos |
 | Application Insights y Azure Monitor | 99,9 % en consultas, reglas de alerta y envío de notificaciones |
 
-La ruta que ve el cliente (Static Web Apps y Blob Storage) tiene un SLA compuesto de 99,95 % × 99,9 % ≈ 99,85 %. Cosmos DB serverless queda fuera de ese cálculo porque el documento de SLA de Microsoft solo da créditos de servicio para capacidad aprovisionada. Es un compromiso aceptado por costo (ADR 2); pasar a capacidad aprovisionada o autoscale añadiría el SLA de 99,99 % por unos USD 23 al mes con 400 unidades por segundo (sección 8). Frente al 99,5 % en horario comercial, el compuesto de la ruta con SLA lo supera, y el diseño lo respalda con escalado automático y la prueba de disponibilidad; las pruebas de carga dieron 0 % de errores. No hay una medición de disponibilidad en el tiempo, así que el cumplimiento del 99,5 % se apoya en el diseño y estas pruebas, no en un porcentaje medido. Producción usa el plan Standard de Static Web Apps (`infra/envs/prod/main.tf`) porque el plan Free no tiene SLA. Dev usa Free para ahorrar. El escalado automático evita caídas por carga en el pico de fin de semana, y la prueba de disponibilidad avisa si el sitio deja de responder.
+- **SLA compuesto.** La ruta que ve el cliente (Static Web Apps y Blob Storage) tiene un SLA compuesto de 99,95 % × 99,9 % ≈ 99,85 %, que supera el 99,5 % pedido en horario comercial. Producción usa el plan Standard de Static Web Apps (`infra/envs/prod/main.tf`) porque el plan Free no tiene SLA; dev usa Free para ahorrar.
+- **Cosmos DB serverless.** Queda fuera de ese cálculo porque el documento de SLA de Microsoft solo da créditos de servicio para capacidad aprovisionada. Es un compromiso aceptado por costo (ADR 2); pasar a capacidad aprovisionada o autoscale añadiría el SLA de 99,99 % por unos USD 23 al mes con 400 unidades por segundo (sección 8). Se mitiga con escalado automático para el pico de fin de semana y con la prueba de disponibilidad, que avisa si el sitio deja de responder.
+- **Evidencia.** Las pruebas de carga dieron 0 % de errores (`stress` falló solo por `dropped_iterations`, ver sección 6). No hay una medición de disponibilidad en el tiempo, así que el cumplimiento del 99,5 % se apoya en el diseño y estas pruebas, no en un porcentaje medido.
 
 Fuentes (documento de noviembre de 2026): [Service Level Agreements (SLA) for Online Services](https://www.microsoft.com/licensing/docs/view/Service-Level-Agreements-SLA-for-Online-Services) y [precios de Static Web Apps](https://azure.microsoft.com/pricing/details/app-service/static/), que indica que el plan Free no tiene SLA y el Standard sí.
 
@@ -213,7 +217,7 @@ Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un
 | Tráfico alto (prod) | Más de 1.500 peticiones al API (`requests/count`) en 5 minutos (se evalúa cada minuto, severidad 3, se resuelve sola al bajar el tráfico) | Correo mediante el mismo grupo de acción. Es un aviso de tráfico por encima del diseño, no una falla |
 | Presupuesto (suscripción) | El gasto real llega al 50, 80 y 100 % del monto mensual del presupuesto | Correo a `budget_email` |
 
-El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (el ejemplo del repositorio usa 20, menos que el tope de USD 150), así que los umbrales son porcentajes de ese monto y no de 150. El presupuesto de la suscripción está configurado con alertas al 50, 80 y 100 % (lo crea el stack de bootstrap). La alerta de errores 5xx no se ha disparado con tráfico de prueba.
+El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (sin valor por defecto; `infra/bootstrap/terraform.tfvars.example` usa 20): USD 20 al mes, con alertas al 50, 80 y 100 % (USD 10, 16 y 20; lo crea el stack de bootstrap). Se eligió cerca del gasto esperado (unos USD 15 al mes en prod más un dev despreciable) para notar pronto cualquier desvío: el 50 % y cerca del 75 % se alcanzan en un mes normal y el 100 % solo ante un exceso real. Los USD 150 del requisito son el tope que la arquitectura se mantiene muy por debajo de alcanzar, no el umbral de alerta. La alerta de errores 5xx no se ha disparado con tráfico de prueba.
 
 **Umbral de tráfico alto.** El umbral de 1.500 peticiones en 5 minutos es unas 10 veces el pico de un sábado (150 llamadas al API en 5 minutos) y unas 3,3 veces la carga de diseño de 3x (450 en 5 minutos). Solo cuentan las llamadas al API, porque los archivos estáticos los sirve Static Web Apps y no pasan por Functions. Los escenarios de [load/README.md](../load/README.md) quedan así: `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Umbral, ventana y frecuencia son las variables `traffic_spike_threshold`, `traffic_spike_window` y `traffic_spike_frequency` del módulo `alerts`.
 
@@ -276,7 +280,7 @@ Umbrales: tasa de peticiones fallidas menor a 1 %, p95 del tiempo de respuesta m
 | Pico de unidades de solicitud de Cosmos DB | Unas 14.300 (promedio, hacia las 05:33 UTC) |
 | Peticiones al API vistas por Application Insights | 32.433 (consistente con las unas 32.000 llamadas planificadas) |
 
-**Interpretación de `stress`.** El sistema absorbió unas 53.000 peticiones con 0 % de errores y un p95 de 111 ms. Las 41 iteraciones descartadas (0,77 %) se deben a que k6 no asignó VUs con la rapidez necesaria en los saltos de la rampa (`preAllocatedVUs` en 20; solo se usaron 62 de los 200 VUs máximos): es un límite del generador de carga, no un error del servidor. El máximo de 4,8 s es una cola aislada, probablemente un arranque en frío mientras escalaba. Por eso el umbral `dropped_iterations` marcó la corrida como fallida aunque la latencia y los errores cumplieron. Para próximas corridas `preAllocatedVUs` sube a 100 en `load/load.js`. `realistic` y `peak3x` (3 veces el pico) pasan todos los umbrales en prod.
+**Interpretación de `stress`.** El sistema absorbió unas 53.000 peticiones con 0 % de errores y un p95 de 111 ms. Las 41 iteraciones descartadas (0,77 %) se deben a que k6 no asignó VUs con la rapidez necesaria en los saltos de la rampa (`preAllocatedVUs` en 20; solo se usaron 62 de los 200 VUs máximos): es un límite del generador de carga, no un error del servidor. El máximo de 4,8 s es una cola aislada, probablemente un arranque en frío mientras escalaba. Por eso el umbral `dropped_iterations` marcó la corrida como fallida aunque la latencia y los errores cumplieron. Para próximas corridas `load/load.js` ya usa 100 en `preAllocatedVUs`. `realistic` y `peak3x` (3 veces el pico) pasan todos los umbrales en prod.
 
 **Evidencia de escalado y desescalado.** k6 prueba que el sistema absorbe la carga (p95, errores, iteraciones descartadas), pero no cuántas instancias hubo. Durante y después de la corrida de `stress` en prod, en el portal (Application Insights, Logs) se ejecutó:
 
@@ -311,6 +315,7 @@ Todo llega a Azure por GitHub Actions: nada se despliega a mano. Cada etapa del 
 - **Promoción.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. El workflow `ci` corre en el pull request (lint, seguridad, pruebas con cobertura mínima de 70 %, build y plan de Terraform). Al hacer merge, `deploy` aplica Terraform, carga los seeds, sube la aplicación y corre el smoke test. En `main` espera la aprobación del environment `prod` y publica el release `vN`. Los checks requeridos del ruleset de GitHub deben ser los jobs de `ci.yml`; el ruleset está activo en `main` y `dev`, con los checks requeridos.
 - **OIDC.** El acceso a Azure usa las identidades de la sección 4, sin contraseñas guardadas. El único secreto en GitHub es la contraseña inicial del administrador, y los tokens leídos de las salidas de Terraform se enmascaran en los logs.
 - **Rollback.** De la aplicación: workflow manual `rollback` con el tag de una versión anterior, que vuelve a publicar su artefacto sin tocar la infraestructura. De la infraestructura: revertir el commit. De los datos: restauración de Cosmos DB (sección 5).
+- **Prueba de carga.** Workflow manual `load` (k6, inputs `environment` y `scenario`), sin identidad de Azure: solo llama a la URL pública. En `prod` pide aprobación y corre solo desde `main`; `orders` se rechaza en `prod`. Detalle en [load/README.md](../load/README.md).
 - **Bootstrap.** Lo que el pipeline necesita antes de su primera ejecución (grupos de recursos, estado, identidades OIDC y presupuesto) vive en un Terraform aparte que se aplica una sola vez. El orden de limpieza final está en [infra/bootstrap/README.md](../infra/bootstrap/README.md).
 
 ## 8. Costos y FinOps
@@ -338,8 +343,10 @@ Dev (Static Web Apps Free, uso serverless mínimo) y el estado de Terraform (una
 
 | Escenario | Qué incluye | USD al mes (aprox.) |
 | --- | --- | --- |
-| MVP | Prod con tráfico de prueba y dev en Free | Unos 15 |
-| Producción | Los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes) | Unos 15 |
+| MVP | Static Web Apps Standard, 1 ubicación en la prueba de disponibilidad (la mitad de los unos USD 3,3 de pruebas web, unos 1,65) y tráfico de prueba; dev en Free | Unos 13,4 (unos 161 al año) |
+| Producción | Los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes), con la estimación de la calculadora (2 ubicaciones) | Unos 15,0 (unos 180 al año) |
+
+Los dos escenarios quedan cerca porque Static Web Apps Standard (9,00) y la prueba de disponibilidad dominan el costo; Cosmos DB y Blob serverless crecen con el uso.
 
 **Optimizaciones FinOps.**
 
@@ -404,7 +411,7 @@ Se tomaron 5 decisiones principales. Cada una responde qué problema había, qu�
 
 **Decisión.** Cosmos DB serverless con la base `migas` y un contenedor por colección (`products` por `/category`, `orders` por `/pickupDate`, `users` por `/email`). El stock se protege con bloqueo optimista usando el ETag.
 
-**Consecuencias.** Se paga por solicitud y almacenamiento, sin esquema que migrar y con seeds idempotentes. A cambio, la cuenta serverless no tiene el SLA financiero de 99,99 % de la capacidad aprovisionada, y leer un producto por id es una consulta entre particiones, y el bloqueo con ETag no cubre una caída entre pasos de stock ni evita que la última unidad se venda dos veces en una carrera. Ambas ventanas se aceptan.
+**Consecuencias.** Se paga por solicitud y almacenamiento, sin esquema que migrar y con seeds idempotentes. A cambio, la cuenta serverless no tiene el SLA financiero de 99,99 % de la capacidad aprovisionada, leer un producto por id es una consulta entre particiones y el bloqueo con ETag no cubre una caída entre pasos de stock ni evita que la última unidad se venda dos veces en una carrera. Ambas ventanas se aceptan.
 
 ### ADR 3. Autenticación propia con JWT
 

@@ -52,6 +52,7 @@ En GitHub existe un ruleset `general` sobre `dev` y `main` que impide borrar la 
 | Push a `dev` (`deploy.yml`) | `build` y `deploy` en el environment `dev`: Terraform, seeds, subida y smoke completo. No hay `release` |
 | Push a `main` (`deploy.yml`) | `build`, `deploy` en el environment `prod` tras la aprobación, y `release` |
 | Ejecución manual de `rollback.yml` | Solo desde `main`, con el input `tag`. Aprobación de `prod`, vuelve a publicar el artefacto `release-<tag>` y corre el smoke de solo lectura |
+| Ejecución manual de `load.yml` | Inputs `environment` y `scenario`. `prod` pide aprobación del environment y corre solo desde `main`; el escenario `orders` se rechaza en `prod`. Solo llama a la URL pública del sitio, sin identidad de Azure |
 | Ejecución manual de `destroy.yml` | Inputs `environment` y `confirm`. Destruye con `terraform destroy` el ambiente elegido |
 
 `deploy.yml` usa un grupo de concurrencia por rama (`deploy-dev` o `deploy-main`) sin cancelar ejecuciones en curso. `rollback.yml` y el destroy de prod comparten el grupo `deploy-main`, así que esperan a un despliegue que esté corriendo.
@@ -65,6 +66,8 @@ GitHub Actions entra a Azure con OIDC y `azure/login`, sin contraseñas guardada
 | `id-pdc-ci-plan` | `pull_request` | `ci`, job `terraform` |
 | `id-pdc-deploy-dev` | `environment:dev` | `deploy` y `destroy` de dev |
 | `id-pdc-deploy-prod` | `environment:prod` | `deploy`, `rollback` y `destroy` de prod |
+
+`load.yml` no usa ninguna identidad: no inicia sesión en Azure.
 
 Variables y secretos de GitHub:
 

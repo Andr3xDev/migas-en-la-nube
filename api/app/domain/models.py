@@ -21,12 +21,16 @@ class Product:
     etag: str | None = None
 
 
+ADMIN_ROLE = "admin"
+CUSTOMER_ROLE = "customer"
+
+
 @dataclass
 class User:
     id: str
     email: str
     password_hash: str
-    role: str = "customer"
+    role: str = CUSTOMER_ROLE
     etag: str | None = None
     favorites: list[str] = field(default_factory=list)
 

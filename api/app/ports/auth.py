@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from app.domain.models import User
+from app.domain.models import CUSTOMER_ROLE, User
 
 
 @dataclass(frozen=True)
@@ -12,7 +12,7 @@ class Principal:
 
 
 class AuthProvider(Protocol):
-    def register(self, email: str, password: str, role: str = "customer") -> User: ...
+    def register(self, email: str, password: str, role: str = CUSTOMER_ROLE) -> User: ...
 
     def ensure_admin(self, email: str, password: str) -> User: ...
 

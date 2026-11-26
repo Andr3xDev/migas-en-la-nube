@@ -1,18 +1,14 @@
-import logging
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from urllib.parse import urlsplit
 from uuid import uuid4
 
 from azure.storage.blob import BlobSasPermissions, BlobServiceClient, generate_blob_sas
 
 from app.domain.errors import RuleViolationError
-from app.ports.images import ImageUpload
+from app.ports.images import UPLOAD_TTL, ImageUpload
 
-UPLOAD_TTL = timedelta(minutes=5)
 EXTENSIONS = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
-
-logger = logging.getLogger(__name__)
 
 
 def now_utc() -> datetime:
@@ -57,14 +53,8 @@ class BlobImageStore:
         return ImageUpload(f"{image_url}?{sas}", image_url, expires_at)
 
     def delete_product_images(self, product_id: str) -> None:
-        try:
-            if self._service_client is None:
-                self._service_client = BlobServiceClient.from_connection_string(
-                    self._connection_string
-                )
-            container = self._service_client.get_container_client(self._container_name)
-            for blob in container.list_blobs(name_starts_with=f"products/{product_id}/"):
-                container.delete_blob(blob.name)
-        except Exception as error:
-            # Type only: storage errors can echo request details.
-            logger.warning("Image cleanup failed for %s: %s", product_id, type(error).__name__)
+        if self._service_client is None:
+            self._service_client = BlobServiceClient.from_connection_string(self._connection_string)
+        container = self._service_client.get_container_client(self._container_name)
+        for blob in container.list_blobs(name_starts_with=f"products/{product_id}/"):
+            container.delete_blob(blob.name)

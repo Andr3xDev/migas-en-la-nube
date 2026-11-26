@@ -9,16 +9,16 @@ from uuid import uuid4
 
 import jwt
 
+from app.core.retry import retry_on_conflict
 from app.domain.errors import (
     INVALID_CREDENTIALS,
     AuthenticationError,
     ConcurrencyConflictError,
     ConflictError,
 )
-from app.domain.models import User
+from app.domain.models import ADMIN_ROLE, CUSTOMER_ROLE, User
 from app.ports.auth import Principal
 from app.ports.repositories import UserRepository
-from app.services.retry import retry_on_conflict
 
 TOKEN_LIFETIME = timedelta(hours=1)
 JWT_ALGORITHM = "HS256"
@@ -75,7 +75,7 @@ class LocalAuthProvider:
         if not self._jwt_key:
             raise ValueError("jwt_key is required")
 
-    def register(self, email: str, password: str, role: str = "customer") -> User:
+    def register(self, email: str, password: str, role: str = CUSTOMER_ROLE) -> User:
         user = User(
             id=uuid4().hex,
             email=email.strip().lower(),
@@ -89,13 +89,13 @@ class LocalAuthProvider:
             user = self._users.get_by_email(email.strip().lower())
             if user is None:
                 try:
-                    return self.register(email, password, role="admin")
+                    return self.register(email, password, role=ADMIN_ROLE)
                 except ConflictError:
                     # Created concurrently after our read; retry re-reads and promotes.
                     raise ConcurrencyConflictError(email) from None
-            if user.role == "admin" and verify_password(password, user.password_hash):
+            if user.role == ADMIN_ROLE and verify_password(password, user.password_hash):
                 return user
-            user.role = "admin"
+            user.role = ADMIN_ROLE
             user.password_hash = hash_password(password)
             return self._users.replace(user)
 

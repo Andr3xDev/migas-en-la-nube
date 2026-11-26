@@ -1,17 +1,18 @@
 import pytest
-from azure.cosmos.exceptions import CosmosResourceExistsError
+from azure.cosmos.exceptions import CosmosAccessConditionFailedError, CosmosResourceExistsError
 
 from app.adapters.cosmos.users import CosmosUserRepository, to_document
-from app.domain.errors import ConflictError
+from app.domain.errors import ConcurrencyConflictError, ConflictError
 from app.domain.models import User
 
 USER = User(id="u1", email="ana@example.com", password_hash="hash", role="admin", etag="e1")
 
 
 class FakeContainer:
-    def __init__(self, documents=(), exists=False):
+    def __init__(self, documents=(), exists=False, stale=False):
         self.documents = list(documents)
         self.exists = exists
+        self.stale = stale
         self.partition_key = None
 
     def query_items(self, query, parameters, partition_key):
@@ -24,6 +25,8 @@ class FakeContainer:
         return {**body, "_etag": "e1", "_rid": "r", "_ts": 1}
 
     def replace_item(self, item, body, etag, match_condition):
+        if self.stale:
+            raise CosmosAccessConditionFailedError(status_code=412, message="stale")
         return {**body, "_etag": "e2", "_rid": "r", "_ts": 1}
 
 
@@ -48,6 +51,11 @@ def test_create_and_replace_keep_favorites():
     repository = CosmosUserRepository(FakeContainer())
     assert repository.create(favorites).favorites == ["torta", "croissant"]
     assert repository.replace(favorites).favorites == ["torta", "croissant"]
+
+
+def test_replace_maps_412_to_concurrency_conflict():
+    with pytest.raises(ConcurrencyConflictError):
+        CosmosUserRepository(FakeContainer(stale=True)).replace(USER)
 
 
 def test_create_round_trips_and_maps_409_to_conflict():

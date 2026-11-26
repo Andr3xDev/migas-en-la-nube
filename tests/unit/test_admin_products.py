@@ -163,13 +163,14 @@ def test_delete_unknown_product_raises_not_found_and_keeps_images(products, imag
     assert images.deleted == []
 
 
-def test_delete_product_succeeds_when_image_cleanup_fails(products):
+def test_delete_product_succeeds_and_logs_when_image_cleanup_fails(products, caplog):
     images = FakeImageStore(delete_error=RuntimeError("blob gone"))
     product = create(products)
 
     catalog.delete_product(products, images, product.id)
 
     assert products.get(product.id) is None
+    assert f"Image cleanup failed for {product.id}" in caplog.text
 
 
 def test_create_image_upload_for_existing_product_delegates_to_store(products, images):

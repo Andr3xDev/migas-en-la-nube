@@ -1,10 +1,14 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from azure.cosmos.exceptions import CosmosAccessConditionFailedError, CosmosResourceNotFoundError
+from azure.cosmos.exceptions import (
+    CosmosAccessConditionFailedError,
+    CosmosResourceExistsError,
+    CosmosResourceNotFoundError,
+)
 
 from app.adapters.cosmos.orders import CosmosOrderRepository, to_document
-from app.domain.errors import ConcurrencyConflictError
+from app.domain.errors import ConcurrencyConflictError, ConflictError, NotFoundError
 from app.domain.models import Order, OrderItem, StockDecrement
 
 ORDER = Order(
@@ -38,6 +42,36 @@ class QueryContainer:
     def query_items(self, query, **kwargs):
         self.calls.append((query, kwargs))
         return []
+
+
+class RejectingContainer:
+    def create_item(self, body):
+        raise CosmosResourceExistsError(status_code=409, message="exists")
+
+    def replace_item(self, *args, **kwargs):
+        raise CosmosResourceNotFoundError(status_code=404, message="missing")
+
+
+def test_create_maps_409_to_conflict():
+    with pytest.raises(ConflictError):
+        CosmosOrderRepository(RejectingContainer()).create(ORDER)
+
+
+def test_replace_maps_404_to_not_found():
+    with pytest.raises(NotFoundError):
+        CosmosOrderRepository(RejectingContainer()).replace(ORDER)
+
+
+def test_list_by_date_runs_single_partition_query_earliest_first():
+    container = QueryContainer()
+
+    CosmosOrderRepository(container).list_by_date("2026-06-10")
+
+    query, kwargs = container.calls[0]
+    assert "c.pickupDate = @date ORDER BY c.pickupTime" in query
+    assert kwargs["partition_key"] == "2026-06-10"
+    assert {"name": "@date", "value": "2026-06-10"} in kwargs["parameters"]
+    assert "enable_cross_partition_query" not in kwargs
 
 
 def test_list_before_runs_capped_cross_partition_query_newest_first():

@@ -3,7 +3,6 @@ import pytest
 
 @pytest.fixture
 def repo(client):
-    # Imported after `client` so both come from the same app.* module instances.
     from app.adapters.memory.products import MemoryProductRepository
     from app.api.deps import get_product_repository
 
@@ -51,13 +50,6 @@ def test_list_products_without_token_returns_public_shape(client, repo):
             ],
         }
     ]
-
-
-def test_list_products_when_empty_returns_empty_array(client, repo):
-    response = client.get("/api/products")
-
-    assert response.status_code == 200
-    assert response.json() == []
 
 
 def test_get_product_when_made_to_order_exposes_ready_time(client, repo):

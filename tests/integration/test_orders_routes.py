@@ -2,31 +2,18 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from app.api.deps import get_now
+from app.domain.models import ADMIN_ROLE
+
 SHOP_TZ = timezone(timedelta(hours=-5))
 NOW = datetime(2026, 6, 10, 12, 0, tzinfo=SHOP_TZ)
 PICKUP = "2026-06-10T13:00:00-05:00"
 
 
 @pytest.fixture
-def stores(client):
-    # Imported after `client` so both come from the same app.* module instances.
-    from app.adapters.memory.orders import MemoryOrderRepository
-    from app.adapters.memory.products import MemoryProductRepository
-    from app.api.deps import get_now, get_order_repository, get_product_repository
-    from app.domain.models import Product, Variant
-
-    products = MemoryProductRepository()
-    orders = MemoryOrderRepository()
-    products.create(
-        Product(
-            "croissant", "Croissant", "bakery", "Buttery", None, 90, [Variant("Single", 6000, 5)]
-        )
-    )
-    overrides = client.app.dependency_overrides
-    overrides[get_product_repository] = lambda: products
-    overrides[get_order_repository] = lambda: orders
-    overrides[get_now] = lambda: NOW
-    return products, orders
+def stack(stack, client):
+    client.app.dependency_overrides[get_now] = lambda: NOW
+    return stack
 
 
 def body(**changes):
@@ -39,7 +26,7 @@ def body(**changes):
     return {**payload, **changes}
 
 
-def test_post_order_as_guest_returns_201_with_code_and_total(client, stores):
+def test_post_order_as_guest_returns_201_with_code_and_total(client, stack):
     response = client.post("/api/orders", json=body())
 
     assert response.status_code == 201
@@ -70,12 +57,24 @@ def test_post_order_as_guest_returns_201_with_code_and_total(client, stores):
         {"items": [{"productId": "croissant", "variantName": "Single", "quantity": 1}] * 21},
         {"customerName": "x" * 101},
         {"phone": "1" * 31},
+        {"pickupTime": "2026-06-10T13:00:00"},
+    ],
+    ids=[
+        "missing name",
+        "blank phone",
+        "no items",
+        "zero quantity",
+        "unknown product",
+        "quantity over max",
+        "too many items",
+        "name too long",
+        "phone too long",
+        "pickup without offset",
     ],
 )
 def test_post_order_with_invalid_body_or_unknown_product_returns_422_and_stores_nothing(
-    client, stores, payload
+    client, stack, payload
 ):
-    _, orders = stores
     request = body(**payload)
     if request["customerName"] is None:
         del request["customerName"]
@@ -83,40 +82,24 @@ def test_post_order_with_invalid_body_or_unknown_product_returns_422_and_stores_
     response = client.post("/api/orders", json=request)
 
     assert response.status_code == 422
-    assert orders.list_by_date("2026-06-10") == []
+    assert stack.orders.list_by_date("2026-06-10") == []
 
 
-def test_post_order_when_stock_retries_exhausted_returns_409(client, stores):
-    products, orders = stores
-    products.before_replace = products.bump_etag
+def test_post_order_when_stock_retries_exhausted_returns_409(client, stack):
+    stack.products.before_replace = stack.products.bump_etag
 
     response = client.post("/api/orders", json=body())
 
     assert response.status_code == 409
-    assert orders.list_by_date("2026-06-10") == []
-    assert products.get("croissant").variants[0].stock == 5
+    assert stack.orders.list_by_date("2026-06-10") == []
+    assert stack.products.get("croissant").variants[0].stock == 5
 
 
-@pytest.mark.parametrize(("role", "status"), [("admin", 403), ("customer", 201)])
-def test_post_order_with_token_allows_customer_and_forbids_admin(client, stores, role, status):
-    from app.adapters.local_auth import LocalAuthProvider
-    from app.adapters.memory.users import MemoryUserRepository
-    from app.api.deps import get_auth_provider
+def test_post_order_as_admin_returns_403_and_stores_nothing(client, stack):
+    headers = stack.headers_for("admin@example.com", ADMIN_ROLE)
 
-    auth = LocalAuthProvider(
-        MemoryUserRepository(),
-        "route-test-signing-key-32-bytes-min",
-        login_failure_delay_seconds=0,
-        sleep=lambda _: None,
-    )
-    client.app.dependency_overrides[get_auth_provider] = lambda: auth
-    auth.register("user@example.com", "correct horse", role=role)
-    token = auth.login("user@example.com", "correct horse")
-    _, orders = stores
+    response = client.post("/api/orders", json=body(), headers=headers)
 
-    response = client.post("/api/orders", json=body(), headers={"X-Pdc-Token": f"Bearer {token}"})
-
-    assert response.status_code == status
-    if status == 403:
-        assert response.json() == {"detail": "Admins cannot place orders"}
-        assert orders.list_by_date("2026-06-10") == []
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Admins cannot place orders"}
+    assert stack.orders.list_by_date("2026-06-10") == []

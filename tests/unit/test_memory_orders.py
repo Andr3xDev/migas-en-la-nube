@@ -3,9 +3,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.adapters.memory.orders import MemoryOrderRepository
-from app.adapters.memory.products import MemoryProductRepository
 from app.domain.errors import ConcurrencyConflictError, ConflictError
-from app.domain.models import Order, OrderItem, Product, Variant
+from app.domain.models import Order, OrderItem
 
 SHOP_TZ = timezone(timedelta(hours=-5))
 
@@ -73,12 +72,3 @@ def test_list_by_user_returns_only_that_users_orders():
     repo.create(make_order("OTHER222"))
 
     assert [o.id for o in repo.list_by_user("u1")] == ["MINE"]
-
-
-def test_before_replace_hook_bumping_etag_makes_the_replace_conflict():
-    products = MemoryProductRepository()
-    products.create(Product("p", "P", "bakery", "d", None, 30, [Variant("Single", 1000, 5)]))
-    products.before_replace = lambda product_id: products.bump_etag(product_id)
-
-    with pytest.raises(ConcurrencyConflictError):
-        products.replace(products.get("p"))

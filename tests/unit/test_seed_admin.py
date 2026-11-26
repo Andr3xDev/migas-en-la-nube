@@ -1,5 +1,3 @@
-import sys
-
 import pytest
 
 EMAIL = "Admin@Example.com"
@@ -8,8 +6,6 @@ PASSWORD = "initial-admin-pass"
 
 @pytest.fixture
 def seeding():
-    # test_health purges app.*; a cached seed module would hold stale error classes.
-    sys.modules.pop("scripts.seed_admin", None)
     from app.adapters.local_auth import LocalAuthProvider
     from app.adapters.memory.users import MemoryUserRepository
     from scripts.seed_admin import seed_admin

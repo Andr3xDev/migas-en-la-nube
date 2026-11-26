@@ -1,6 +1,6 @@
 # migas-en-la-nube
 
-Pan de la Casa: a bakery ordering platform on Azure. Customers browse the catalog, order for pickup (guest or registered), and keep favorites. An admin manages products, images and order status.
+Migas en la Nube: a bakery ordering platform on Azure. Customers browse the catalog, order for pickup (guest or registered), and keep favorites. An admin manages products, images and order status.
 
 | Catalog | Product (mobile) |
 | --- | --- |

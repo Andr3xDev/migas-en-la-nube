@@ -1,4 +1,4 @@
-# Documentación de Pan de la Casa
+# Documentación de Migas en la Nube
 
 Estos son los entregables de diseño del proyecto del curso; el equipo los renderiza a PDF.
 

@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-Pan de la Casa is a small bakery shop: low and bursty traffic, one developer, a student Azure subscription with a budget. The system must be cheap when idle, deployable only from GitHub Actions and easy to destroy.
+Migas en la Nube is a small bakery shop: low and bursty traffic, one developer, a student Azure subscription with a budget. The system must be cheap when idle, deployable only from GitHub Actions and easy to destroy.
 
 ## Decision
 

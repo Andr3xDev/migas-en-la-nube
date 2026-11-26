@@ -16,18 +16,9 @@ Migas en la Nube: a bakery ordering platform on Azure. Customers browse the cata
 
 Static Web Apps (SWA) serves the front end and runs the FastAPI API as managed Functions. Data is in Cosmos DB, images in Blob Storage. Everything is created by Terraform and deployed only by GitHub Actions.
 
-```mermaid
-flowchart LR
-    Browser["Browser"] -->|"HTML, CSS, JS"| Static["SWA static files"]
-    Browser -->|"/api/*"| Func["SWA managed Functions<br/>FastAPI"]
-    Func --> Cosmos[("Cosmos DB<br/>serverless")]
-    Func -->|"signs SAS URL"| Browser
-    Browser -->|"PUT image"| Blob[("Blob Storage")]
-    Func -->|"JSON logs"| AI["Application Insights"]
-    AI -->|"alerts, prod only"| Mail["Email"]
-```
+![Cloud architecture](docs/diagrams/architecture.png)
 
-More detail in [docs/diagramas/architecture.md](docs/diagramas/architecture.md). Decisions are in [docs/adr](docs/adr/README.md).
+Cloud architecture. Source: [docs/diagrams/architecture.drawio](docs/diagrams/architecture.drawio). Decisions are in [docs/adr](docs/adr/README.md).
 
 ## Repository layout
 
@@ -40,7 +31,7 @@ More detail in [docs/diagramas/architecture.md](docs/diagramas/architecture.md).
 | `smoke/` | Bruno smoke collection run after each deploy |
 | `load/` | k6 load test script and notes (run by the `load` workflow) |
 | `.github/` | Workflows (`ci`, `deploy`, `rollback`, `destroy`, `load`) and composite actions |
-| `docs/` | HLD, deployment design, ADRs, Mermaid diagrams, screenshots |
+| `docs/` | HLD, deployment design, ADRs, draw.io diagrams, screenshots |
 
 ## Local run
 
@@ -99,27 +90,13 @@ Each environment has its own resource group, Terraform state, Cosmos account, st
 
 ## CI/CD pipeline
 
-```mermaid
-flowchart TD
-    PR["Pull request"] --> Lint["lint: ruff, terraform fmt"]
-    Lint --> Sec["security: checkov, CodeQL"]
-    Lint --> Plan["terraform plan dev + prod"]
-    Sec --> Test["test: pytest, coverage 70%"]
-    Test --> Build["build artifacts"]
-
-    Push["Push to dev or main"] --> B["build artifacts"]
-    B --> Apply["OIDC login, terraform apply"]
-    Apply --> Seeds["seed products and admin"]
-    Seeds --> Upload["upload to SWA"]
-    Upload --> Smoke["Bruno smoke"]
-    Smoke -->|"main only"| Release["tag vN + artifact release-vN"]
-```
+![CI/CD pipeline](docs/diagrams/pipeline.png)
 
 - `ci.yml` (pull requests): `lint`, `security` (Checkov, CodeQL), `test` (coverage floor 70%), `build`, and a read-only `terraform` plan for both environments.
 - `deploy.yml` (push to `dev` or `main`): build, Terraform apply, seed products and admin (idempotent), upload `web/` and `api/` to SWA, wait for `/api/health`, run the Bruno collection in `smoke/` (everything on dev, read-only on prod).
 - `release` job (only after a green prod deploy): stores the artifacts as `release-v<run number>` for 90 days and creates the tag `v<run number>`.
 
-Diagram source: [docs/diagramas/pipeline.md](docs/diagramas/pipeline.md).
+Diagram source: [docs/diagrams/pipeline.drawio](docs/diagrams/pipeline.drawio).
 
 ## Operations
 
@@ -137,7 +114,7 @@ traces | where message has "<correlation-id>" | order by timestamp desc
 
 ### Rollback
 
-`rollback.yml` redeploys the stored artifact of an earlier prod release (for example `v12`), runs from `main` and needs the `prod` approval. It does not run Terraform and does not change data. Steps and diagram: [docs/despliegue.md](docs/despliegue.md#rollback).
+`rollback.yml` redeploys the stored artifact of an earlier prod release (for example `v12`), runs from `main` and needs the `prod` approval. It does not run Terraform and does not change data. Steps and diagram: [docs/deployment.md](docs/deployment.md#rollback).
 
 ### Load test
 
@@ -181,7 +158,7 @@ The final cleanup order (only after the project defense) is in [infra/bootstrap/
 ## Documentation
 
 - [High-level design (HLD, Spanish)](docs/hld.md)
-- [Deployment design (Spanish)](docs/despliegue.md)
+- [Deployment design (Spanish)](docs/deployment.md)
 - [Architecture decision records](docs/adr/README.md)
-- Diagrams (English, Mermaid): [context](docs/diagramas/contexto.md), [architecture](docs/diagramas/architecture.md), [network and security](docs/diagramas/red-seguridad.md), [pipeline](docs/diagramas/pipeline.md), [rollback](docs/diagramas/rollback.md).
+- Diagrams (English, draw.io): [context](docs/diagrams/context.drawio), [architecture](docs/diagrams/architecture.drawio), [network and security](docs/diagrams/network-security.drawio), [pipeline](docs/diagrams/pipeline.drawio), [rollback](docs/diagrams/rollback.drawio).
 - [Bootstrap and final cleanup](infra/bootstrap/README.md)

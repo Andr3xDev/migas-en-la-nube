@@ -1,154 +1,154 @@
 <mxfile host="app.diagrams.net">
   <diagram id="red-seguridad" name="Network and security">
-    <mxGraphModel dx="1800" dy="1300" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1300" math="0" shadow="0">
+    <mxGraphModel dx="2469" dy="1689" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1300" math="0" shadow="0">
       <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
-        <mxCell id="internet" value="Internet" style="swimlane;whiteSpace=wrap;html=1;fontSize=13;startSize=28;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="20" y="300" width="220" height="150" as="geometry"/>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="internet" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontSize=13;startSize=28;fillColor=#f5f5f5;strokeColor=#666666;" value="Internet" vertex="1">
+          <mxGeometry height="150" width="220" x="20" y="300" as="geometry" />
         </mxCell>
-        <mxCell id="user" value="Browser&#xa;customer or admin" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="internet">
-          <mxGeometry x="20" y="50" width="180" height="70" as="geometry"/>
+        <mxCell id="user" parent="internet" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;" value="Browser&#xa;customer or admin" vertex="1">
+          <mxGeometry height="70" width="180" x="20" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="gh" value="GitHub: repositoryAndr3xDev/migas-en-la-nube" style="swimlane;whiteSpace=wrap;html=1;fontSize=13;startSize=28;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="20" y="860" width="220" height="150" as="geometry"/>
+        <mxCell id="gh" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontSize=13;startSize=28;fillColor=#f5f5f5;strokeColor=#666666;" value="GitHub: repositoryAndr3xDev/migas-en-la-nube" vertex="1">
+          <mxGeometry height="150" width="220" x="20" y="860" as="geometry" />
         </mxCell>
-        <mxCell id="actions" value="GitHub Actions&#xa;environments dev and prod" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="gh">
-          <mxGeometry x="20" y="55" width="180" height="70" as="geometry"/>
+        <mxCell id="actions" parent="gh" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;" value="GitHub Actions&#xa;environments dev and prod" vertex="1">
+          <mxGeometry height="70" width="180" x="20" y="55" as="geometry" />
         </mxCell>
-        <mxCell id="azure" value="Azure subscription" style="swimlane;whiteSpace=wrap;html=1;fontSize=14;startSize=32;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="320" y="20" width="1200" height="1250" as="geometry"/>
+        <mxCell id="azure" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontSize=14;startSize=32;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Azure subscription" vertex="1">
+          <mxGeometry height="1250" width="1200" x="320" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="icon-sub" value="" style="image;aspect=fixed;html=1;points=[];image=img/lib/azure2/general/Subscriptions.svg;" vertex="1" parent="azure">
-          <mxGeometry x="8" y="2" width="28" height="28" as="geometry"/>
+        <mxCell id="icon-sub" parent="azure" style="image;aspect=fixed;html=1;points=[];image=img/lib/azure2/general/Subscriptions.svg;" value="" vertex="1">
+          <mxGeometry height="28" width="28" x="8" y="2" as="geometry" />
         </mxCell>
-        <mxCell id="rgprod" value="rg-pdc-prod" style="swimlane;whiteSpace=wrap;html=1;fontSize=13;startSize=28;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="azure">
-          <mxGeometry x="20" y="50" width="1160" height="380" as="geometry"/>
+        <mxCell id="rgprod" parent="azure" style="swimlane;whiteSpace=wrap;html=1;fontSize=13;startSize=28;fillColor=#ffffff;strokeColor=#6c8ebf;" value="rg-pdc-prod" vertex="1">
+          <mxGeometry height="380" width="1160" x="20" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="icon-rgprod" value="" style="image;aspect=fixed;html=1;points=[];image=img/lib/azure2/general/Resource_Groups.svg;" vertex="1" parent="rgprod">
-          <mxGeometry x="8" y="2" width="24" height="24" as="geometry"/>
+        <mxCell id="icon-rgprod" parent="rgprod" style="image;aspect=fixed;html=1;points=[];image=img/lib/azure2/general/Resource_Groups.svg;" value="" vertex="1">
+          <mxGeometry height="24" width="24" x="8" y="2" as="geometry" />
         </mxCell>
-        <mxCell id="swaprod" value="Static Web Apps Standard&#xa;Managed Functions" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/preview/Static_Apps.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgprod">
-          <mxGeometry x="60" y="140" width="68" height="68" as="geometry"/>
+        <mxCell id="swaprod" parent="rgprod" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/preview/Static_Apps.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="Static Web Apps Standard&#xa;Managed Functions" vertex="1">
+          <mxGeometry height="68" width="68" x="60" y="140" as="geometry" />
         </mxCell>
-        <mxCell id="cosmosprod" value="Cosmos DB" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgprod">
-          <mxGeometry x="500" y="50" width="68" height="68" as="geometry"/>
+        <mxCell id="cosmosprod" parent="rgprod" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="Cosmos DB" vertex="1">
+          <mxGeometry height="68" width="68" x="500" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="blobprod" value="Blob Storage images" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/storage/Storage_Accounts.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgprod">
-          <mxGeometry x="500" y="240" width="68" height="68" as="geometry"/>
+        <mxCell id="blobprod" parent="rgprod" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/storage/Storage_Accounts.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="Blob Storage images" vertex="1">
+          <mxGeometry height="68" width="68" x="410" y="270" as="geometry" />
         </mxCell>
-        <mxCell id="aiprod" value="Application Insights" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/devops/Application_Insights.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgprod">
-          <mxGeometry x="800" y="140" width="68" height="68" as="geometry"/>
+        <mxCell id="aiprod" parent="rgprod" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/devops/Application_Insights.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="Application Insights" vertex="1">
+          <mxGeometry height="68" width="68" x="800" y="140" as="geometry" />
         </mxCell>
-        <mxCell id="alerts" value="Alerts and availability test" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/management_governance/Alerts.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgprod">
-          <mxGeometry x="1010" y="140" width="68" height="68" as="geometry"/>
+        <mxCell id="alerts" parent="rgprod" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/management_governance/Alerts.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="Alerts and availability test" vertex="1">
+          <mxGeometry height="68" width="68" x="1010" y="140" as="geometry" />
         </mxCell>
-        <mxCell id="rgdev" value="rg-pdc-dev" style="swimlane;whiteSpace=wrap;html=1;fontSize=13;startSize=28;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="azure">
-          <mxGeometry x="20" y="450" width="1160" height="270" as="geometry"/>
+        <mxCell id="rgdev" parent="azure" style="swimlane;whiteSpace=wrap;html=1;fontSize=13;startSize=28;fillColor=#ffffff;strokeColor=#6c8ebf;" value="rg-pdc-dev" vertex="1">
+          <mxGeometry height="270" width="1160" x="20" y="450" as="geometry" />
         </mxCell>
-        <mxCell id="icon-rgdev" value="" style="image;aspect=fixed;html=1;points=[];image=img/lib/azure2/general/Resource_Groups.svg;" vertex="1" parent="rgdev">
-          <mxGeometry x="8" y="2" width="24" height="24" as="geometry"/>
+        <mxCell id="icon-rgdev" parent="rgdev" style="image;aspect=fixed;html=1;points=[];image=img/lib/azure2/general/Resource_Groups.svg;" value="" vertex="1">
+          <mxGeometry height="24" width="24" x="8" y="2" as="geometry" />
         </mxCell>
-        <mxCell id="swadev" value="Static Web Apps Free&#xa;Managed Functions" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/preview/Static_Apps.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgdev">
-          <mxGeometry x="60" y="90" width="68" height="68" as="geometry"/>
+        <mxCell id="swadev" parent="rgdev" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/preview/Static_Apps.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="Static Web Apps Free&#xa;Managed Functions" vertex="1">
+          <mxGeometry height="68" width="68" x="60" y="120" as="geometry" />
         </mxCell>
-        <mxCell id="cosmosdev" value="Cosmos DB" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgdev">
-          <mxGeometry x="500" y="40" width="68" height="68" as="geometry"/>
+        <mxCell id="cosmosdev" parent="rgdev" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="Cosmos DB" vertex="1">
+          <mxGeometry height="68" width="68" x="420" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="blobdev" value="Blob Storage images" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/storage/Storage_Accounts.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgdev">
-          <mxGeometry x="680" y="40" width="68" height="68" as="geometry"/>
+        <mxCell id="blobdev" parent="rgdev" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/storage/Storage_Accounts.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="Blob Storage images" vertex="1">
+          <mxGeometry height="68" width="68" x="690" y="101" as="geometry" />
         </mxCell>
-        <mxCell id="aidev" value="Application Insights" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/devops/Application_Insights.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgdev">
-          <mxGeometry x="860" y="40" width="68" height="68" as="geometry"/>
+        <mxCell id="aidev" parent="rgdev" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/devops/Application_Insights.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="Application Insights" vertex="1">
+          <mxGeometry height="68" width="68" x="530" y="180" as="geometry" />
         </mxCell>
-        <mxCell id="rgtf" value="rg-pdc-tfstate" style="swimlane;whiteSpace=wrap;html=1;fontSize=13;startSize=28;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="azure">
-          <mxGeometry x="20" y="740" width="1160" height="490" as="geometry"/>
+        <mxCell id="rgtf" parent="azure" style="swimlane;whiteSpace=wrap;html=1;fontSize=13;startSize=28;fillColor=#ffffff;strokeColor=#6c8ebf;" value="rg-pdc-tfstate" vertex="1">
+          <mxGeometry height="490" width="1160" x="20" y="740" as="geometry" />
         </mxCell>
-        <mxCell id="icon-rgtf" value="" style="image;aspect=fixed;html=1;points=[];image=img/lib/azure2/general/Resource_Groups.svg;" vertex="1" parent="rgtf">
-          <mxGeometry x="8" y="2" width="24" height="24" as="geometry"/>
+        <mxCell id="icon-rgtf" parent="rgtf" style="image;aspect=fixed;html=1;points=[];image=img/lib/azure2/general/Resource_Groups.svg;" value="" vertex="1">
+          <mxGeometry height="24" width="24" x="8" y="2" as="geometry" />
         </mxCell>
-        <mxCell id="idplan" value="id-pdc-ci-plan&#xa;Reader on rg-pdc-dev and rg-pdc-prod&#xa;Blob Data Reader on the state account" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/identity/Managed_Identities.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgtf">
-          <mxGeometry x="60" y="50" width="68" height="68" as="geometry"/>
+        <mxCell id="idplan" parent="rgtf" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/identity/Managed_Identities.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="id-pdc-ci-plan&#xa;Reader on rg-pdc-dev and rg-pdc-prod&#xa;Blob Data Reader on the state account" vertex="1">
+          <mxGeometry height="68" width="68" x="500" y="70" as="geometry" />
         </mxCell>
-        <mxCell id="iddev" value="id-pdc-deploy-dev&#xa;Contributor on rg-pdc-dev&#xa;Blob Data Contributor on tfstate-dev" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/identity/Managed_Identities.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgtf">
-          <mxGeometry x="60" y="200" width="68" height="68" as="geometry"/>
+        <mxCell id="iddev" parent="rgtf" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/identity/Managed_Identities.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="id-pdc-deploy-dev&#xa;Contributor on rg-pdc-dev&#xa;Blob Data Contributor on tfstate-dev" vertex="1">
+          <mxGeometry height="68" width="68" x="330" y="180" as="geometry" />
         </mxCell>
-        <mxCell id="idprod" value="id-pdc-deploy-prod&#xa;Contributor on rg-pdc-prod&#xa;Blob Data Contributor on tfstate-prod" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/identity/Managed_Identities.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgtf">
-          <mxGeometry x="60" y="350" width="68" height="68" as="geometry"/>
+        <mxCell id="idprod" parent="rgtf" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/identity/Managed_Identities.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="id-pdc-deploy-prod&#xa;Contributor on rg-pdc-prod&#xa;Blob Data Contributor on tfstate-prod" vertex="1">
+          <mxGeometry height="68" width="68" x="410" y="360" as="geometry" />
         </mxCell>
-        <mxCell id="state" value="Terraform state storage&#xa;no shared keys or anonymous access" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/storage/Storage_Accounts.svg;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="rgtf">
-          <mxGeometry x="800" y="200" width="68" height="68" as="geometry"/>
+        <mxCell id="state" parent="rgtf" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/storage/Storage_Accounts.svg;verticalLabelPosition=bottom;verticalAlign=top;" value="Terraform state storage&#xa;no shared keys or anonymous access" vertex="1">
+          <mxGeometry height="68" width="68" x="800" y="200" as="geometry" />
         </mxCell>
-        <mxCell id="mail" value="Alert email" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="1620" y="210" width="140" height="60" as="geometry"/>
+        <mxCell id="mail" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#f5f5f5;strokeColor=#666666;" value="Alert email" vertex="1">
+          <mxGeometry height="60" width="140" x="1620" y="210" as="geometry" />
         </mxCell>
-        <mxCell id="e1" value="HTTPS" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="user" target="swaprod">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e1" edge="1" parent="1" source="user" style="endArrow=classic;html=1;fontSize=11;" target="swaprod" value="HTTPS">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e2" value="PUT image with SAS&#xa;(5 min, https)" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="user" target="blobprod">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e2" edge="1" parent="1" source="user" style="endArrow=classic;html=1;fontSize=11;" target="blobprod" value="PUT image with SAS&#xa;(5 min, https)">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e3" value="GET images (public read)" style="endArrow=classic;html=1;fontSize=11;dashed=1;" edge="1" parent="1" source="user" target="blobprod">
-          <mxGeometry relative="1" as="geometry">
+        <mxCell id="e3" edge="1" parent="1" source="user" style="endArrow=classic;html=1;fontSize=11;dashed=1;entryX=-0.047;entryY=0.716;entryDx=0;entryDy=0;entryPerimeter=0;" target="blobprod" value="GET images (public read)">
+          <mxGeometry relative="1" x="0.1318" as="geometry">
             <Array as="points">
-              <mxPoint x="130" y="560"/>
-              <mxPoint x="560" y="560"/>
-              <mxPoint x="850" y="420"/>
+              <mxPoint x="130" y="560" />
+              <mxPoint x="560" y="560" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e4" value="Cosmos key (app setting)" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="swaprod" target="cosmosprod">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e4" edge="1" parent="1" source="swaprod" style="endArrow=classic;html=1;fontSize=11;exitX=0.928;exitY=0.025;exitDx=0;exitDy=0;exitPerimeter=0;" target="cosmosprod" value="Cosmos key (app setting)">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e5" value="Storage key, signs the SAS (app setting)" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="swaprod" target="blobprod">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e5" edge="1" parent="1" source="swaprod" style="endArrow=classic;html=1;fontSize=11;" target="blobprod" value="Storage key, signs the SAS (app setting)">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e6" value="logs JSON" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="swaprod" target="aiprod">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e6" edge="1" parent="1" source="swaprod" style="endArrow=classic;html=1;fontSize=11;" target="aiprod" value="logs JSON">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e7" value="" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="aiprod" target="alerts">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e7" edge="1" parent="1" source="aiprod" style="endArrow=classic;html=1;fontSize=11;" target="alerts" value="">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e8" value="email" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="alerts" target="mail">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e8" edge="1" parent="1" source="alerts" style="endArrow=classic;html=1;fontSize=11;" target="mail" value="email">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e9" value="" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="swadev" target="cosmosdev">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e9" edge="1" parent="1" source="swadev" style="endArrow=classic;html=1;fontSize=11;" target="cosmosdev" value="">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e10" value="" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="swadev" target="blobdev">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e10" edge="1" parent="1" source="swadev" style="endArrow=classic;html=1;fontSize=11;" target="blobdev" value="">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e11" value="" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="swadev" target="aidev">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e11" edge="1" parent="1" source="swadev" style="endArrow=classic;html=1;fontSize=11;" target="aidev" value="">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e12" value="OIDC, subject pull_request" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="actions" target="idplan">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e12" edge="1" parent="1" source="actions" style="endArrow=classic;html=1;fontSize=11;" target="idplan" value="OIDC, subject pull_request">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e13" value="OIDC, subject environment:dev" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="actions" target="iddev">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e13" edge="1" parent="1" source="actions" style="endArrow=classic;html=1;fontSize=11;" target="iddev" value="OIDC, subject environment:dev">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e14" value="OIDC, subject environment:prod" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="actions" target="idprod">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e14" edge="1" parent="1" source="actions" style="endArrow=classic;html=1;fontSize=11;" target="idprod" value="OIDC, subject environment:prod">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e15" value="terraform apply and uploads the artifact" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="iddev" target="swadev">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e15" edge="1" parent="1" source="iddev" style="endArrow=classic;html=1;fontSize=11;" target="swadev" value="terraform apply and uploads the artifact">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e16" value="terraform apply and uploads the artifact" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="idprod" target="swaprod">
-          <mxGeometry relative="1" as="geometry">
+        <mxCell id="e16" edge="1" parent="1" source="idprod" style="endArrow=classic;html=1;fontSize=11;" value="terraform apply and uploads the artifact">
+          <mxGeometry relative="1" x="0.0113" as="geometry">
             <Array as="points">
-              <mxPoint x="1560" y="1120"/>
-              <mxPoint x="1560" y="360"/>
+              <mxPoint x="1560" y="1120" />
+              <mxPoint x="1560" y="360" />
             </Array>
+            <mxPoint x="500" y="260" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="e17" value="reads the state" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="idplan" target="state">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e17" edge="1" parent="1" source="idplan" style="endArrow=classic;html=1;fontSize=11;" target="state" value="reads the state">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e18" value="dev state" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="iddev" target="state">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e18" edge="1" parent="1" source="iddev" style="endArrow=classic;html=1;fontSize=11;" target="state" value="dev state">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e19" value="prod state" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="idprod" target="state">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e19" edge="1" parent="1" source="idprod" style="endArrow=classic;html=1;fontSize=11;" target="state" value="prod state">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

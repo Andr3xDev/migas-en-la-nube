@@ -54,6 +54,29 @@ resource "azurerm_monitor_metric_alert" "availability" {
   }
 }
 
+resource "azurerm_monitor_metric_alert" "traffic_spike" {
+  name                = "alert-${var.name}-traffic"
+  resource_group_name = var.resource_group_name
+  description         = "More than ${var.traffic_spike_threshold} API requests in the evaluation window."
+  scopes              = [var.app_insights_id]
+  # Informational notice (traffic above design), not a failure.
+  severity    = 3
+  frequency   = var.traffic_spike_frequency
+  window_size = var.traffic_spike_window
+
+  criteria {
+    metric_namespace = "microsoft.insights/components"
+    metric_name      = "requests/count"
+    aggregation      = "Count"
+    operator         = "GreaterThan"
+    threshold        = var.traffic_spike_threshold
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.this.id
+  }
+}
+
 resource "azurerm_monitor_metric_alert" "server_errors" {
   name                = "alert-${var.name}-5xx"
   resource_group_name = var.resource_group_name

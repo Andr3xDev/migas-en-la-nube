@@ -12,6 +12,7 @@ Estos son los entregables de diseño del proyecto del curso; el equipo los rende
 | Estimación de costos | [hld.md](hld.md) sección 8, más la calculadora y el Excel (externos, a cargo del equipo) |
 | Diseño de despliegue | [despliegue.md](despliegue.md) |
 | Código en GitHub | [../README.md](../README.md) |
+| Prueba de carga | [hld.md](hld.md) sección 6 y [../load/README.md](../load/README.md) |
 | Presentación | Externa (a cargo del equipo) |
 
 ## Orden sugerido para el PDF

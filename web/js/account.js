@@ -107,6 +107,8 @@ async function main() {
     window.location.assign("/login.html");
     return;
   }
+  // nav.js sends admins to /admin/; skip the customer API calls meanwhile.
+  if (isAdmin()) return;
 
   const ordersContainer = document.getElementById("orders");
   const favoritesContainer = document.getElementById("favorites");

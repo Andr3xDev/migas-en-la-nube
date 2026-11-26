@@ -35,7 +35,7 @@ def test_retry_when_every_attempt_conflicts_raises_conflict_error():
 
     with pytest.raises(ConflictError):
         retry_on_conflict(operation)
-    assert len(calls) == MAX_CONFLICT_ATTEMPTS == 5
+    assert len(calls) == MAX_CONFLICT_ATTEMPTS
 
 
 def test_retry_when_other_error_propagates_without_retrying():

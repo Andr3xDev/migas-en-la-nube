@@ -3,9 +3,9 @@ from azure.cosmos.exceptions import CosmosAccessConditionFailedError, CosmosReso
 
 from app.adapters.cosmos.users import CosmosUserRepository, to_document
 from app.domain.errors import ConcurrencyConflictError, ConflictError
-from app.domain.models import User
+from app.domain.models import ADMIN_ROLE, User
 
-USER = User(id="u1", email="ana@example.com", password_hash="hash", role="admin", etag="e1")
+USER = User(id="u1", email="ana@example.com", password_hash="hash", role=ADMIN_ROLE, etag="e1")
 
 
 class FakeContainer:
@@ -46,11 +46,11 @@ def test_get_by_email_defaults_favorites_to_empty_for_legacy_documents():
     assert CosmosUserRepository(container).get_by_email(USER.email).favorites == []
 
 
-def test_create_and_replace_keep_favorites():
-    favorites = User(**{**USER.__dict__, "favorites": ["torta", "croissant"]})
+def test_create_and_replace_round_trip_the_user_with_favorites():
+    user = User(**{**USER.__dict__, "favorites": ["torta", "croissant"]})
     repository = CosmosUserRepository(FakeContainer())
-    assert repository.create(favorites).favorites == ["torta", "croissant"]
-    assert repository.replace(favorites).favorites == ["torta", "croissant"]
+    assert repository.create(user) == user
+    assert repository.replace(user) == User(**{**user.__dict__, "etag": "e2"})
 
 
 def test_replace_maps_412_to_concurrency_conflict():
@@ -58,7 +58,6 @@ def test_replace_maps_412_to_concurrency_conflict():
         CosmosUserRepository(FakeContainer(stale=True)).replace(USER)
 
 
-def test_create_round_trips_and_maps_409_to_conflict():
-    assert CosmosUserRepository(FakeContainer()).create(USER) == USER
+def test_create_maps_409_to_conflict():
     with pytest.raises(ConflictError):
         CosmosUserRepository(FakeContainer(exists=True)).create(USER)

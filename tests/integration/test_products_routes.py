@@ -1,19 +1,18 @@
 import pytest
 
+from app.adapters.memory.products import MemoryProductRepository
+from app.api.deps import get_product_repository
+from app.domain.models import Product, Variant
+
 
 @pytest.fixture
 def repo(client):
-    from app.adapters.memory.products import MemoryProductRepository
-    from app.api.deps import get_product_repository
-
     repository = MemoryProductRepository()
     client.app.dependency_overrides[get_product_repository] = lambda: repository
     return repository
 
 
 def make_product(product_id: str, stock: int = 5):
-    from app.domain.models import Product, Variant
-
     return Product(
         id=product_id,
         name="Croissant",

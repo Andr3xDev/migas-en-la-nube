@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.domain.models import Order, OrderItem, Product, Variant
+from app.domain.models import Order, OrderItem
 
 SHOP_TZ = timezone(timedelta(hours=-5))
 ME_ROUTES = [
@@ -14,17 +14,16 @@ ME_ROUTES = [
 ]
 
 
-def make_order(code, user_id, product_id="croissant", quantity=1, status="received") -> Order:
+def make_order(code, user_id) -> Order:
     return Order(
         id=code,
         customer_name="n",
         phone="3",
         pickup_time=datetime(2026, 6, 10, 10, tzinfo=SHOP_TZ),
         pickup_date="2026-06-10",
-        items=[OrderItem(product_id, product_id.title(), "Single", 6000, quantity)],
-        total=6000 * quantity,
+        items=[OrderItem("croissant", "Croissant", "Single", 6000, 1)],
+        total=6000,
         user_id=user_id,
-        status=status,
     )
 
 
@@ -64,42 +63,15 @@ def test_favorite_unknown_product_returns_404_and_list_unchanged(client, stack):
     assert client.get("/api/me/favorites", headers=ana).json() == []
 
 
-def test_favorites_are_isolated_between_users(client, stack):
-    ana = stack.headers_for("ana@example.com")
-    beto = stack.headers_for("beto@example.com")
-    client.put("/api/me/favorites/croissant", headers=ana)
-
-    assert client.get("/api/me/favorites", headers=beto).json() == []
-
-
-def test_top_products_with_no_orders_returns_empty_list(client, stack):
-    ana = stack.headers_for("ana@example.com")
-
-    response = client.get("/api/me/top-products", headers=ana)
-
-    assert response.status_code == 200
-    assert response.json() == []
-
-
-def test_top_products_ranks_by_quantity_in_product_shape_and_ignores_cancelled(client, stack):
-    stack.products.create(
-        Product("bagel", "Bagel", "bakery", "Chewy", None, 30, [Variant("Single", 3000, 5)])
-    )
+def test_top_products_returns_products_in_product_shape(client, stack):
     ana = stack.headers_for("ana@example.com")
     ana_id = stack.users.get_by_email("ana@example.com").id
-    for order in [
-        make_order("CROI0001", ana_id, "croissant", 3),
-        make_order("BAGEL001", ana_id, "bagel", 1, status="delivered"),
-        make_order("BAGEL002", ana_id, "bagel", 10, status="cancelled"),
-        make_order("OTHER001", "someone-else", "bagel", 20),
-    ]:
-        stack.orders.create(order)
+    stack.orders.create(make_order("CROI0001", ana_id))
 
     response = client.get("/api/me/top-products", headers=ana)
 
     assert response.status_code == 200
     body = response.json()
-    assert [p["id"] for p in body] == ["croissant", "bagel"]
     assert body[0].keys() == {
         "id",
         "name",

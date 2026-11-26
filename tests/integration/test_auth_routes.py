@@ -4,6 +4,7 @@ import jwt
 import pytest
 
 from app.api.deps import get_now
+from app.domain.models import ADMIN_ROLE, CUSTOMER_ROLE
 
 SHOP_TZ = timezone(timedelta(hours=-5))
 NOW = datetime(2026, 6, 10, 12, 0, tzinfo=SHOP_TZ)
@@ -22,12 +23,12 @@ def stack(stack, client):
 
 
 def expired_token(key: str) -> str:
-    claims = {"sub": "u1", "email": "a@example.com", "role": "customer"}
+    claims = {"sub": "u1", "email": "a@example.com", "role": CUSTOMER_ROLE}
     return jwt.encode({**claims, "exp": datetime.now(UTC) - timedelta(minutes=1)}, key)
 
 
 def forged_token(key: str) -> str:
-    claims = {"sub": "u1", "email": "a@example.com", "role": "admin"}
+    claims = {"sub": "u1", "email": "a@example.com", "role": ADMIN_ROLE}
     return jwt.encode({**claims, "exp": datetime.now(UTC) + timedelta(hours=1)}, f"not-{key}")
 
 

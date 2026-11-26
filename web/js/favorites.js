@@ -5,7 +5,7 @@ import { createIconButton } from "./icons.js";
 export async function loadFavorites() {
   if (!getToken()) return null;
   try {
-    return new Set(await apiFetch("/api/me/favorites"));
+    return new Set(await apiFetch("/api/me/favorites", { redirectOnUnauthorized: false }));
   } catch {
     return null;
   }

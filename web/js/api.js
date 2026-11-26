@@ -13,7 +13,7 @@ export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-export async function apiFetch(path, { method = "GET", body } = {}) {
+export async function apiFetch(path, { method = "GET", body, redirectOnUnauthorized = true } = {}) {
   const headers = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
   const token = getToken();
@@ -35,7 +35,8 @@ export async function apiFetch(path, { method = "GET", body } = {}) {
     // Drop the stale token so a retry goes out as a guest.
     localStorage.removeItem(TOKEN_KEY);
     // Only login-required routes redirect; guest-capable ones (checkout) show the error instead.
-    if (LOGIN_REQUIRED_PREFIXES.some((prefix) => path.startsWith(prefix))) {
+    // Optional /api/me calls on public pages opt out so an expired token just turns the page into guest mode.
+    if (redirectOnUnauthorized && LOGIN_REQUIRED_PREFIXES.some((prefix) => path.startsWith(prefix))) {
       window.location.assign("/login.html");
       // Never settle so callers do not flash an error while the page navigates.
       return new Promise(() => {});

@@ -79,8 +79,3 @@ export const lineKey = (item) => `${item.productId}\u0000${item.variantName}`;
 export function getTotal(items = load()) {
   return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 }
-
-export function clearCart() {
-  localStorage.removeItem(CART_KEY);
-  window.dispatchEvent(new Event(CART_CHANGED_EVENT));
-}

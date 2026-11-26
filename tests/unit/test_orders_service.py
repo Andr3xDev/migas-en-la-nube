@@ -116,6 +116,57 @@ def test_create_order_outside_business_hours_raises_rule_violation(products, ord
     assert orders.list_by_date(DAY) == []
 
 
+def test_create_order_at_opening_time_is_accepted(products, orders):
+    products.create(make_product())
+
+    order = place(
+        products, orders, order_for(local(6, 0), ("croissant", "Single", 1)), now=local(4)
+    )
+
+    assert order.pickup_time == local(6, 0)
+
+
+def test_create_order_converts_utc_pickup_to_shop_time_for_hours_and_partition(products, orders):
+    products.create(make_product())
+    pickup_utc = datetime.fromisoformat("2026-06-11T01:00:00+00:00")
+
+    order = place(products, orders, order_for(pickup_utc, ("croissant", "Single", 1)))
+
+    assert order.pickup_date == DAY
+    assert order.pickup_time == local(20)
+    assert order.pickup_time.utcoffset() == timedelta(hours=-5)
+
+
+def test_create_order_with_utc_pickup_before_opening_in_shop_time_raises_rule_violation(
+    products, orders
+):
+    products.create(make_product())
+    pickup_utc = datetime.fromisoformat("2026-06-10T10:30:00+00:00")
+
+    with pytest.raises(RuleViolationError):
+        place(products, orders, order_for(pickup_utc, ("croissant", "Single", 1)), now=local(4))
+    assert orders.list_by_date(DAY) == []
+
+
+def test_create_order_total_sums_every_line_across_products(products, orders):
+    products.create(make_product())
+    loaf_and_half = [Variant("Loaf", 4500, 10), Variant("Half", 2500, 10)]
+    products.create(Product("bread", "Bread", "bakery", "Crusty", None, 90, loaf_and_half))
+
+    order = place(
+        products,
+        orders,
+        order_for(
+            local(12, 10),
+            ("croissant", "Single", 2),
+            ("bread", "Loaf", 1),
+            ("bread", "Half", 3),
+        ),
+    )
+
+    assert order.total == 2 * 6000 + 4500 + 3 * 2500
+
+
 def test_create_order_with_pickup_without_timezone_raises_rule_violation(products, orders):
     products.create(make_product())
     naive_pickup = datetime(2026, 6, 10, 13, 0)
@@ -141,13 +192,23 @@ def test_create_order_beyond_pickup_horizon_raises_rule_violation(products, orde
     assert stock_of(products) == 5
 
 
+def test_create_order_at_exactly_the_pickup_horizon_is_accepted(products, orders):
+    products.create(make_product())
+    last_pickup = NOON + orders_service.MAX_PICKUP_HORIZON
+
+    order = place(products, orders, order_for(last_pickup, ("croissant", "Single", 1)))
+
+    assert order.pickup_time == last_pickup
+
+
+@pytest.mark.parametrize("pickup", [local(12, 30), local(13, 29)])
 def test_create_order_made_to_order_before_prep_time_is_rejected_and_stock_unchanged(
-    products, orders
+    products, orders, pickup
 ):
     products.create(make_product(stock=0, prep=90))
 
     with pytest.raises(RuleViolationError):
-        place(products, orders, order_for(local(12, 30), ("croissant", "Single", 1)))
+        place(products, orders, order_for(pickup, ("croissant", "Single", 1)))
     assert stock_of(products) == 0 and orders.list_by_date(DAY) == []
 
 

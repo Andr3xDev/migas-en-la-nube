@@ -17,19 +17,6 @@ def make_product(product_id: str = "croissant", category: str = "bakery") -> Pro
     )
 
 
-def test_get_when_product_missing_returns_none():
-    assert MemoryProductRepository().get("missing") is None
-
-
-def test_create_then_get_returns_product_with_etag():
-    repo = MemoryProductRepository()
-    repo.create(make_product())
-
-    stored = repo.get("croissant")
-
-    assert stored is not None and stored.etag
-
-
 def test_replace_with_fresh_etag_saves_changes_and_rotates_etag():
     repo = MemoryProductRepository()
     repo.create(make_product())

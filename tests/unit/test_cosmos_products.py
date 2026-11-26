@@ -105,18 +105,32 @@ def test_move_keeps_original_error_when_compensating_delete_also_fails():
         CosmosProductRepository(container).move(moved(PRODUCT, "other"))
 
 
-def test_delete_and_move_map_missing_document_to_not_found():
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda repository: repository.delete("p1"),
+        lambda repository: repository.move(moved(PRODUCT, "other")),
+    ],
+    ids=["delete", "move"],
+)
+def test_delete_and_move_map_missing_document_to_not_found(operation):
     class VanishingContainer(FakeContainer):
         def delete_item(self, item, partition_key):
             raise CosmosResourceNotFoundError(status_code=404, message="gone")
 
     container = VanishingContainer()
     container.seed(PRODUCT)
-    repository = CosmosProductRepository(container)
     with pytest.raises(NotFoundError):
-        repository.delete("p1")
+        operation(CosmosProductRepository(container))
+
+
+def test_replace_maps_404_to_not_found():
+    class MissingContainer(FailingContainer):
+        def replace_item(self, *args, **kwargs):
+            raise CosmosResourceNotFoundError(status_code=404, message="gone")
+
     with pytest.raises(NotFoundError):
-        repository.move(moved(PRODUCT, "other"))
+        CosmosProductRepository(MissingContainer()).replace(PRODUCT)
 
 
 def test_move_with_stale_etag_raises_concurrency_conflict():

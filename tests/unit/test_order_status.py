@@ -38,7 +38,7 @@ def add_order(
         Order(
             id=order_id,
             customer_name="Ana",
-            phone="300",
+            phone="3001234567",
             pickup_time=datetime.fromisoformat(pickup_date).replace(hour=hour, tzinfo=SHOP_TZ),
             pickup_date=pickup_date,
             items=[OrderItem("croissant", "Croissant", "Single", 6000, 2)],

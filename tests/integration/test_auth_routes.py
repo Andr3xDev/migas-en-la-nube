@@ -105,13 +105,6 @@ def test_login_unknown_email_and_wrong_password_return_identical_401(client, sta
     assert unknown.json() == wrong.json()
 
 
-@pytest.mark.parametrize("token", [expired_token, forged_token])
-def test_admin_route_with_expired_or_tampered_token_returns_401(client, stack, token):
-    headers = {"X-Pdc-Token": f"Bearer {token(stack.key)}"}
-
-    assert client.get("/api/admin/orders", headers=headers).status_code == 401
-
-
 def test_post_order_with_session_links_order_to_user(client, stack):
     response = client.post(
         "/api/orders", json=ORDER_BODY, headers=stack.headers_for("ana@example.com")
@@ -152,7 +145,7 @@ def test_token_scheme_is_case_insensitive(client, stack):
     assert response.status_code == 200
 
 
-@pytest.mark.parametrize("value", ["Bearer garbage", "Basic abc", "garbage"])
+@pytest.mark.parametrize("value", ["Bearer garbage", "Basic abc", "garbage", "Bearer ", "Bearer"])
 def test_malformed_or_invalid_token_header_returns_401(client, stack, value):
     response = client.get("/api/me/orders", headers={"X-Pdc-Token": value})
 

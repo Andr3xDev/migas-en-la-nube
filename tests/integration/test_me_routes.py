@@ -18,7 +18,7 @@ def make_order(code, user_id) -> Order:
     return Order(
         id=code,
         customer_name="n",
-        phone="3",
+        phone="3001234567",
         pickup_time=datetime(2026, 6, 10, 10, tzinfo=SHOP_TZ),
         pickup_date="2026-06-10",
         items=[OrderItem("croissant", "Croissant", "Single", 6000, 1)],
@@ -72,6 +72,7 @@ def test_top_products_returns_products_in_product_shape(client, stack):
 
     assert response.status_code == 200
     body = response.json()
+    assert [p["id"] for p in body] == ["croissant"]
     assert body[0].keys() == {
         "id",
         "name",

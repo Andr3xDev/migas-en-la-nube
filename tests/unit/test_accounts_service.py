@@ -44,7 +44,7 @@ def place(orders, code, user_id, lines, hour=10, status="received"):
         Order(
             id=code,
             customer_name="n",
-            phone="3",
+            phone="3001234567",
             pickup_time=datetime(2026, 6, 10, hour, tzinfo=SHOP_TZ),
             pickup_date="2026-06-10",
             items=[OrderItem(pid, pid, "S", 100, qty) for pid, qty in lines],

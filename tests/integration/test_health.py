@@ -30,13 +30,11 @@ def test_get_health_with_no_env_or_credentials_returns_contract_body(make_client
     assert isinstance(body["environment"], str) and body["environment"]
 
 
-def test_get_health_with_environment_override_returns_it(make_client):
-    response = make_client(PDC_ENVIRONMENT="dev").get(HEALTH_PATH)
+@pytest.mark.parametrize(
+    ("variable", "field", "value"),
+    [("PDC_ENVIRONMENT", "environment", "dev"), ("PDC_VERSION", "version", "abc1234")],
+)
+def test_get_health_with_env_override_returns_it(make_client, variable, field, value):
+    response = make_client(**{variable: value}).get(HEALTH_PATH)
 
-    assert response.json()["environment"] == "dev"
-
-
-def test_get_health_with_version_override_returns_it(make_client):
-    response = make_client(PDC_VERSION="abc1234").get(HEALTH_PATH)
-
-    assert response.json()["version"] == "abc1234"
+    assert response.json()[field] == value

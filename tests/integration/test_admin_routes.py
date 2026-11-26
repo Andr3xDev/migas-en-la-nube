@@ -220,12 +220,13 @@ def test_list_orders_returns_only_requested_day_earliest_first_with_contact(clie
     body = response.json()
     assert [o["code"] for o in body] == ["EARLY000", "LATE0000", "ORDER001"]
     assert (body[0]["customerName"], body[0]["phone"]) == ("Ana", "3000000000")
-
-
-def test_list_orders_returns_pickup_date_for_status_changes(client, admin):
-    body = client.get(f"/api/admin/orders?date={DAY}", headers=admin).json()
-
     assert {o["pickupDate"] for o in body} == {DAY}
+
+
+def test_list_orders_with_date_and_history_scope_returns_the_day_list(client, admin):
+    response = client.get(f"/api/admin/orders?date={DAY}&scope=history", headers=admin)
+
+    assert [o["code"] for o in response.json()] == ["EARLY000", "LATE0000", "ORDER001"]
 
 
 def test_list_orders_defaults_to_open_statuses_earliest_first_on_any_date(client, admin):
@@ -289,3 +290,25 @@ def test_change_status_with_missing_date_returns_422(client, admin):
     )
 
     assert response.status_code == 422
+
+
+def test_cancel_order_over_http_restores_stock_and_second_cancel_returns_409(client, stack, admin):
+    order = client.post(
+        "/api/orders",
+        json={
+            "customerName": "Ana",
+            "phone": "3001234567",
+            "pickupTime": f"{DAY}T17:00:00-05:00",
+            "items": [{"productId": "croissant", "variantName": "Single", "quantity": 2}],
+        },
+    )
+    assert order.status_code == 201
+    assert stack.products.get("croissant").variants[0].stock == 3
+    url = f"/api/admin/orders/{order.json()['code']}/status?date={DAY}"
+
+    first = client.patch(url, json={"status": "cancelled"}, headers=admin)
+    second = client.patch(url, json={"status": "cancelled"}, headers=admin)
+
+    assert first.status_code == 200
+    assert stack.products.get("croissant").variants[0].stock == 5
+    assert second.status_code == 409

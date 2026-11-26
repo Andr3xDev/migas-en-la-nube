@@ -51,7 +51,8 @@ const visitScenarios = {
     executor: "ramping-arrival-rate",
     startRate: 1,
     timeUnit: "1s",
-    preAllocatedVUs: 20,
+    // Too few preallocated VUs made k6 drop iterations at ramp steps while it allocated more.
+    preAllocatedVUs: 100,
     maxVUs: 200,
     stages: [
       { target: 5, duration: "30s" },
@@ -97,6 +98,8 @@ function buildScenarios() {
 function buildThresholds(scenarios) {
   const thresholds = {};
   for (const name of MEASURED_SCENARIOS.filter((measured) => measured in scenarios)) {
+    // Registers the sub-metric so the summary can print the request count of the scenario.
+    thresholds[`http_reqs{scenario:${name}}`] = ["count>=0"];
     thresholds[`http_req_failed{scenario:${name}}`] = ["rate<0.01"];
     thresholds[`http_req_duration{scenario:${name}}`] = ["p(95)<1000"];
     // Dropped iterations mean the target rate was not reached, so the run must not pass.
@@ -206,9 +209,10 @@ function textSummary(data) {
   for (const name of MEASURED_SCENARIOS) {
     const duration = metricValues(data, `http_req_duration{scenario:${name}}`);
     const failed = metricValues(data, `http_req_failed{scenario:${name}}`);
+    const counted = metricValues(data, `http_reqs{scenario:${name}}`);
     if (!duration || !failed) continue;
     lines.push(
-      `Requests (${name}): ${duration.count}`,
+      `Requests (${name}): ${counted ? counted.count : "n/d"}`,
       `Latency ms: avg ${duration.avg.toFixed(0)}, p90 ${duration["p(90)"].toFixed(0)}, ` +
         `p95 ${duration["p(95)"].toFixed(0)}, max ${duration.max.toFixed(0)}`,
       `Failed requests: ${(failed.rate * 100).toFixed(2)} %`,

@@ -1,5 +1,6 @@
 # Manual load test against a deployed environment. Prod runs read-only scenarios; the orders
 # scenario creates real orders, so it is refused on prod at job level, before any approval is requested.
+# Prod runs only from main. No Azure identity: it only calls the public site URL.
 name: load
 
 on:
@@ -28,12 +29,11 @@ permissions:
 jobs:
   load:
     name: load
-    if: "!(inputs.environment == 'prod' && inputs.scenario == 'orders')"
+    if: "!(inputs.environment == 'prod' && inputs.scenario == 'orders') && (inputs.environment != 'prod' || github.ref == 'refs/heads/main')"
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     permissions:
       contents: read
-      id-token: write
     # Own group: sharing the deploy group could cancel a deploy that is pending behind this run.
     concurrency:
       group: load-${{ inputs.environment }}
@@ -42,19 +42,12 @@ jobs:
       ENVIRONMENT: ${{ inputs.environment }}
       SCENARIO: ${{ inputs.scenario }}
       RESULTS_DIR: load-results
+      # Update both URLs if a Static Web App is recreated: the default hostname changes.
+      BASE_URL: ${{ inputs.environment == 'prod' && 'https://salmon-stone-0be061010.6.azurestaticapps.net' || 'https://wonderful-field-023b47e10.4.azurestaticapps.net' }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: azure/login@v3
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Resolve site URL
-        run: |
-          host="$(az staticwebapp show --name "swa-pdc-$ENVIRONMENT" --resource-group "rg-pdc-$ENVIRONMENT" --query defaultHostname -o tsv)"
-          echo "BASE_URL=https://$host" >> "$GITHUB_ENV"
       - uses: grafana/setup-k6-action@v1
         with:
           k6-version: "1.8.3"
@@ -82,11 +75,11 @@ jobs:
 
   guard:
     name: guard
-    if: inputs.environment == 'prod' && inputs.scenario == 'orders'
+    if: inputs.environment == 'prod' && (inputs.scenario == 'orders' || github.ref != 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions: {}
     steps:
-      - name: Refuse write scenario on prod
+      - name: Refuse unsafe run on prod
         run: |
-          echo "::error::The orders scenario creates real orders and runs only on dev"
+          echo "::error::On prod the orders scenario is refused (it creates real orders) and the workflow runs only from main"
           exit 1

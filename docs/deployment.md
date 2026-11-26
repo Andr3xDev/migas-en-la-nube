@@ -4,23 +4,9 @@ Todo llega a Azure por GitHub Actions: nada se despliega a mano. Este documento 
 
 ## Etapas del pipeline
 
-```mermaid
-flowchart TD
-    PR["Pull request"] --> Lint["lint<br/>ruff, terraform fmt"]
-    Lint --> Sec["security<br/>Checkov, CodeQL"]
-    Lint --> TfPlan["terraform<br/>plan de dev y prod (OIDC de solo lectura)"]
-    Sec --> Test["test<br/>pytest, cobertura mínima 70 %"]
-    Test --> Build["build<br/>empaqueta api/ y web/"]
+![CI/CD pipeline](diagrams/pipeline.png)
 
-    Push["Push a dev o main<br/>(merge del PR)"] --> B["build<br/>artefactos api y web"]
-    B --> Gate{"Rama"}
-    Gate -->|"dev: environment dev, sin aprobación"| Apply
-    Gate -->|"main: environment prod, requiere aprobación"| Apply
-    Apply["deploy: login OIDC<br/>terraform apply"] --> Seeds["seed de productos<br/>y del administrador"]
-    Seeds --> Upload["sube web y api a SWA"]
-    Upload --> Smoke["smoke: espera /api/health<br/>colección Bruno"]
-    Smoke -->|"solo main"| Release["release: artefacto release-vN (90 días)<br/>etiqueta vN"]
-```
+Pipeline de CI/CD. Fuente editable: [pipeline.drawio](diagrams/pipeline.drawio).
 
 El workflow `ci` corre en el pull request y el workflow `deploy` corre al hacer merge. El despliegue no repite lint ni pruebas.
 
@@ -45,6 +31,8 @@ El workflow `ci` corre en el pull request y el workflow `deploy` corre al hacer 
 | dev | `dev` | `dev` | Free | No | No |
 | prod | `main` | `prod` | Standard | Revisor requerido | Sí |
 
+URLs: prod https://salmon-stone-0be061010.6.azurestaticapps.net y dev https://wonderful-field-023b47e10.4.azurestaticapps.net. Las ejecuciones están en [GitHub Actions](https://github.com/Andr3xDev/migas-en-la-nube/actions).
+
 Cada ambiente tiene su propio grupo de recursos (`rg-pdc-dev` y `rg-pdc-prod`), estado de Terraform (`tfstate-dev` y `tfstate-prod`), cuenta de Cosmos DB, cuenta de Storage e identidad de despliegue.
 
 Un cambio se promueve así:
@@ -54,7 +42,7 @@ Un cambio se promueve así:
 3. Con dev verificado, se abre un pull request de `dev` hacia `main`. `ci` corre otra vez.
 4. Al hacer merge a `main`, `deploy` queda detenido en el environment `prod` hasta que el revisor aprueba. Luego despliega prod, corre el smoke de solo lectura y publica el release `vN`.
 
-En GitHub existe un ruleset `general` sobre `dev` y `main` que impide borrar la rama y hacer push forzado, exige pull request y exige checks. El ruleset existe, pero su estado de aplicación está pendiente de verificar por el equipo. Los checks requeridos deben ser los nombres de los jobs de `ci.yml`: `lint`, `security`, `test`, `build` y `terraform`. Como `deploy.yml` no vuelve a correr los tests, esta compuerta del pull request es lo que impide un despliegue roto.
+En GitHub existe un ruleset `general` sobre `dev` y `main` que impide borrar la rama y hacer push forzado, exige pull request y exige checks. El ruleset está activo en `main` y `dev`, con los checks requeridos. Los checks requeridos deben ser los nombres de los jobs de `ci.yml`: `lint`, `security`, `test`, `build` y `terraform`. Como `deploy.yml` no vuelve a correr los tests, esta compuerta del pull request es lo que impide un despliegue roto.
 
 ## Ramas y disparadores
 
@@ -64,19 +52,22 @@ En GitHub existe un ruleset `general` sobre `dev` y `main` que impide borrar la 
 | Push a `dev` (`deploy.yml`) | `build` y `deploy` en el environment `dev`: Terraform, seeds, subida y smoke completo. No hay `release` |
 | Push a `main` (`deploy.yml`) | `build`, `deploy` en el environment `prod` tras la aprobación, y `release` |
 | Ejecución manual de `rollback.yml` | Solo desde `main`, con el input `tag`. Aprobación de `prod`, vuelve a publicar el artefacto `release-<tag>` y corre el smoke de solo lectura |
+| Ejecución manual de `load.yml` | Inputs `environment` y `scenario`. `prod` pide aprobación del environment y corre solo desde `main`; el escenario `orders` se rechaza en `prod`. Solo llama a la URL pública del sitio, sin identidad de Azure |
 | Ejecución manual de `destroy.yml` | Inputs `environment` y `confirm`. Destruye con `terraform destroy` el ambiente elegido |
 
 `deploy.yml` usa un grupo de concurrencia por rama (`deploy-dev` o `deploy-main`) sin cancelar ejecuciones en curso. `rollback.yml` y el destroy de prod comparten el grupo `deploy-main`, así que esperan a un despliegue que esté corriendo.
 
 ## Secretos e identidades
 
-GitHub Actions entra a Azure con OIDC y `azure/login`, sin contraseñas guardadas. Cada identidad solo acepta el `subject` que le corresponde, y los permisos por identidad están en la sección 4 del HLD y en el diagrama [red-seguridad](diagramas/red-seguridad.md).
+GitHub Actions entra a Azure con OIDC y `azure/login`, sin contraseñas guardadas. Cada identidad solo acepta el `subject` que le corresponde, y los permisos por identidad están en la sección 4 del HLD y en el diagrama [network-security](diagrams/network-security.drawio).
 
 | Identidad | `subject` de GitHub | Workflow |
 | --- | --- | --- |
 | `id-pdc-ci-plan` | `pull_request` | `ci`, job `terraform` |
 | `id-pdc-deploy-dev` | `environment:dev` | `deploy` y `destroy` de dev |
 | `id-pdc-deploy-prod` | `environment:prod` | `deploy`, `rollback` y `destroy` de prod |
+
+`load.yml` no usa ninguna identidad: no inicia sesión en Azure.
 
 Variables y secretos de GitHub:
 
@@ -98,23 +89,11 @@ Los IDs son variables y no secretos porque no sirven sin el token OIDC del repos
 | --- | --- |
 | La aplicación | `rollback.yml` con el tag de una versión anterior. No corre Terraform ni cambia datos |
 | La infraestructura | Revertir el commit en git y dejar que el pipeline aplique Terraform de nuevo |
-| Los datos | Restauración de Cosmos DB a un punto en el tiempo (HLD, sección 5). El simulacro de restauración está pendiente |
+| Los datos | Restauración de Cosmos DB a un punto en el tiempo (HLD, sección 5). El simulacro de restauración no se ejecutó dentro del plazo del proyecto; es la primera tarea operativa tras el lanzamiento |
 
-```mermaid
-flowchart TD
-    Start["Ejecutar rollback.yml desde main<br/>con el tag, por ejemplo v12"] --> Approve["Aprobación del environment prod"]
-    Approve --> Check{"El tag cumple ^v[0-9]+$ ?"}
-    Check -->|no| Fail1["Falla"]
-    Check -->|sí| Login["az login (OIDC)"]
-    Login --> Find{"Hay un deploy exitoso en main<br/>con ese número de ejecución?"}
-    Find -->|no| Fail2["Falla: tag desconocido o fuera de las últimas 200 ejecuciones"]
-    Find -->|sí| Download{"El artefacto release-vN sigue existiendo?"}
-    Download -->|"no, venció a los 90 días"| Fail3["Falla"]
-    Download -->|sí| Key["Lee el token y el host de la SWA"]
-    Key --> Upload["Sube dist/web y dist/api a la SWA de prod"]
-    Upload --> Smoke["Espera /api/health y corre el smoke de solo lectura"]
-    Smoke --> Done["Prod sirve el build anterior<br/>PDC_VERSION sigue mostrando el SHA más nuevo"]
-```
+![Application rollback](diagrams/rollback.png)
+
+Rollback de la aplicación. Fuente editable: [rollback.drawio](diagrams/rollback.drawio).
 
 Pasos para el rollback de la aplicación:
 

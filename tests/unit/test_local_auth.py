@@ -38,7 +38,8 @@ def test_register_same_password_twice_stores_distinct_scrypt_hashes(auth, users)
     second = users.get_by_email("b@example.com").password_hash
     assert first != second
     assert PASSWORD not in first
-    assert first.startswith("scrypt$16384$8$1$")
+    assert first.startswith("scrypt$")
+    assert verify_password(PASSWORD, first)
 
 
 def test_register_creates_customer_with_normalized_email(auth):

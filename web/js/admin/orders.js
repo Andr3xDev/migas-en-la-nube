@@ -27,6 +27,7 @@ const feedback = document.getElementById("feedback");
 
 let view = UPCOMING;
 let orders = [];
+let latestRequest = 0;
 
 function createCell(content, className = "") {
   const cell = document.createElement("td");
@@ -183,7 +184,7 @@ function render() {
   if (isHistory && orders.length >= HISTORY_LIMIT) {
     const note = document.createElement("p");
     note.className = "orders-note";
-    note.textContent = `Se muestran los ${HISTORY_LIMIT} pedidos más recientes.`;
+    note.textContent = `Se muestran los ${HISTORY_LIMIT} más recientes; puede haber pedidos más antiguos.`;
     container.append(note);
   }
 }
@@ -202,12 +203,15 @@ async function loadOrders() {
   const query = dateInput.value
     ? `date=${encodeURIComponent(dateInput.value)}`
     : `scope=${view}`;
+  const requestId = ++latestRequest;
   try {
-    orders = await apiFetch(`/api/admin/orders?${query}`);
+    const loaded = await apiFetch(`/api/admin/orders?${query}`);
+    if (requestId !== latestRequest) return;
+    orders = loaded;
     render();
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
-    showMessage(container, error.message);
+    if (requestId === latestRequest) showMessage(container, error.message);
   }
 }
 

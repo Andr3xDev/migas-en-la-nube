@@ -307,8 +307,7 @@ footer p {
   transition: box-shadow var(--transition), transform var(--transition);
 }
 
-.product-item:hover,
-a.product-card:hover {
+.product-item:hover {
   box-shadow: var(--shadow-raised);
   transform: translateY(-2px);
 }
@@ -491,17 +490,9 @@ a.product-card:hover {
   border-bottom: 0;
 }
 
-.cart-table input {
-  width: 4.5rem;
-}
-
 .cart-table img {
   width: 4rem;
   border-radius: var(--radius-small);
-}
-
-.cart-table button + button {
-  margin-left: var(--space-2);
 }
 
 
@@ -1140,11 +1131,6 @@ main > section {
   box-shadow: var(--shadow);
 }
 
-main > section ul {
-  margin: 0 0 var(--space-3);
-  padding-left: var(--space-6);
-}
-
 main > section > div {
   display: grid;
   gap: var(--space-4);
@@ -1312,8 +1298,7 @@ input[type="date"] {
     animation: none !important;
   }
 
-  .product-item:hover,
-  a.product-card:hover {
+  .product-item:hover {
     transform: none;
   }
 }

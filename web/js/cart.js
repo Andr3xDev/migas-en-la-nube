@@ -50,7 +50,6 @@ export const getProductQuantity = (productId) =>
     .filter((item) => item.productId === productId)
     .reduce((sum, item) => sum + item.quantity, 0);
 
-// Returns false when the line cap trimmed or blocked the addition.
 function addItem({ productId, variantName, name, price }, quantity = 1) {
   const items = load();
   const existing = items.find((item) => sameLine(item, productId, variantName));

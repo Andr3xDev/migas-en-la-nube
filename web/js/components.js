@@ -1,11 +1,16 @@
 import { isAdmin } from "./auth.js";
-import { addProductVariant } from "./cart.js";
+import {
+  addProductVariant,
+  CART_CHANGED_EVENT,
+  getProductQuantity,
+  MAX_LINE_QUANTITY_MESSAGE,
+} from "./cart.js";
 import { createFavoriteButton } from "./favorites.js";
 import {
   availabilityBadgeClass,
   createProductImage,
-  formatAvailability,
   formatPeso,
+  formatVariantAvailability,
   isInStock,
 } from "./format.js";
 import { createIcon, createIconButton, createIconLink } from "./icons.js";
@@ -18,20 +23,16 @@ export function createProductCard(product, { favorites, headingLevel = 2, onAdd 
   const name = document.createElement(`h${headingLevel}`);
   name.textContent = product.name;
 
-  const availability = document.createElement("p");
-  availability.className = availabilityBadgeClass(
-    product.variants.every((variant) => isInStock(variant.availability)),
-  );
-  availability.textContent = product.variants
-    .map((variant) => formatAvailability(variant.availability))
-    .filter((text, index, all) => all.indexOf(text) === index)
-    .join(" / ");
-
-  link.append(createProductImage(product), name, availability);
-
   const lowest = product.variants.reduce((best, variant) =>
     variant.price < best.price ? variant : best,
   );
+  // Badge describes the variant "Agregar" adds, so it never hides that variant's real stock.
+  const availability = document.createElement("p");
+  availability.className = availabilityBadgeClass(isInStock(lowest.availability));
+  availability.textContent = formatVariantAvailability(lowest);
+
+  link.append(createProductImage(product), name, availability);
+
   const price = document.createElement("p");
   price.className = "card-price";
   price.textContent =
@@ -44,11 +45,26 @@ export function createProductCard(product, { favorites, headingLevel = 2, onAdd 
     label: `Agregar ${product.name} (${lowest.name}) al carrito`,
     variant: "primary",
     onClick: () => {
-      addProductVariant(product, lowest);
-      if (onAdd) onAdd(product);
-      else feedback.textContent = `Agregado: ${lowest.name}`;
+      const added = addProductVariant(product, lowest);
+      if (onAdd) onAdd(product, added);
+      else feedback.textContent = added ? `Agregado: ${lowest.name}` : MAX_LINE_QUANTITY_MESSAGE;
     },
   });
+
+  const inCart = document.createElement("p");
+  inCart.className = "in-cart";
+  const refreshInCart = () => {
+    const quantity = getProductQuantity(product.id);
+    inCart.hidden = quantity === 0;
+    inCart.textContent = `${quantity} en tu carrito`;
+  };
+  refreshInCart();
+  // Listeners of cards that left the page unregister themselves on the next cart change.
+  const onCartChanged = () => {
+    if (card.isConnected) refreshInCart();
+    else window.removeEventListener(CART_CHANGED_EVENT, onCartChanged);
+  };
+  window.addEventListener(CART_CHANGED_EVENT, onCartChanged);
 
   const actions = document.createElement("div");
   actions.className = "card-actions";
@@ -57,7 +73,7 @@ export function createProductCard(product, { favorites, headingLevel = 2, onAdd 
 
   const footer = document.createElement("div");
   footer.className = "product-footer";
-  footer.append(price, actions, feedback);
+  footer.append(price, actions, feedback, inCart);
 
   const card = document.createElement("div");
   card.className = "product-card product-item";

@@ -25,3 +25,21 @@ variable "alert_email" {
   description = "Email address that receives every alert."
   type        = string
 }
+
+variable "traffic_spike_threshold" {
+  description = "API requests in the window above which the traffic alert fires. About 5x the Saturday peak at 3x."
+  type        = number
+  default     = 1500
+}
+
+variable "traffic_spike_window" {
+  description = "Window the traffic alert counts requests over (ISO 8601 duration)."
+  type        = string
+  default     = "PT5M"
+}
+
+variable "traffic_spike_frequency" {
+  description = "How often the traffic alert is evaluated (ISO 8601 duration)."
+  type        = string
+  default     = "PT1M"
+}

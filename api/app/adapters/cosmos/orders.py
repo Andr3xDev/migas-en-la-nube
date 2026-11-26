@@ -110,21 +110,18 @@ class CosmosOrderRepository:
         )
         return [from_document(document) for document in documents]
 
-    def list_from(self, pickup_date: str) -> list[Order]:
+    def list_by_statuses(
+        self, statuses: list[str], newest_first: bool, limit: int | None = None
+    ) -> list[Order]:
+        top = "TOP @limit " if limit is not None else ""
+        direction = "DESC" if newest_first else "ASC"
+        parameters: list[dict[str, Any]] = [{"name": "@statuses", "value": statuses}]
+        if limit is not None:
+            parameters.append({"name": "@limit", "value": limit})
         documents = self._container.query_items(
-            "SELECT * FROM c WHERE c.pickupDate >= @date ORDER BY c.pickupTime",
-            parameters=[{"name": "@date", "value": pickup_date}],
-            enable_cross_partition_query=True,
-        )
-        return [from_document(document) for document in documents]
-
-    def list_before(self, pickup_date: str, limit: int) -> list[Order]:
-        documents = self._container.query_items(
-            "SELECT TOP @limit * FROM c WHERE c.pickupDate < @date ORDER BY c.pickupTime DESC",
-            parameters=[
-                {"name": "@date", "value": pickup_date},
-                {"name": "@limit", "value": limit},
-            ],
+            f"SELECT {top}* FROM c WHERE ARRAY_CONTAINS(@statuses, c.status) "
+            f"ORDER BY c.pickupTime {direction}",
+            parameters=parameters,
             enable_cross_partition_query=True,
         )
         return [from_document(document) for document in documents]

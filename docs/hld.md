@@ -1,10 +1,10 @@
-# HLD Pan de la Casa
+# HLD Migas en la Nube
 
 Nov 25, 2026 · @Andres
 
 ## 1. Contexto del negocio y alcance
 
-Pan de la Casa es una panadería de barrio con una sede que hoy recibe pedidos por teléfono y WhatsApp. La solución lleva esa operación a la nube con una tienda web para pedir y recoger en tienda, sobre Azure, serverless y con un costo de producción menor a USD 150 al mes.
+Migas en la Nube es una panadería de barrio con una sede que hoy recibe pedidos por teléfono y WhatsApp. La solución lleva esa operación a la nube con una tienda web para pedir y recoger en tienda, sobre Azure, serverless y con un costo de producción menor a USD 150 al mes.
 
 **Problema.** Los pedidos se pierden o se anotan mal, el cliente no sabe si un producto está disponible ni cuándo estará listo, y los fines de semana la demanda se triplica.
 
@@ -24,7 +24,7 @@ flowchart TB
     customer["Cliente registrado<br/>[Persona]<br/>Pide, ve su historial y sus favoritos"]
     admin["Administrador<br/>[Persona]<br/>Gestiona productos, imágenes y pedidos"]
 
-    system["Pan de la Casa<br/>[Sistema de software]<br/>Tienda web para pedir y recoger en tienda"]
+    system["Migas en la Nube<br/>[Sistema de software]<br/>Tienda web para pedir y recoger en tienda"]
 
     azure["Microsoft Azure<br/>[Sistema externo]<br/>Plataforma que aloja el sistema"]
     github["GitHub<br/>[Sistema externo]<br/>Repositorio y GitHub Actions"]
@@ -63,7 +63,7 @@ El sistema cubre 8 requisitos funcionales y los 6 no funcionales que pide el cas
 | RF5 | Registrarse e iniciar sesión con correo y contraseña | Cliente |
 | RF6 | Ver historial, marcar favoritos, volver a pedir y ver sus productos más pedidos | Cliente registrado |
 | RF7 | Crear y editar productos, variantes, precios, stock y tiempo de preparación, y subir la imagen del producto. Si dos administradores editan el mismo producto, el segundo recibe un conflicto (ETag) en lugar de pisar el cambio | Administrador |
-| RF8 | Ver los pedidos próximos (de hoy en adelante, el más cercano primero) y los históricos (anteriores a hoy, el más reciente primero, hasta 100), filtrar por un día y cambiar el estado del pedido | Administrador |
+| RF8 | Ver los pedidos próximos (recibidos, en preparación y listos, de cualquier fecha, el más cercano primero) y los históricos (entregados y cancelados, de cualquier fecha, el más reciente primero, hasta 100), filtrar por un día y cambiar el estado del pedido | Administrador |
 
 ### Requisitos no funcionales
 
@@ -74,7 +74,7 @@ El sistema cubre 8 requisitos funcionales y los 6 no funcionales que pide el cas
 | Seguridad | HTTPS, secretos fuera del código, mínimo privilegio | HTTPS por defecto, secretos generados por Terraform, una identidad por ambiente | Checkov y CodeQL en el pipeline, escaneo de secretos activado en el repositorio |
 | Respaldo | RPO 24 h y RTO 4 h | Respaldo continuo de 7 días en Cosmos DB y toda la infraestructura en Terraform | Procedimiento de restauración documentado (sección 5). Simulacro de restauración pendiente |
 | Escalabilidad | Soportar 3 veces la carga en temporada alta | Functions y Cosmos DB serverless escalan solos | Cálculo de capacidad en la sección 3 |
-| Observabilidad | Logs centralizados, métricas y al menos una alerta | Application Insights sobre Log Analytics, alertas de errores y de disponibilidad | Prueba de las alertas en la demo (pendiente) |
+| Observabilidad | Logs centralizados, métricas y al menos una alerta | Application Insights sobre Log Analytics, alertas de errores, de disponibilidad y de tráfico alto | Prueba de las alertas en la demo (pendiente) |
 
 ### Supuestos
 
@@ -117,7 +117,7 @@ flowchart LR
     Func -->|"logs JSON por petición<br/>correlation_id"| AI
     Probe -->|"GET /api/health cada 15 min"| Func
     Probe --> AI
-    AI -->|"alertas de disponibilidad y de errores 5xx"| Mail
+    AI -->|"alertas de disponibilidad, errores 5xx y tráfico alto"| Mail
 ```
 
 ### Servicios por capa
@@ -254,7 +254,7 @@ Los IDs de tenant, suscripción e identidades son variables de GitHub, no secret
 **Protecciones adicionales.**
 
 - Cabeceras de seguridad en el sitio: política de contenido (CSP) que solo permite scripts y estilos propios, `nosniff` y `frame-ancestors 'none'`. La interfaz pinta con `textContent`, nunca con `innerHTML`.
-- Validación de todas las entradas con Pydantic y límites: hasta 20 líneas por pedido, 50 unidades por línea, 100 caracteres en el nombre, 30 en el teléfono, contraseña de 8 a 1.024 caracteres, precio, stock y tiempo de preparación con tope.
+- Validación de todas las entradas con Pydantic y límites: hasta 20 líneas por pedido, 50 unidades por línea, 100 caracteres en el nombre, 10 dígitos en el teléfono, contraseña de 8 a 1.024 caracteres, precio, stock y tiempo de preparación con tope.
 - La hora de recogida no puede ser anterior a ahora, debe caer en el horario de la tienda y no puede ser más de 30 días adelante.
 - Mensajes de error genéricos en el login (un solo 401 con un retardo de 0,5 s tras un fallo) y estado de Terraform sin llaves compartidas ni acceso anónimo.
 - URL SAS para subir imágenes: un solo blob, solo crear y escribir, 5 minutos, solo https, con regla CORS limitada al host del sitio. El límite de 2 MB se comprueba solo en el navegador.
@@ -290,7 +290,7 @@ Tiempo estimado del procedimiento: entre 1 y 2 horas, dentro del RTO de 4 horas.
 
 ## 6. Observabilidad y operación
 
-Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un workspace de Log Analytics, y en producción hay dos alertas de Application Insights y un presupuesto con alertas, todos por correo.
+Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un workspace de Log Analytics, y en producción hay tres alertas de Application Insights y un presupuesto con alertas, todos por correo.
 
 **Qué se recoge.**
 
@@ -304,15 +304,50 @@ Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un
 | --- | --- | --- |
 | Errores del API (prod) | Más de 5 peticiones fallidas con 5xx en 15 minutos (se evalúa cada 5 minutos) | Correo mediante un grupo de acción |
 | Disponibilidad (prod) | La prueba `GET /api/health`, que corre cada 15 minutos desde 2 ubicaciones (`us-tx-sn1-azr` y `us-il-ch1-azr`) con reintento, falla desde las 2 en una ventana de 30 minutos (se evalúa cada 5 minutos), de modo que las ejecuciones de las dos ubicaciones caen dentro de la ventana | Correo mediante el mismo grupo de acción. Se mantiene `failed_location_count = 2` para no alertar por una sola ubicación inestable. Se verificará en la demostración de alertas (pendiente) |
+| Tráfico alto (prod) | Más de 1.500 peticiones al API (`requests/count`) en 5 minutos (se evalúa cada minuto, severidad 3, se resuelve sola al bajar el tráfico) | Correo mediante el mismo grupo de acción. Es un aviso de tráfico por encima del diseño, no una falla |
 | Presupuesto (suscripción) | El gasto real llega al 50, 80 y 100 % del monto mensual del presupuesto | Correo a `budget_email` |
 
 El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (el ejemplo del repositorio usa 20, menos que el tope de USD 150), así que los umbrales son porcentajes de ese monto y no de 150. Esta sección debe comprobarse en el portal (pendiente): que el presupuesto exista, porque en algunas suscripciones de estudiante puede ser rechazado, y que la alerta de errores se dispare con tráfico de prueba durante la demo.
+
+**Umbral de tráfico alto.** El umbral de 1.500 peticiones en 5 minutos es unas 5 veces el pico de un sábado a 3x (450 llamadas al API en 5 minutos). Solo cuentan las llamadas al API, porque los archivos estáticos los sirve Static Web Apps y no pasan por Functions. Los escenarios de [load/README.md](../load/README.md) quedan así: `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Umbral, ventana y frecuencia son las variables `traffic_spike_threshold`, `traffic_spike_window` y `traffic_spike_frequency` del módulo `alerts`.
+
+**Demostración de alertas.**
+
+1. Fuera de horario, correr `stress` en prod desde el workflow `load.yml` (una sola vez).
+2. En el portal, en Monitor > Alertas, la alerta de tráfico alto pasa a `Fired` pocos minutos después de empezar. `[PENDIENTE: captura alerta Fired]`
+3. Llega el correo al buzón de `ALERT_EMAIL`. `[PENDIENTE: captura correo]`
+4. Al terminar la prueba y bajar el tráfico, la alerta se resuelve sola y llega el aviso de resuelta.
+5. Prueba del canal de correo sin generar tráfico: en el portal, grupo de acción `ag-<prefijo>-prod` > `Probar grupo de acción` (Test action group), tipo de muestra `Metric alert` (Alerta de métricas), y comprobar que llega el correo. El comando `az monitor action-group test-notifications create` existe, pero sus argumentos no se verificaron, por eso se documenta el botón del portal.
+
+`stress` también puede disparar las alertas de 5xx, de disponibilidad y de tráfico alto; es esperado.
 
 **Métricas que se revisan.** Tiempo de respuesta y tasa de peticiones fallidas del API, disponibilidad y consumo de Cosmos DB en unidades de solicitud, todas en el portal de Azure. Los pedidos por hora se obtienen contando en los logs las peticiones `POST /api/orders` con estado 201. No hay un panel (dashboard) definido en Terraform.
 
 **Control de costo de la telemetría.** Muestreo en Application Insights de 5 elementos por segundo, sin muestrear las peticiones ni las excepciones (`api/host.json`), y retención de 30 días en Application Insights y en Log Analytics (`infra/modules/observability/variables.tf`), para que los logs no crezcan sin control.
 
 **Operación del día a día.** El administrador gestiona productos y pedidos desde el panel. Los cambios de código o infraestructura solo entran por pull request y pipeline, nunca a mano en el portal.
+
+### Prueba de carga
+
+Para comprobar el requisito de escalabilidad (3 veces la carga del pico) se usa k6 desde el workflow manual `load.yml` (detalle en [load/README.md](../load/README.md)). Parte de los supuestos de la sección 2: unas 300 visitas por hora en el pico del sábado y 10 peticiones por visita (4 estáticas y 6 llamadas al API, como en la sección 3). Las tasas son tan bajas que `stress` es el escenario que demuestra el escalado.
+
+| Escenario | Carga | Ambiente |
+| --- | --- | --- |
+| `realistic` | 5 visitas por minuto (el pico) durante 5 minutos: 25 visitas, 250 peticiones, 150 al API | dev y prod, solo lectura |
+| `peak3x` | 15 visitas por minuto (3 veces el pico) durante 5 minutos: 75 visitas, 750 peticiones, 450 al API | dev y prod, solo lectura |
+| `stress` | Rampa de 5 minutos hasta 40 visitas por segundo (unas 480 veces el pico): unas 5.340 visitas, unas 53.400 peticiones, unas 32.000 al API y hasta 240 llamadas al API por segundo | dev y prod, solo lectura |
+| `orders` | 6 pedidos de invitado por minuto durante 3 minutos | solo dev, escribe datos |
+
+Umbrales: tasa de peticiones fallidas menor a 1 %, p95 del tiempo de respuesta menor a 1000 ms y ninguna iteración descartada (`dropped_iterations` igual a 0), sin contar el calentamiento inicial de 30 s que absorbe el arranque en frío.
+
+**Riesgo de `stress` en producción.** Es la validación del escalado y se permite en producción, pero puede producir errores reales (Cosmos DB serverless puede responder 429 ante una ráfaga), añadir latencia a clientes reales y disparar las alertas de 5xx, de disponibilidad y de tráfico alto (correos). Se corre fuera de horario y una sola vez. El costo por corrida es despreciable; el riesgo es de disponibilidad, no de dinero.
+
+| Resultado | Valor |
+| --- | --- |
+| p95 del tiempo de respuesta | [PENDIENTE: resultados de la corrida] |
+| Tasa de peticiones fallidas | [PENDIENTE: resultados de la corrida] |
+| Tasa máxima alcanzada sin degradación | [PENDIENTE: resultados de la corrida] |
+| Observaciones | [PENDIENTE: resultados de la corrida] |
 
 ## 7. Diseño de despliegue
 
@@ -339,18 +374,18 @@ Producción cuesta unos USD 10 al mes con el tráfico de la sección 2, muy por 
 | Salida de datos (egress) | Unos 18 GB al mes de imágenes, dentro de los primeros 100 GB gratuitos | 0,00 | 0 |
 | Application Insights y Log Analytics | Menos de 0,5 GB de datos al mes, dentro de los 5 GB gratuitos | 0,00 | 0 |
 | Prueba de disponibilidad estándar | Unas 5.760 ejecuciones al mes (2 ubicaciones, cada 15 minutos) | Pendiente: precio por ejecución de la página de precios | Pendiente |
-| Alertas de métricas | 2 reglas, unos 0,10 cada una | 0,20 | 2 |
+| Alertas de métricas | 3 reglas, unos 0,10 cada una | 0,30 | 4 |
 | Grupo de acción | Correo, sin costo | 0,00 | 0 |
 | Functions administradas | Incluidas en Static Web Apps | 0,00 | 0 |
 | Almacenamiento del estado de Terraform | Cuenta de Storage del tfstate | 0,02 | 0 |
-| Total sin la prueba de disponibilidad | | 9,8 | Unos 118 |
+| Total sin la prueba de disponibilidad | | 9,9 | Unos 119 |
 
 **Escenarios.**
 
 | Escenario | Qué incluye | USD al mes (aprox.) |
 | --- | --- | --- |
 | MVP | Prod con tráfico de prueba y dev en Free | 9 a 10 |
-| Producción | Los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes) | Unos 9,8 |
+| Producción | Los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes) | Unos 9,9 |
 
 Los dos escenarios no incluyen la prueba de disponibilidad hasta que se calcule su precio.
 

@@ -1,6 +1,6 @@
 # migas-en-la-nube
 
-Pan de la Casa: a bakery ordering platform on Azure. Customers browse the catalog, order for pickup (guest or registered), and keep favorites. An admin manages products, images and order status.
+Migas en la Nube: a bakery ordering platform on Azure. Customers browse the catalog, order for pickup (guest or registered), and keep favorites. An admin manages products, images and order status.
 
 | Catalog | Product (mobile) |
 | --- | --- |
@@ -38,7 +38,8 @@ More detail in [docs/diagramas/architecture.md](docs/diagramas/architecture.md).
 | `infra/` | Terraform: `bootstrap/` (one-time, local), `modules/`, `envs/dev`, `envs/prod` |
 | `tests/` | Unit and integration tests |
 | `smoke/` | Bruno smoke collection run after each deploy |
-| `.github/` | Workflows (`ci`, `deploy`, `rollback`, `destroy`) and composite actions |
+| `load/` | k6 load test script and notes (run by the `load` workflow) |
+| `.github/` | Workflows (`ci`, `deploy`, `rollback`, `destroy`, `load`) and composite actions |
 | `docs/` | HLD, deployment design, ADRs, Mermaid diagrams, screenshots |
 
 ## Local run
@@ -75,7 +76,7 @@ All routes are under `/api`. Errors are JSON `{"detail": "..."}`.
 | Public | `GET /health`, `GET /products`, `GET /products/{id}`, `POST /auth/register`, `POST /auth/login` |
 | Public or customer | `POST /orders` (guest or logged in; a logged-in order is linked to the user; an admin gets 403) |
 | Customer | `GET /me/orders`, `GET /me/favorites`, `PUT` and `DELETE /me/favorites/{productId}`, `GET /me/top-products` |
-| Admin | `POST /admin/products`, `PUT` and `DELETE /admin/products/{id}`, `POST /admin/products/{id}/image-upload-url`, `GET /admin/orders` (upcoming by default, `?scope=history` for past orders, or `?date=` for one day), `PATCH /admin/orders/{id}/status` |
+| Admin | `POST /admin/products`, `PUT` and `DELETE /admin/products/{id}`, `POST /admin/products/{id}/image-upload-url`, `GET /admin/orders` (upcoming by default: received, preparing and ready orders on any date; `?scope=history` for delivered and cancelled orders, or `?date=` for one day), `PATCH /admin/orders/{id}/status` |
 
 Authenticated calls send `X-Pdc-Token: Bearer <jwt>`. The standard `Authorization` header is not used because SWA managed Functions overwrite it (see [ADR 0003](docs/adr/0003-own-jwt-authentication.md)).
 
@@ -124,7 +125,7 @@ Diagram source: [docs/diagramas/pipeline.md](docs/diagramas/pipeline.md).
 
 ### Alerts (prod only)
 
-Terraform creates an availability test (`GET /api/health`, every 15 minutes from two locations), an alert when both locations fail within 30 minutes, and an alert for more than 5 server errors (5xx) in 15 minutes. Both send email through an action group. The address is the GitHub variable `ALERT_EMAIL` of the `prod` environment.
+Terraform creates an availability test (`GET /api/health`, every 15 minutes from two locations), an alert when both locations fail within 30 minutes, an alert for more than 5 server errors (5xx) in 15 minutes, and an informational alert for more than 1,500 API requests in 5 minutes (traffic above design; the `stress` load scenario fires it). All send email through an action group. The address is the GitHub variable `ALERT_EMAIL` of the `prod` environment.
 
 ### Logs
 
@@ -137,6 +138,10 @@ traces | where message has "<correlation-id>" | order by timestamp desc
 ### Rollback
 
 `rollback.yml` redeploys the stored artifact of an earlier prod release (for example `v12`), runs from `main` and needs the `prod` approval. It does not run Terraform and does not change data. Steps and diagram: [docs/despliegue.md](docs/despliegue.md#rollback).
+
+### Load test
+
+`load.yml` runs a k6 load test against `dev` or `prod` on manual dispatch. Scenarios `realistic`, `peak3x` and `stress` only read, so they are allowed on prod; `stress` can still cause real errors and fire the prod alerts, so run it off-hours and once. `orders` creates orders and is refused on prod. Details and assumptions: [load/README.md](load/README.md).
 
 ### Destroy
 

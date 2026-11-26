@@ -17,6 +17,11 @@ export function formatAvailability(availability) {
   return `Por encargo (listo en ${availability.readyMinutes} min)`;
 }
 
+export function formatVariantAvailability(variant) {
+  const text = formatAvailability(variant.availability);
+  return variant.stock > 0 ? `${text} · Quedan ${variant.stock}` : text;
+}
+
 const MINUTES_PER_HOUR = 60;
 
 export function formatMinutes(minutes) {

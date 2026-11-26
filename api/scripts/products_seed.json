@@ -8,7 +8,7 @@
     "prepMinutes": 90,
     "variants": [
       { "name": "Individual", "price": 6000, "stock": 12 },
-      { "name": "Caja x6", "price": 32000, "stock": 0 }
+      { "name": "Caja x6", "price": 32000, "stock": 6 }
     ]
   },
   {
@@ -20,7 +20,7 @@
     "prepMinutes": 240,
     "variants": [
       { "name": "Porción", "price": 9000, "stock": 8 },
-      { "name": "Entera", "price": 85000, "stock": 0 }
+      { "name": "Entera", "price": 85000, "stock": 3 }
     ]
   },
   {

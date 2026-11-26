@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Carrito - Pan de la Casa</title>
+    <title>Carrito - Migas en la Nube</title>
     <link rel="icon" href="/img/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/css/styles.css" />
   </head>
   <body>
     <header>
-      <a href="/" class="brand"><img src="/img/logo.svg" alt="Pan de la Casa" /></a>
+      <a href="/" class="brand"><img src="/img/logo.svg" alt="Migas en la Nube" /></a>
       <nav>
         <a href="/" data-icon="utensils">Menú</a>
         <a href="/cart.html" data-icon="shopping-cart">Carrito<span class="nav-badge" id="cart-count" hidden></span></a>
@@ -34,7 +34,8 @@
             </p>
             <p>
               <label for="phone">Teléfono</label>
-              <input id="phone" name="phone" type="tel" required maxlength="20" />
+              <input id="phone" name="phone" type="tel" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" required title="Escribe los 10 dígitos de tu celular, sin espacios ni guiones" aria-describedby="phone-hint" />
+              <small id="phone-hint">10 dígitos, sin espacios ni guiones.</small>
             </p>
             <p>
               <label for="pickup-time">Hora de recogida</label>
@@ -50,7 +51,7 @@
         </aside>
       </div>
     </main>
-    <footer><p>Pan de la Casa · Horneado con cariño cada mañana</p></footer>
+    <footer><p>Migas en la Nube · Horneado con cariño cada mañana</p></footer>
     <script type="module" src="/js/nav.js"></script>
     <script type="module" src="/js/cart-page.js"></script>
   </body>

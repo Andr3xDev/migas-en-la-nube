@@ -33,10 +33,10 @@ El workflow `ci` corre en el pull request y el workflow `deploy` corre al hacer 
 | Plan de Terraform | `ci`, `terraform` | `init`, `validate` y `plan` de dev y prod con la identidad de solo lectura, sin refrescar ni bloquear el estado | El check del pull request |
 | Build del despliegue | `deploy`, `build` | El mismo empaquetado, sobre el commit ya integrado | El despliegue |
 | Despliegue | `deploy`, `deploy` | Login OIDC, `terraform apply`, seed de productos, seed del administrador y subida a Static Web Apps | El smoke test y el release |
-| Smoke test | `deploy`, acción `smoke` | Espera `/api/health` (hasta 12 intentos cada 10 s) y corre la colección Bruno | El release |
+| Smoke test | `deploy`, acción `smoke` | Espera `/api/health` (hasta 12 reintentos, unos 2 minutos) y corre la colección Bruno | El release |
 | Release | `deploy`, `release` (solo `main`) | Guarda el artefacto `release-vN` 90 días y crea la etiqueta `vN` | Nada: es el último paso |
 
-`N` es el número de ejecución del workflow `deploy`. Los seeds son idempotentes: el de productos no depende de datos previos y el del administrador deja el rol y la contraseña según los valores del environment.
+`N` es el número de ejecución del workflow `deploy`. Los seeds son idempotentes: el de productos solo crea los productos que faltan, no pisa las ediciones del administrador, y un producto del seed que se borre reaparece en el siguiente despliegue, y el del administrador deja el rol y la contraseña según los valores del environment.
 
 ## Ambientes y promoción
 
@@ -54,7 +54,7 @@ Un cambio se promueve así:
 3. Con dev verificado, se abre un pull request de `dev` hacia `main`. `ci` corre otra vez.
 4. Al hacer merge a `main`, `deploy` queda detenido en el environment `prod` hasta que el revisor aprueba. Luego despliega prod, corre el smoke de solo lectura y publica el release `vN`.
 
-En GitHub existe un ruleset `general` sobre `dev` y `main` que impide borrar la rama y hacer push forzado, exige pull request y exige el check `ci`. Su estado de aplicación en GitHub está pendiente de verificar antes de la entrega.
+En GitHub existe un ruleset `general` sobre `dev` y `main` que impide borrar la rama y hacer push forzado, exige pull request y exige checks. El ruleset existe, pero su estado de aplicación está pendiente de verificar por el equipo. Los checks requeridos deben ser los nombres de los jobs de `ci.yml`: `lint`, `security`, `test`, `build` y `terraform`. Como `deploy.yml` no vuelve a correr los tests, esta compuerta del pull request es lo que impide un despliegue roto.
 
 ## Ramas y disparadores
 

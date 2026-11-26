@@ -40,6 +40,7 @@ flowchart TB
 
     User -->|"HTTPS"| SwaProd
     User -->|"PUT de la imagen con SAS<br/>(5 min, https)"| BlobProd
+    User -->|"GET de imágenes (lectura pública)"| BlobProd
     SwaProd -->|"llave de Cosmos<br/>(app setting)"| CosmosProd
     SwaProd -->|"llave de Storage, firma el SAS<br/>(app setting)"| BlobProd
     SwaProd -->|"logs JSON"| AiProd

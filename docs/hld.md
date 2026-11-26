@@ -38,7 +38,7 @@ flowchart TB
     azure -->|"Envía alertas"| mail
 ```
 
-**Alcance del MVP (implementado y desplegado).**
+**Alcance del MVP (implementado; desplegado en dev, prod se publica con la release vA, pendiente de verificar).**
 
 - Catálogo con variantes, precio, imagen y estimado de preparación cuando no hay stock.
 - Carrito en el navegador, con selección de las líneas que se quieren pedir, y pedido como invitado.
@@ -149,7 +149,7 @@ flowchart TB
     Ports --> Auth["adapters/local_auth<br/>scrypt + JWT"]
 ```
 
-**Concurrencia.** El stock y la edición de productos usan bloqueo optimista con el ETag de Cosmos DB: ante un conflicto el stock reintenta hasta 5 veces y la edición de un producto devuelve 409. Es una limitación aceptada que dos clientes puedan tomar la última unidad a la vez: el segundo pedido se acepta como hecho por encargo.
+**Concurrencia.** El stock y la edición de productos usan bloqueo optimista con el ETag de Cosmos DB: ante un conflicto el stock hace hasta 5 intentos y la edición de un producto devuelve 409. Es una limitación aceptada que dos clientes puedan tomar la última unidad a la vez: el segundo pedido se acepta como hecho por encargo.
 
 **Escalado para el pico de 3x.** Con los supuestos de la sección 2, el pico es de 9.000 visitas y 450 pedidos en un día de 14 horas. Si la mitad del tráfico llega en las 3 horas de más movimiento, son unas 1.500 visitas por hora, menos de 1 visita por segundo. Con un supuesto de unas 5 llamadas al API por visita son unas 2 llamadas por segundo, y se toma 10 por segundo como margen de ráfaga. Functions agrega instancias solo cuando la carga sube y Cosmos DB serverless admite miles de unidades de solicitud por segundo, así que el pico queda muy por debajo del límite. El costo de esto es el arranque en frío, que puede sumar algunos segundos a la primera petición después de un rato sin uso (valor estimado, no medido).
 
@@ -197,6 +197,7 @@ flowchart TB
 
     User -->|"HTTPS"| SwaProd
     User -->|"PUT de la imagen con SAS<br/>(5 min, https)"| BlobProd
+    User -->|"GET de imágenes (lectura pública)"| BlobProd
     SwaProd -->|"llave de Cosmos<br/>(app setting)"| CosmosProd
     SwaProd -->|"llave de Storage, firma el SAS<br/>(app setting)"| BlobProd
     SwaProd -->|"logs JSON"| AiProd
@@ -300,7 +301,7 @@ Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un
 | Alerta | Se dispara cuando | Acción |
 | --- | --- | --- |
 | Errores del API (prod) | Más de 5 peticiones fallidas con 5xx en 15 minutos (se evalúa cada 5 minutos) | Correo mediante un grupo de acción |
-| Disponibilidad (prod) | La prueba `GET /api/health`, que corre cada 15 minutos desde 2 ubicaciones (`us-tx-sn1-azr` y `us-il-ch1-azr`) con reintento, falla desde las 2 en una ventana de 5 minutos | Correo mediante el mismo grupo de acción |
+| Disponibilidad (prod) | La prueba `GET /api/health`, que corre cada 15 minutos desde 2 ubicaciones (`us-tx-sn1-azr` y `us-il-ch1-azr`) con reintento, falla desde las 2 en una ventana de 5 minutos | Correo mediante el mismo grupo de acción. Con sondeo cada 900 s, esta combinación puede no dispararse nunca; se verificará en la demostración de alertas, y el ajuste previsto es `failed_location_count = 1` o una `window_size` mayor. La alerta de 5xx es la que cubre de forma fiable el RNF de "al menos una alerta" |
 | Presupuesto (suscripción) | El gasto real llega al 50, 80 y 100 % del monto mensual del presupuesto | Correo a `budget_email` |
 
 El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (el ejemplo del repositorio usa 20, menos que el tope de USD 150), así que los umbrales son porcentajes de ese monto y no de 150. Esta sección debe comprobarse en el portal (pendiente): que el presupuesto exista, porque en algunas suscripciones de estudiante puede ser rechazado, y que la alerta de errores se dispare con tráfico de prueba durante la demo.
@@ -342,7 +343,7 @@ flowchart TD
 
 Cada ambiente tiene su propio grupo de recursos, su propio estado de Terraform, su propia cuenta de Cosmos DB y de Storage y su propia identidad.
 
-**Ramas y disparadores.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. En GitHub existe un ruleset `general` para `dev` y `main` que impide borrar la rama y hacer push forzado, exige pull request y exige el check `ci`. Su estado de aplicación en GitHub está pendiente de verificar antes de la entrega.
+**Ramas y disparadores.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. En GitHub existe un ruleset `general` para `dev` y `main` que impide borrar la rama y hacer push forzado, exige pull request y exige checks. El ruleset existe, pero su estado de aplicación está pendiente de verificar por el equipo. Los checks requeridos deben ser los nombres de los jobs de `ci.yml`: `lint`, `security`, `test`, `build` y `terraform`. Como `deploy.yml` no vuelve a correr los tests, esta compuerta del pull request es lo que impide un despliegue roto.
 
 | Evento | Qué corre |
 | --- | --- |
@@ -407,7 +408,7 @@ Los dos escenarios no incluyen la prueba de disponibilidad hasta que se calcule 
 | Optimización | Alternativa sin optimizar | Ahorro estimado al mes |
 | --- | --- | --- |
 | Cosmos DB serverless | Capacidad aprovisionada mínima de 400 unidades por segundo, unos USD 23 | Unos USD 22 |
-| Dev en plan Free de Static Web Apps y destruido cuando no se usa | Dev en Standard todo el mes | USD 9 |
+| Dev en plan Free de Static Web Apps y puede destruirse con `destroy.yml` cuando no se usa (manual) | Dev en Standard todo el mes | USD 9 |
 | Muestreo y retención de 30 días en la telemetría | Telemetría completa que puede pasar los 5 GB gratuitos | Depende del tráfico, evita sobrecostos |
 
 Además hay un presupuesto mensual de la suscripción con alertas al 50, 80 y 100 %.
@@ -487,7 +488,7 @@ Se tomaron 5 decisiones principales. Cada una responde qué problema había, qu�
 
 - Service principal con su contraseña en GitHub Secrets: credencial de larga vida que puede filtrarse y debe rotarse.
 - Una identidad compartida para los dos ambientes: un workflow de dev podría cambiar prod.
-- Bicep o ARM: solo Azure; Terraform da un plan revisable en los pull requests y la salida `azapi`.
+- Bicep o ARM: solo Azure; Terraform da un plan revisable en los pull requests y un escape con el proveedor azapi.
 - Despliegues manuales desde el portal o la CLI: no reproducibles ni revisables.
 
 **Decisión.** Terraform con módulos y una raíz por ambiente, estado en una cuenta de Storage endurecida, y un bootstrap local que crea los grupos, el presupuesto y tres identidades federadas por OIDC: `ci-plan` (solo lectura, para pull requests), `deploy-dev` y `deploy-prod`, cada una limitada a su grupo. Un push a `dev` despliega dev y un push a `main` despliega prod con aprobación de revisores requeridos.

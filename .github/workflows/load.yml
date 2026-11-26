@@ -1,0 +1,92 @@
+# Manual load test against a deployed environment. Prod runs read-only scenarios; the orders
+# scenario creates real orders, so it is refused on prod at job level, before any approval is requested.
+name: load
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to test
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      scenario:
+        description: realistic (Saturday peak), peak3x, stress (ramp up) or orders (dev only, creates orders)
+        required: true
+        type: choice
+        options:
+          - realistic
+          - peak3x
+          - stress
+          - orders
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    name: load
+    if: "!(inputs.environment == 'prod' && inputs.scenario == 'orders')"
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    # Own group: sharing the deploy group could cancel a deploy that is pending behind this run.
+    concurrency:
+      group: load-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      ENVIRONMENT: ${{ inputs.environment }}
+      SCENARIO: ${{ inputs.scenario }}
+      RESULTS_DIR: load-results
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Resolve site URL
+        run: |
+          host="$(az staticwebapp show --name "swa-pdc-$ENVIRONMENT" --resource-group "rg-pdc-$ENVIRONMENT" --query defaultHostname -o tsv)"
+          echo "BASE_URL=https://$host" >> "$GITHUB_ENV"
+      - uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: "1.8.3"
+      - name: Run k6
+        run: |
+          mkdir -p "$RESULTS_DIR"
+          k6 run load/load.js
+      - name: Publish summary
+        if: always()
+        run: |
+          if [ -f "$RESULTS_DIR/summary.txt" ]; then
+            {
+              echo '### Load test: '"$SCENARIO"' on '"$ENVIRONMENT"
+              echo '```'
+              cat "$RESULTS_DIR/summary.txt"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: load-results-${{ inputs.environment }}-${{ inputs.scenario }}
+          path: load-results/
+          if-no-files-found: warn
+
+  guard:
+    name: guard
+    if: inputs.environment == 'prod' && inputs.scenario == 'orders'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Refuse write scenario on prod
+        run: |
+          echo "::error::The orders scenario creates real orders and runs only on dev"
+          exit 1

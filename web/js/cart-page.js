@@ -1,4 +1,5 @@
 import { apiFetch, ApiError } from "./api.js";
+import { isAdmin } from "./auth.js";
 import {
   CART_CHANGED_EVENT,
   getCart,
@@ -222,13 +223,16 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-window.addEventListener(CART_CHANGED_EVENT, renderItems);
+// Admins are redirected away by nav.js; skip rendering and API calls meanwhile.
+if (!isAdmin()) {
+  window.addEventListener(CART_CHANGED_EVENT, renderItems);
 
-renderItems();
-try {
-  [catalog, favorites] = await Promise.all([apiFetch("/api/products"), loadFavorites()]);
-  catalogLoaded = true;
-} catch {
-  // Without the catalog the cart still works; images, prep times and recommendations are skipped.
+  renderItems();
+  try {
+    [catalog, favorites] = await Promise.all([apiFetch("/api/products"), loadFavorites()]);
+    catalogLoaded = true;
+  } catch {
+    // Without the catalog the cart still works; images, prep times and recommendations are skipped.
+  }
+  renderItems();
 }
-renderItems();

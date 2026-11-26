@@ -8,10 +8,10 @@ import {
   removeItem,
   setQuantity,
 } from "./cart.js";
-import { estimateWaitMinutes, placeOrder } from "./checkout.js";
+import { estimateWaitMinutes, findVariant, placeOrder } from "./checkout.js";
 import { createEmptyState, createProductCard, createSummaryPanel } from "./components.js";
 import { loadFavorites } from "./favorites.js";
-import { createProductImage, formatMinutes, formatPeso, showMessage } from "./format.js";
+import { createProductImage, formatMinutes, formatPeso, isInStock, showMessage } from "./format.js";
 import { createIcon, createIconButton } from "./icons.js";
 
 const MAX_RECOMMENDATIONS = 3;
@@ -34,8 +34,6 @@ let favorites = null;
 let submitting = false;
 
 const findProduct = (item) => catalog.find((product) => product.id === item.productId);
-const findVariant = (item) =>
-  findProduct(item)?.variants.find((variant) => variant.name === item.variantName);
 const selectedLines = () => getCart().filter((item) => !unselected.has(lineKey(item)));
 
 function createQuantityControl(item) {
@@ -69,8 +67,7 @@ function createQuantityControl(item) {
 }
 
 function createLineCard(item) {
-  const product = findProduct(item);
-  const variant = findVariant(item);
+  const { product, variant } = findVariant(catalog, item.productId, item.variantName);
 
   const selectBox = document.createElement("input");
   selectBox.type = "checkbox";
@@ -139,7 +136,7 @@ function renderRecommendations(items) {
   const candidates = catalog.filter(
     (product) =>
       !inCart.has(product.id) &&
-      product.variants.some((variant) => variant.availability.status === "in stock"),
+      product.variants.some((variant) => isInStock(variant.availability)),
   );
   const picks = [
     ...candidates.filter((product) => cartCategories.has(product.category)),

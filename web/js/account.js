@@ -1,6 +1,7 @@
 import { apiFetch, getToken } from "./api.js";
 import { isAdmin } from "./auth.js";
 import { addProductVariant } from "./cart.js";
+import { findVariant } from "./checkout.js";
 import { createProductCard } from "./components.js";
 import { createStatusChip, formatPeso, showMessage } from "./format.js";
 import { createIconButton } from "./icons.js";
@@ -14,8 +15,7 @@ function renderProductCards(container, products, favorites, emptyText) {
 function orderAgain(order, catalog, feedback) {
   let added = 0;
   for (const line of order.items) {
-    const product = catalog.find((candidate) => candidate.id === line.productId);
-    const variant = product?.variants.find((candidate) => candidate.name === line.variantName);
+    const { product, variant } = findVariant(catalog, line.productId, line.variantName);
     if (!variant) continue;
     addProductVariant(product, variant, line.quantity);
     added += 1;

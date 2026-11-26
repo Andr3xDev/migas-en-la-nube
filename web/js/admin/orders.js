@@ -2,6 +2,7 @@ import { apiFetch, ApiError } from "../api.js";
 import { createEmptyState } from "../components.js";
 import { createStatusChip, formatPeso, showMessage, STATUS_LABELS } from "../format.js";
 import { requireAdmin } from "./guard.js";
+import { createButton, createCell } from "./table.js";
 
 const SHOP_TIMEZONE = "America/Bogota";
 // Mirrors HISTORY_LIMIT in api/app/services/orders.py: a full page means older orders are hidden.
@@ -28,22 +29,6 @@ const feedback = document.getElementById("feedback");
 let view = UPCOMING;
 let orders = [];
 let latestRequest = 0;
-
-function createCell(content, className = "") {
-  const cell = document.createElement("td");
-  cell.className = className;
-  cell.append(content);
-  return cell;
-}
-
-function createButton(label, onClick, variant = "") {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = `button ${variant}`.trim();
-  button.textContent = label;
-  button.addEventListener("click", onClick);
-  return button;
-}
 
 function formatPickup(pickupTime) {
   return new Date(pickupTime).toLocaleTimeString("es-CO", {
@@ -219,7 +204,7 @@ async function changeStatus(order, status) {
   feedback.replaceChildren();
   try {
     const updated = await apiFetch(
-      `/api/admin/orders/${order.code}/status?date=${encodeURIComponent(order.pickupDate)}`,
+      `/api/admin/orders/${encodeURIComponent(order.code)}/status?date=${encodeURIComponent(order.pickupDate)}`,
       { method: "PATCH", body: { status } },
     );
     orders = orders.map((item) => (item.code === updated.code ? updated : item));

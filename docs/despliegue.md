@@ -1,6 +1,6 @@
 # Diseño de despliegue
 
-Todo llega a Azure por GitHub Actions: nada se despliega a mano. Este documento amplía la sección 7 del [HLD](hld.md) y se mantiene igual a ella y al [README](../README.md).
+Todo llega a Azure por GitHub Actions: nada se despliega a mano. Este documento amplía la sección 7 del [HLD](hld.md) y se mantiene consistente con ella y con el [README](../README.md).
 
 ## Etapas del pipeline
 
@@ -129,10 +129,4 @@ Para volver hacia adelante se ejecuta de nuevo con un tag más nuevo. El rollbac
 
 `destroy.yml` ejecuta `terraform destroy` sobre un ambiente, con los datos incluidos. Pide dos inputs, `environment` y `confirm`, que deben ser iguales. `dev` se puede destruir desde `dev` o `main`, y `prod` solo desde `main` y con aprobación. Si la confirmación es incorrecta, el job `guard` falla antes de pedir ninguna aprobación. Destruye solo lo que Terraform administra en el ambiente: los grupos de recursos son del bootstrap y siguen existiendo.
 
-Orden de la limpieza final, solo después de la defensa del proyecto:
-
-1. `destroy.yml` con `environment = prod` y `confirm = prod`, y aprobar.
-2. `destroy.yml` con `environment = dev` y `confirm = dev`.
-3. `terraform destroy` del bootstrap desde un equipo con permisos de dueño, siguiendo [infra/bootstrap/README.md](../infra/bootstrap/README.md).
-
-El orden importa: el estado de los ambientes vive en la cuenta de Storage del bootstrap, y el destroy del bootstrap borra también los grupos de recursos, las identidades, los roles y el presupuesto. Los environments de GitHub, sus variables y el repositorio no se borran en ningún paso.
+El orden de la limpieza final (solo después de la defensa del proyecto) y por qué importa están en [infra/bootstrap/README.md](../infra/bootstrap/README.md#destroy).

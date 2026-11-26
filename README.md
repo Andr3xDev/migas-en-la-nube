@@ -136,26 +136,13 @@ traces | where message has "<correlation-id>" | order by timestamp desc
 
 ### Rollback
 
-`rollback.yml` redeploys the stored artifact of an earlier prod release. It does not run Terraform and does not change data.
-
-1. Pick a tag from `git tag` (for example `v12`).
-2. Actions, `rollback`, Run workflow from `main`, input `tag = v12`.
-3. Approve the `prod` environment deployment.
-4. The job checks the tag format, finds the successful deploy run on `main` with that run number, downloads `release-v12`, uploads it to the prod SWA and runs the read-only smoke.
-
-To roll forward, run it again with a newer tag. Diagram: [docs/diagramas/rollback.md](docs/diagramas/rollback.md).
+`rollback.yml` redeploys the stored artifact of an earlier prod release (for example `v12`), runs from `main` and needs the `prod` approval. It does not run Terraform and does not change data. Steps and diagram: [docs/despliegue.md](docs/despliegue.md#rollback).
 
 ### Destroy
 
 `destroy.yml` runs `terraform destroy` for one environment, data included. It needs two inputs: `environment` and `confirm` (type the same name). `dev` can run from `dev` or `main`; `prod` only from `main` and needs approval. A wrong confirmation is rejected before any approval is requested.
 
-Final cleanup order (only after the project defense):
-
-1. `destroy.yml` with `environment = prod`, `confirm = prod`, approve.
-2. `destroy.yml` with `environment = dev`, `confirm = dev`.
-3. Destroy the bootstrap stack from a laptop, following [infra/bootstrap/README.md](infra/bootstrap/README.md).
-
-The resource groups remain until step 3. GitHub environments and the repository stay.
+The final cleanup order (only after the project defense) is in [infra/bootstrap/README.md](infra/bootstrap/README.md#destroy).
 
 ## Security notes
 
@@ -184,11 +171,12 @@ The resource groups remain until step 3. GitHub environments and the repository 
 - The memory fallback for Cosmos and Blob exists only for `PDC_ENVIRONMENT=local`.
 - Account enumeration: registration reveals whether an email is already taken (409). This is an accepted limit.
 - The JWT lives in `localStorage` and a role change applies only after the token expires.
+- There are no JavaScript unit tests: the web layer is covered by static rules (`tests/unit/test_web_static_rules.py`) and the dev smoke collection.
 
 ## Documentation
 
 - [High-level design (HLD, Spanish)](docs/hld.md)
 - [Deployment design (Spanish)](docs/despliegue.md)
 - [Architecture decision records](docs/adr/README.md)
-- Diagrams (Spanish, Mermaid): [context](docs/diagramas/contexto.md), [architecture](docs/diagramas/architecture.md), [network and security](docs/diagramas/red-seguridad.md), [pipeline](docs/diagramas/pipeline.md), [rollback](docs/diagramas/rollback.md). Older PNG exports (English): [architecture](docs/diagramas/architecture.png), [pipeline](docs/diagramas/pipeline.png), [rollback](docs/diagramas/rollback.png)
+- Diagrams (Spanish, Mermaid): [context](docs/diagramas/contexto.md), [architecture](docs/diagramas/architecture.md), [network and security](docs/diagramas/red-seguridad.md), [pipeline](docs/diagramas/pipeline.md), [rollback](docs/diagramas/rollback.md).
 - [Bootstrap and final cleanup](infra/bootstrap/README.md)

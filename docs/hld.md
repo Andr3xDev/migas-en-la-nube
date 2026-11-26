@@ -38,7 +38,7 @@ flowchart TB
     azure -->|"Envía alertas"| mail
 ```
 
-**Alcance del MVP (implementado; desplegado en dev, prod se publica con la release vA, pendiente de verificar).**
+**Alcance del MVP (implementado; desplegado en dev, prod se publica con el primer release (vN), pendiente de verificar).**
 
 - Catálogo con variantes, precio, imagen y estimado de preparación cuando no hay stock.
 - Carrito en el navegador, con selección de las líneas que se quieren pedir, y pedido como invitado.
@@ -316,69 +316,13 @@ El correo de las alertas de producción es la variable `ALERT_EMAIL` del environ
 
 ## 7. Diseño de despliegue
 
-Todo llega a Azure por GitHub Actions: nada se despliega a mano. Cada etapa del pipeline bloquea a la siguiente si falla, y producción necesita aprobación. El detalle está en [despliegue.md](despliegue.md).
+Todo llega a Azure por GitHub Actions: nada se despliega a mano. Cada etapa del pipeline bloquea a la siguiente si falla, y producción necesita aprobación. Las etapas, los disparadores, los secretos y el rollback paso a paso están en [despliegue.md](despliegue.md).
 
-```mermaid
-flowchart TD
-    PR["Pull request"] --> Lint["lint<br/>ruff, terraform fmt"]
-    Lint --> Sec["security<br/>Checkov, CodeQL"]
-    Lint --> TfPlan["terraform<br/>plan de dev y prod (OIDC de solo lectura)"]
-    Sec --> Test["test<br/>pytest, cobertura mínima 70 %"]
-    Test --> Build["build<br/>empaqueta api/ y web/"]
-
-    Push["Push a dev o main<br/>(merge del PR)"] --> B["build<br/>artefactos api y web"]
-    B --> Gate{"Rama"}
-    Gate -->|"dev: environment dev, sin aprobación"| Apply
-    Gate -->|"main: environment prod, requiere aprobación"| Apply
-    Apply["deploy: login OIDC<br/>terraform apply"] --> Seeds["seed de productos<br/>y del administrador"]
-    Seeds --> Upload["sube web y api a SWA"]
-    Upload --> Smoke["smoke: espera /api/health<br/>colección Bruno"]
-    Smoke -->|"solo main"| Release["release: artefacto release-vN (90 días)<br/>etiqueta vN"]
-```
-
-**Ambientes.**
-
-| Ambiente | Rama | Plan de Static Web Apps | Aprobación | Alertas |
-| --- | --- | --- | --- | --- |
-| dev | dev | Free | No | No |
-| prod | main | Standard | Sí, manual (revisor requerido del environment `prod`) | Sí |
-
-Cada ambiente tiene su propio grupo de recursos, su propio estado de Terraform, su propia cuenta de Cosmos DB y de Storage y su propia identidad.
-
-**Ramas y disparadores.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. En GitHub existe un ruleset `general` para `dev` y `main` que impide borrar la rama y hacer push forzado, exige pull request y exige checks. El ruleset existe, pero su estado de aplicación está pendiente de verificar por el equipo. Los checks requeridos deben ser los nombres de los jobs de `ci.yml`: `lint`, `security`, `test`, `build` y `terraform`. Como `deploy.yml` no vuelve a correr los tests, esta compuerta del pull request es lo que impide un despliegue roto.
-
-| Evento | Qué corre |
-| --- | --- |
-| Pull request | Workflow `ci`: lint, seguridad, pruebas, build y plan de Terraform de dev y prod |
-| Push (merge) a `dev` | Workflow `deploy`: build, Terraform apply, seeds, subida a Static Web Apps y smoke test en dev |
-| Push (merge) de `dev` a `main` | Workflow `deploy` con aprobación del environment `prod`: lo mismo en prod, smoke de solo lectura, artefacto `release-vN` y etiqueta `vN` |
-| Manual | `rollback` (solo desde `main`) y `destroy` |
-
-El workflow `deploy` no repite lint ni pruebas: corren en el pull request.
-
-**Etapas del pipeline.**
-
-1. Lint: ruff sobre Python y formato de Terraform. Si falla, no corren seguridad ni plan.
-2. Seguridad: Checkov sobre Terraform y CodeQL sobre Python. Si falla, no corren las pruebas.
-3. Pruebas: unitarias de las reglas de negocio y de integración que recorren el API completo por HTTP, con cobertura mínima de 70 %. Si falla, no corre el build.
-4. Build: empaqueta el sitio y el API como artefactos.
-5. Plan de Terraform (en paralelo con seguridad y pruebas): muestra qué va a cambiar en dev y prod, con identidad de solo lectura.
-6. Despliegue: aplica Terraform, carga los seeds de productos y administrador y publica los artefactos.
-7. Smoke test con Bruno contra la URL real: espera el `/api/health` y corre la colección. En dev corre todo, incluso registrar un usuario y hacer un pedido de prueba. En prod solo corre la carpeta de lectura, sin escribir datos.
-
-**Secretos en el pipeline.** El acceso a Azure es por OIDC con las identidades de la sección 4. Los IDs de tenant, suscripción e identidades son variables de GitHub porque no sirven sin el token del repositorio. El único secreto guardado en GitHub es la contraseña inicial del administrador. Los tokens y llaves leídos de las salidas de Terraform se enmascaran en los logs.
-
-**Rollback.**
-
-| Qué falló | Cómo se vuelve atrás |
-| --- | --- |
-| La aplicación | Workflow manual `rollback` con el tag de una versión anterior (por ejemplo `v12`): toma el artefacto `release-v12`, lo vuelve a publicar en prod, sin tocar la infraestructura, y corre el smoke de solo lectura. Pide aprobación del environment `prod` |
-| La infraestructura | Revertir el commit y dejar que el pipeline aplique Terraform de nuevo |
-| Los datos | Restauración de Cosmos DB (sección 5) |
-
-El rollback de la aplicación no vuelve a correr Terraform a propósito, para no deshacer cambios de infraestructura que sí estaban bien. Los artefactos de versión se guardan 90 días, y `/api/health` sigue mostrando la versión más nueva porque `PDC_VERSION` no cambia.
-
-**Bootstrap.** Lo que el pipeline necesita antes de su primera ejecución (grupos de recursos, almacenamiento del estado, identidades OIDC y presupuesto) está en un Terraform aparte que se aplica una sola vez desde el equipo con permisos de dueño. Al final se borra todo con el workflow `destroy` de cada ambiente (requiere escribir de nuevo el nombre del ambiente, y prod necesita aprobación) y un `terraform destroy` del bootstrap.
+- **Ambientes.** `dev` (rama `dev`, Static Web Apps Free, sin aprobación ni alertas) y `prod` (rama `main`, Standard, revisor requerido y alertas). Cada uno tiene su propio grupo de recursos, estado de Terraform, cuenta de Cosmos DB y de Storage e identidad.
+- **Promoción.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. El workflow `ci` corre en el pull request (lint, seguridad, pruebas con cobertura mínima de 70 %, build y plan de Terraform). Al hacer merge, `deploy` aplica Terraform, carga los seeds, sube la aplicación y corre el smoke test. En `main` espera la aprobación del environment `prod` y publica el release `vN`. Los checks requeridos del ruleset de GitHub deben ser los jobs de `ci.yml`; su estado de aplicación está pendiente de verificar por el equipo.
+- **OIDC.** El acceso a Azure usa las identidades de la sección 4, sin contraseñas guardadas. El único secreto en GitHub es la contraseña inicial del administrador, y los tokens leídos de las salidas de Terraform se enmascaran en los logs.
+- **Rollback.** De la aplicación: workflow manual `rollback` con el tag de una versión anterior, que vuelve a publicar su artefacto sin tocar la infraestructura. De la infraestructura: revertir el commit. De los datos: restauración de Cosmos DB (sección 5).
+- **Bootstrap.** Lo que el pipeline necesita antes de su primera ejecución (grupos de recursos, estado, identidades OIDC y presupuesto) vive en un Terraform aparte que se aplica una sola vez. El orden de limpieza final está en [infra/bootstrap/README.md](../infra/bootstrap/README.md).
 
 ## 8. Costos y FinOps
 

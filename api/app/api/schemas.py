@@ -9,7 +9,6 @@ RequiredText = Annotated[str, StringConstraints(strip_whitespace=True, min_lengt
 MAX_ITEM_QUANTITY = 50
 MAX_ORDER_ITEMS = 20
 MAX_CUSTOMER_NAME_LENGTH = 100
-MAX_PHONE_LENGTH = 30
 MAX_PRICE = 10_000_000
 MAX_STOCK = 10_000
 MAX_PREP_MINUTES = 24 * 60
@@ -26,6 +25,7 @@ class CamelModel(BaseModel):
 
 
 Email = Annotated[str, StringConstraints(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
+ColombianPhone = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[0-9]{10}$")]
 Password = Annotated[str, StringConstraints(min_length=8, max_length=1024)]
 
 
@@ -75,7 +75,7 @@ class OrderItemRequest(CamelModel):
 
 class OrderRequest(CamelModel):
     customer_name: RequiredText = Field(max_length=MAX_CUSTOMER_NAME_LENGTH)
-    phone: RequiredText = Field(max_length=MAX_PHONE_LENGTH)
+    phone: ColombianPhone
     pickup_time: datetime
     items: list[OrderItemRequest] = Field(min_length=1, max_length=MAX_ORDER_ITEMS)
 

@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Mi cuenta - Pan de la Casa</title>
+    <title>Mi cuenta - Migas en la Nube</title>
     <link rel="icon" href="/img/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/css/styles.css" />
   </head>
   <body>
     <header>
-      <a href="/" class="brand"><img src="/img/logo.svg" alt="Pan de la Casa" /></a>
+      <a href="/" class="brand"><img src="/img/logo.svg" alt="Migas en la Nube" /></a>
       <nav>
         <a href="/" data-icon="utensils">Menú</a>
         <a href="/cart.html" data-icon="shopping-cart">Carrito<span class="nav-badge" id="cart-count" hidden></span></a>
@@ -23,18 +23,18 @@
       <h1>Mi cuenta</h1>
       <section>
         <h2>Mis pedidos</h2>
-        <div id="orders" class="order-list" aria-live="polite"></div>
+        <div id="orders" class="order-list" tabindex="0" role="region" aria-label="Mis pedidos"></div>
       </section>
       <section>
         <h2>Mis favoritos</h2>
-        <div id="favorites" class="product-grid" aria-live="polite"></div>
+        <div id="favorites" class="product-carousel" tabindex="0" role="region" aria-label="Mis favoritos"></div>
       </section>
       <section>
         <h2>Los más pedidos</h2>
-        <div id="top-products" class="product-grid" aria-live="polite"></div>
+        <div id="top-products" class="product-carousel" tabindex="0" role="region" aria-label="Los más pedidos"></div>
       </section>
     </main>
-    <footer><p>Pan de la Casa · Horneado con cariño cada mañana</p></footer>
+    <footer><p>Migas en la Nube · Horneado con cariño cada mañana</p></footer>
     <script type="module" src="/js/nav.js"></script>
     <script type="module" src="/js/account.js"></script>
   </body>

@@ -1,6 +1,6 @@
 # migas-en-la-nube
 
-Pan de la Casa: a bakery ordering platform on Azure. Customers browse the catalog, order for pickup (guest or registered), and keep favorites. An admin manages products, images and order status.
+Migas en la Nube: a bakery ordering platform on Azure. Customers browse the catalog, order for pickup (guest or registered), and keep favorites. An admin manages products, images and order status.
 
 | Catalog | Product (mobile) |
 | --- | --- |
@@ -75,7 +75,7 @@ All routes are under `/api`. Errors are JSON `{"detail": "..."}`.
 | Public | `GET /health`, `GET /products`, `GET /products/{id}`, `POST /auth/register`, `POST /auth/login` |
 | Public or customer | `POST /orders` (guest or logged in; a logged-in order is linked to the user; an admin gets 403) |
 | Customer | `GET /me/orders`, `GET /me/favorites`, `PUT` and `DELETE /me/favorites/{productId}`, `GET /me/top-products` |
-| Admin | `POST /admin/products`, `PUT` and `DELETE /admin/products/{id}`, `POST /admin/products/{id}/image-upload-url`, `GET /admin/orders` (upcoming by default, `?scope=history` for past orders, or `?date=` for one day), `PATCH /admin/orders/{id}/status` |
+| Admin | `POST /admin/products`, `PUT` and `DELETE /admin/products/{id}`, `POST /admin/products/{id}/image-upload-url`, `GET /admin/orders` (upcoming by default: received, preparing and ready orders on any date; `?scope=history` for delivered and cancelled orders, or `?date=` for one day), `PATCH /admin/orders/{id}/status` |
 
 Authenticated calls send `X-Pdc-Token: Bearer <jwt>`. The standard `Authorization` header is not used because SWA managed Functions overwrite it (see [ADR 0003](docs/adr/0003-own-jwt-authentication.md)).
 

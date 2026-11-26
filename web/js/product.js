@@ -1,14 +1,20 @@
 import { apiFetch } from "./api.js";
 import { isAdmin } from "./auth.js";
-import { addProductVariant } from "./cart.js";
+import {
+  addProductVariant,
+  CART_CHANGED_EVENT,
+  getLineQuantity,
+  MAX_LINE_QUANTITY_MESSAGE,
+} from "./cart.js";
 import { endLoading, showLoading } from "./components.js";
 import { createFavoriteButton, loadFavorites } from "./favorites.js";
 import { createIconButton, createIconLink } from "./icons.js";
 import {
   availabilityBadgeClass,
   createProductImage,
-  formatAvailability,
+  formatMinutes,
   formatPeso,
+  formatVariantAvailability,
   isInStock,
   showMessage,
 } from "./format.js";
@@ -35,17 +41,32 @@ function renderProduct(product, favorites) {
   const price = document.createElement("p");
   price.className = "price";
   const availability = document.createElement("p");
+  const inCart = document.createElement("p");
+  inCart.className = "in-cart";
   const feedback = document.createElement("p");
   feedback.setAttribute("role", "status");
 
   const selectedVariant = () => product.variants[Number(select.value)];
+  const refreshInCart = () => {
+    const variant = selectedVariant();
+    const quantity = getLineQuantity(product.id, variant.name);
+    inCart.hidden = quantity === 0;
+    inCart.textContent = `${quantity} en tu carrito`;
+    if (quantity > 0 && quantity >= variant.stock) {
+      inCart.append(
+        ` · Con lo que llevas, el pedido es por encargo: listo en ${formatMinutes(product.prepMinutes)}`,
+      );
+    }
+  };
   const refresh = () => {
     price.textContent = formatPeso(selectedVariant().price);
     availability.className = availabilityBadgeClass(isInStock(selectedVariant().availability));
-    availability.textContent = formatAvailability(selectedVariant().availability);
+    availability.textContent = formatVariantAvailability(selectedVariant());
     feedback.textContent = "";
+    refreshInCart();
   };
   select.addEventListener("change", refresh);
+  window.addEventListener(CART_CHANGED_EVENT, refreshInCart);
   refresh();
 
   const addButton = createIconButton({
@@ -54,8 +75,8 @@ function renderProduct(product, favorites) {
     text: "Agregar al carrito",
     variant: "primary",
     onClick: () => {
-      addProductVariant(product, selectedVariant());
-      feedback.textContent = "Agregado al carrito.";
+      const added = addProductVariant(product, selectedVariant());
+      feedback.textContent = added ? "Agregado al carrito." : MAX_LINE_QUANTITY_MESSAGE;
     },
   });
 
@@ -66,7 +87,7 @@ function renderProduct(product, favorites) {
 
   const info = document.createElement("div");
   info.className = "product-info";
-  info.append(title, description, select, price, availability, actions, feedback);
+  info.append(title, description, select, price, availability, inCart, actions, feedback);
 
   const detail = document.createElement("div");
   detail.className = "product-detail";

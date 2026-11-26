@@ -1,6 +1,6 @@
 # Contexto (C4 nivel 1)
 
-Quién usa Pan de la Casa y con qué sistemas externos se relaciona. Fuente Mermaid: GitHub la muestra en la vista previa.
+Quién usa Migas en la Nube y con qué sistemas externos se relaciona. Fuente Mermaid: GitHub la muestra en la vista previa.
 
 ```mermaid
 flowchart TB
@@ -8,7 +8,7 @@ flowchart TB
     customer["Cliente registrado<br/>[Persona]<br/>Pide, ve su historial y sus favoritos"]
     admin["Administrador<br/>[Persona]<br/>Gestiona productos, imágenes y pedidos"]
 
-    system["Pan de la Casa<br/>[Sistema de software]<br/>Tienda web para pedir y recoger en tienda"]
+    system["Migas en la Nube<br/>[Sistema de software]<br/>Tienda web para pedir y recoger en tienda"]
 
     azure["Microsoft Azure<br/>[Sistema externo]<br/>Plataforma que aloja el sistema"]
     github["GitHub<br/>[Sistema externo]<br/>Repositorio y GitHub Actions"]

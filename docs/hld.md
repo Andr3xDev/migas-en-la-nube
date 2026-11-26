@@ -1,10 +1,10 @@
-# HLD Pan de la Casa
+# HLD Migas en la Nube
 
 Nov 25, 2026 · @Andres
 
 ## 1. Contexto del negocio y alcance
 
-Pan de la Casa es una panadería de barrio con una sede que hoy recibe pedidos por teléfono y WhatsApp. La solución lleva esa operación a la nube con una tienda web para pedir y recoger en tienda, sobre Azure, serverless y con un costo de producción menor a USD 150 al mes.
+Migas en la Nube es una panadería de barrio con una sede que hoy recibe pedidos por teléfono y WhatsApp. La solución lleva esa operación a la nube con una tienda web para pedir y recoger en tienda, sobre Azure, serverless y con un costo de producción menor a USD 150 al mes.
 
 **Problema.** Los pedidos se pierden o se anotan mal, el cliente no sabe si un producto está disponible ni cuándo estará listo, y los fines de semana la demanda se triplica.
 
@@ -24,7 +24,7 @@ flowchart TB
     customer["Cliente registrado<br/>[Persona]<br/>Pide, ve su historial y sus favoritos"]
     admin["Administrador<br/>[Persona]<br/>Gestiona productos, imágenes y pedidos"]
 
-    system["Pan de la Casa<br/>[Sistema de software]<br/>Tienda web para pedir y recoger en tienda"]
+    system["Migas en la Nube<br/>[Sistema de software]<br/>Tienda web para pedir y recoger en tienda"]
 
     azure["Microsoft Azure<br/>[Sistema externo]<br/>Plataforma que aloja el sistema"]
     github["GitHub<br/>[Sistema externo]<br/>Repositorio y GitHub Actions"]
@@ -63,7 +63,7 @@ El sistema cubre 8 requisitos funcionales y los 6 no funcionales que pide el cas
 | RF5 | Registrarse e iniciar sesión con correo y contraseña | Cliente |
 | RF6 | Ver historial, marcar favoritos, volver a pedir y ver sus productos más pedidos | Cliente registrado |
 | RF7 | Crear y editar productos, variantes, precios, stock y tiempo de preparación, y subir la imagen del producto. Si dos administradores editan el mismo producto, el segundo recibe un conflicto (ETag) en lugar de pisar el cambio | Administrador |
-| RF8 | Ver los pedidos próximos (de hoy en adelante, el más cercano primero) y los históricos (anteriores a hoy, el más reciente primero, hasta 100), filtrar por un día y cambiar el estado del pedido | Administrador |
+| RF8 | Ver los pedidos próximos (recibidos, en preparación y listos, de cualquier fecha, el más cercano primero) y los históricos (entregados y cancelados, de cualquier fecha, el más reciente primero, hasta 100), filtrar por un día y cambiar el estado del pedido | Administrador |
 
 ### Requisitos no funcionales
 
@@ -254,7 +254,7 @@ Los IDs de tenant, suscripción e identidades son variables de GitHub, no secret
 **Protecciones adicionales.**
 
 - Cabeceras de seguridad en el sitio: política de contenido (CSP) que solo permite scripts y estilos propios, `nosniff` y `frame-ancestors 'none'`. La interfaz pinta con `textContent`, nunca con `innerHTML`.
-- Validación de todas las entradas con Pydantic y límites: hasta 20 líneas por pedido, 50 unidades por línea, 100 caracteres en el nombre, 30 en el teléfono, contraseña de 8 a 1.024 caracteres, precio, stock y tiempo de preparación con tope.
+- Validación de todas las entradas con Pydantic y límites: hasta 20 líneas por pedido, 50 unidades por línea, 100 caracteres en el nombre, 10 dígitos en el teléfono, contraseña de 8 a 1.024 caracteres, precio, stock y tiempo de preparación con tope.
 - La hora de recogida no puede ser anterior a ahora, debe caer en el horario de la tienda y no puede ser más de 30 días adelante.
 - Mensajes de error genéricos en el login (un solo 401 con un retardo de 0,5 s tras un fallo) y estado de Terraform sin llaves compartidas ni acceso anónimo.
 - URL SAS para subir imágenes: un solo blob, solo crear y escribir, 5 minutos, solo https, con regla CORS limitada al host del sitio. El límite de 2 MB se comprueba solo en el navegador.

@@ -56,7 +56,8 @@ def test_post_order_as_guest_returns_201_with_code_and_total(client, stack):
         {"items": [{"productId": "croissant", "variantName": "Single", "quantity": 51}]},
         {"items": [{"productId": "croissant", "variantName": "Single", "quantity": 1}] * 21},
         {"customerName": "x" * 101},
-        {"phone": "1" * 31},
+        {"phone": "1" * 11},
+        {"phone": "300123456a"},
         {"pickupTime": "2026-06-10T13:00:00"},
     ],
     ids=[
@@ -68,7 +69,8 @@ def test_post_order_as_guest_returns_201_with_code_and_total(client, stack):
         "quantity over max",
         "too many items",
         "name too long",
-        "phone too long",
+        "phone not 10 digits",
+        "phone with letter",
         "pickup without offset",
     ],
 )

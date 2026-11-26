@@ -1,6 +1,6 @@
 import { apiFetch, getToken } from "./api.js";
 import { isAdmin } from "./auth.js";
-import { addProductVariant } from "./cart.js";
+import { addProductVariant, MAX_LINE_QUANTITY_MESSAGE } from "./cart.js";
 import { findVariant } from "./checkout.js";
 import { createProductCard, endLoading, showLoading } from "./components.js";
 import { createStatusChip, formatPeso, showMessage } from "./format.js";
@@ -16,18 +16,20 @@ function renderProductCards(container, products, favorites, emptyText) {
 // Past lines whose product or variant left the catalog are skipped; price is always the current one.
 function orderAgain(order, catalog, feedback) {
   let added = 0;
+  let capped = false;
   for (const line of order.items) {
     const { product, variant } = findVariant(catalog, line.productId, line.variantName);
     if (!variant) continue;
-    addProductVariant(product, variant, line.quantity);
+    capped = !addProductVariant(product, variant, line.quantity) || capped;
     added += 1;
   }
-  feedback.textContent =
+  const message =
     added === 0
       ? "Ningún producto de este pedido está disponible ahora."
       : added < order.items.length
         ? "Agregamos al carrito los productos que siguen disponibles."
         : "Agregamos el pedido al carrito.";
+  feedback.textContent = capped ? `${message} ${MAX_LINE_QUANTITY_MESSAGE}` : message;
 }
 
 function createOrderSummary(order, catalog) {
@@ -105,6 +107,8 @@ async function main() {
     window.location.assign("/login.html");
     return;
   }
+  // nav.js sends admins to /admin/; skip the customer API calls meanwhile.
+  if (isAdmin()) return;
 
   const ordersContainer = document.getElementById("orders");
   const favoritesContainer = document.getElementById("favorites");

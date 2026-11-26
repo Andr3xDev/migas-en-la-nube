@@ -75,25 +75,27 @@ def test_list_by_date_runs_single_partition_query_earliest_first():
     assert "enable_cross_partition_query" not in kwargs
 
 
-def test_list_before_runs_capped_cross_partition_query_newest_first():
+def test_list_by_statuses_runs_capped_parameterized_query_newest_first():
     container = FakeContainer()
 
-    CosmosOrderRepository(container).list_before("2026-06-10", 5)
+    CosmosOrderRepository(container).list_by_statuses(["delivered"], newest_first=True, limit=5)
 
     query, kwargs = container.calls[0]
-    assert "c.pickupDate < @date ORDER BY c.pickupTime DESC" in query and "TOP @limit" in query
+    assert "ARRAY_CONTAINS(@statuses, c.status) ORDER BY c.pickupTime DESC" in query
+    assert "TOP @limit" in query
+    assert {"name": "@statuses", "value": ["delivered"]} in kwargs["parameters"]
     assert {"name": "@limit", "value": 5} in kwargs["parameters"]
     assert kwargs["enable_cross_partition_query"] is True
 
 
-def test_list_from_runs_cross_partition_query_earliest_first():
+def test_list_by_statuses_without_limit_runs_uncapped_query_earliest_first():
     container = FakeContainer()
 
-    CosmosOrderRepository(container).list_from("2026-06-10")
+    CosmosOrderRepository(container).list_by_statuses(["received"], newest_first=False)
 
     query, kwargs = container.calls[0]
-    assert "c.pickupDate >= @date ORDER BY c.pickupTime" in query
-    assert kwargs["enable_cross_partition_query"] is True
+    assert "ORDER BY c.pickupTime ASC" in query and "TOP" not in query
+    assert kwargs["parameters"] == [{"name": "@statuses", "value": ["received"]}]
 
 
 def test_list_by_user_runs_cross_partition_query_filtered_by_user_id():

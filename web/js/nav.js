@@ -1,9 +1,9 @@
 import { getToken } from "./api.js";
 import { isAdmin, logout } from "./auth.js";
-import { CART_CHANGED_EVENT, getItemCount } from "./cart.js";
+import { CART_CHANGED_EVENT, clearCart, getItemCount } from "./cart.js";
 import { createIcon } from "./icons.js";
 
-const SHOPPING_PAGES = ["/cart.html", "/confirmation.html"];
+const CUSTOMER_PAGES = ["/cart.html", "/confirmation.html", "/account.html"];
 
 // A page restored from the back/forward cache keeps the nav of the session it was left in.
 window.addEventListener("pageshow", (event) => {
@@ -27,7 +27,9 @@ function renderNav() {
   const signedIn = Boolean(getToken());
   for (const link of document.querySelectorAll("[data-guest]")) link.hidden = signedIn;
   for (const link of document.querySelectorAll("[data-user]")) link.hidden = !signedIn;
-  for (const link of document.querySelectorAll('header nav a[href="/cart.html"]')) {
+  for (const link of document.querySelectorAll(
+    'header nav a[href="/cart.html"], header nav a[href="/account.html"]',
+  )) {
     link.hidden = isAdmin();
   }
 
@@ -50,11 +52,13 @@ function renderNav() {
   document.getElementById("logout").addEventListener("click", (event) => {
     event.preventDefault();
     logout();
+    // Only an explicit logout empties the cart; an expired token keeps it for the next login.
+    clearCart();
     window.location.assign("/");
   });
 }
 
-if (isAdmin() && SHOPPING_PAGES.includes(window.location.pathname)) {
+if (isAdmin() && CUSTOMER_PAGES.includes(window.location.pathname)) {
   window.location.replace("/admin/");
 } else {
   renderNav();

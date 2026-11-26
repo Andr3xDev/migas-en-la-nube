@@ -1,39 +1,41 @@
-# Architecture
+# Arquitectura
 
-Mermaid source. GitHub renders it in the preview.
+Fuente Mermaid: GitHub la muestra en la vista previa. Los nombres técnicos se dejan como en el código. Los archivos `.drawio` de esta carpeta son las fuentes editables con iconos oficiales de Azure.
 
 ```mermaid
 flowchart LR
-    Browser["Browser<br/>vanilla HTML + ES modules"]
+    Browser["Navegador<br/>HTML y módulos ES"]
     subgraph SWA["Azure Static Web Apps"]
-        Static["web/ static files<br/>CSP headers"]
-        Func["Managed Functions<br/>FastAPI (python 3.11)"]
+        Static["Archivos estáticos de web/<br/>cabeceras CSP"]
+        Func["Functions administradas<br/>FastAPI (Python 3.11)"]
     end
     Cosmos[("Cosmos DB NoSQL<br/>serverless<br/>products, orders, users")]
-    Blob[("Blob Storage<br/>images container")]
-    AI["Application Insights<br/>+ Log Analytics"]
-    Probe["Availability test<br/>(prod only)"]
-    Mail["Alert email<br/>(prod only)"]
+    Blob[("Blob Storage<br/>contenedor images")]
+    AI["Application Insights<br/>sobre Log Analytics"]
+    Probe["Prueba de disponibilidad<br/>(solo prod, 2 ubicaciones)"]
+    Mail["Correo de alertas<br/>(solo prod)"]
 
     Browser -->|"HTML, CSS, JS"| Static
     Browser -->|"/api/* JSON<br/>X-Pdc-Token: Bearer jwt"| Func
-    Func -->|"Cosmos SDK<br/>ETag stock updates"| Cosmos
-    Func -->|"signs SAS URL<br/>(5 min, https)"| Browser
-    Browser -->|"PUT image with SAS<br/>(CORS rule)"| Blob
-    Func -->|"JSON request logs<br/>correlation_id"| AI
-    Probe -->|"GET /api/health every 15 min"| Func
+    Func -->|"SDK de Cosmos<br/>ETag en stock y productos"| Cosmos
+    Func -->|"firma URL SAS<br/>(5 min, https)"| Browser
+    Browser -->|"PUT de la imagen con SAS<br/>(regla CORS)"| Blob
+    Func -->|"logs JSON por petición<br/>correlation_id"| AI
+    Probe -->|"GET /api/health cada 15 min"| Func
     Probe --> AI
-    AI -->|"availability + 5xx alerts"| Mail
+    AI -->|"alertas de disponibilidad y de errores 5xx"| Mail
 ```
 
-## Layers inside the API
+## Capas dentro del API
 
 ```mermaid
 flowchart TB
-    Routes["api/routes<br/>HTTP only"] --> Services["services<br/>catalog, orders, accounts"]
-    Services --> Ports["ports<br/>repositories, auth, images"]
+    Routes["api/routes<br/>solo HTTP"] --> Services["services<br/>catálogo, pedidos, cuentas"]
+    Services --> Ports["ports<br/>repositorios, auth, imágenes"]
     Ports --> Cosmos["adapters/cosmos"]
-    Ports --> Memory["adapters/memory<br/>(local only)"]
+    Ports --> Memory["adapters/memory<br/>(solo local)"]
     Ports --> BlobA["adapters/blob"]
     Ports --> Auth["adapters/local_auth<br/>scrypt + JWT"]
 ```
+
+El archivo `architecture.png` es la exportación anterior de este diagrama y está en inglés.

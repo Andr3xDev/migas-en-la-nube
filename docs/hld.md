@@ -254,7 +254,7 @@ Los IDs de tenant, suscripción e identidades son variables de GitHub, no secret
 **Protecciones adicionales.**
 
 - Cabeceras de seguridad en el sitio: política de contenido (CSP) que solo permite scripts y estilos propios, `nosniff` y `frame-ancestors 'none'`. La interfaz pinta con `textContent`, nunca con `innerHTML`.
-- Validación de todas las entradas con Pydantic y límites: hasta 20 líneas por pedido, 50 unidades por línea, 100 caracteres en el nombre, 30 en el teléfono, contraseña de 8 a 1.024 caracteres, precio, stock y tiempo de preparación con tope.
+- Validación de todas las entradas con Pydantic y límites: hasta 20 líneas por pedido, 50 unidades por línea, 100 caracteres en el nombre, 10 dígitos en el teléfono, contraseña de 8 a 1.024 caracteres, precio, stock y tiempo de preparación con tope.
 - La hora de recogida no puede ser anterior a ahora, debe caer en el horario de la tienda y no puede ser más de 30 días adelante.
 - Mensajes de error genéricos en el login (un solo 401 con un retardo de 0,5 s tras un fallo) y estado de Terraform sin llaves compartidas ni acceso anónimo.
 - URL SAS para subir imágenes: un solo blob, solo crear y escribir, 5 minutos, solo https, con regla CORS limitada al host del sitio. El límite de 2 MB se comprueba solo en el navegador.

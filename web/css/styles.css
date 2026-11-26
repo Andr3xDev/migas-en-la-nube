@@ -650,6 +650,11 @@ form p {
   margin: 0 0 var(--space-4);
 }
 
+form p small {
+  display: block;
+  margin-top: var(--space-1);
+}
+
 .order-form .button,
 .auth-card .button {
   width: 100%;

@@ -1,5 +1,5 @@
 import { apiFetch, ApiError } from "../api.js";
-import { createSummaryPanel } from "../components.js";
+import { closeDialogOnBackdropClick, createSummaryPanel } from "../components.js";
 import { createProductImage, formatPeso, showMessage } from "../format.js";
 import { requireAdmin } from "./guard.js";
 import { createButton, createCell } from "./table.js";
@@ -292,6 +292,7 @@ form.addEventListener("submit", async (event) => {
 
 document.getElementById("add-variant").addEventListener("click", () => addVariantRow());
 resetButton.addEventListener("click", () => dialog.close());
+closeDialogOnBackdropClick(dialog);
 createButtonElement.addEventListener("click", (event) => openDialog(event.currentTarget));
 // Fires for Esc, Cancelar and a successful save. A save re-renders the rows, so the original
 // trigger may be detached: look its replacement up by product id.

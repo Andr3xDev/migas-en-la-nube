@@ -112,3 +112,28 @@ export function createEmptyState({ icon, title, text, action }) {
   if (action) block.append(createIconLink(action));
   return block;
 }
+
+function isOutsideBox(event, element) {
+  const box = element.getBoundingClientRect();
+  return (
+    event.clientX < box.left ||
+    event.clientX > box.right ||
+    event.clientY < box.top ||
+    event.clientY > box.bottom
+  );
+}
+
+// A backdrop press targets the dialog itself but lies outside its box; padding presses are inside.
+// Requiring the press to start on the backdrop keeps a drag that ends there from closing it.
+export function closeDialogOnBackdropClick(dialog) {
+  let pressedBackdrop = false;
+  dialog.addEventListener("pointerdown", (event) => {
+    pressedBackdrop = event.target === dialog && isOutsideBox(event, dialog);
+  });
+  dialog.addEventListener("click", (event) => {
+    if (pressedBackdrop && event.target === dialog && isOutsideBox(event, dialog)) {
+      dialog.close();
+    }
+    pressedBackdrop = false;
+  });
+}

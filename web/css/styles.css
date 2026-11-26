@@ -29,6 +29,7 @@
 
   --size-icon: 1.25em;
   --size-icon-large: 3.5rem;
+  --height-table-max: 60vh;
   --width-narrow: 36rem;
   --width-reading: 44rem;
   --width-card-form: 26rem;
@@ -421,7 +422,8 @@ a.product-card:hover {
 
 /* Tables */
 .table-scroll {
-  overflow-x: auto;
+  max-height: var(--height-table-max);
+  overflow: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-surface);
@@ -448,6 +450,12 @@ a.product-card:hover {
   letter-spacing: 0.04em;
   color: var(--color-muted);
   background: var(--color-wheat);
+}
+
+.cart-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .cart-table .cell-time {
@@ -1012,6 +1020,11 @@ form p {
 /* Orders list */
 .order-list {
   grid-template-columns: 1fr;
+}
+
+.order-list .load-more {
+  grid-column: 1 / -1;
+  justify-self: center;
 }
 
 .order-summary {

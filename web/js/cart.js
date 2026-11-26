@@ -34,19 +34,40 @@ export function getCart() {
   return load();
 }
 
+export function clearCart() {
+  save([]);
+}
+
+// Same cap the API enforces per order line (MAX_ITEM_QUANTITY in api/app/api/schemas.py).
+export const MAX_LINE_QUANTITY = 50;
+export const MAX_LINE_QUANTITY_MESSAGE = `Máximo ${MAX_LINE_QUANTITY} unidades por producto en el carrito.`;
+
+export const getLineQuantity = (productId, variantName) =>
+  load().find((item) => sameLine(item, productId, variantName))?.quantity ?? 0;
+
+export const getProductQuantity = (productId) =>
+  load()
+    .filter((item) => item.productId === productId)
+    .reduce((sum, item) => sum + item.quantity, 0);
+
+// Returns false when the line cap trimmed or blocked the addition.
 function addItem({ productId, variantName, name, price }, quantity = 1) {
   const items = load();
   const existing = items.find((item) => sameLine(item, productId, variantName));
+  const current = existing?.quantity ?? 0;
+  if (current >= MAX_LINE_QUANTITY) return false;
+  const next = Math.min(current + quantity, MAX_LINE_QUANTITY);
   if (existing) {
-    existing.quantity += quantity;
+    existing.quantity = next;
   } else {
-    items.push({ productId, variantName, name, price, quantity });
+    items.push({ productId, variantName, name, price, quantity: next });
   }
   save(items);
+  return next === current + quantity;
 }
 
 export function addProductVariant(product, variant, quantity = 1) {
-  addItem(
+  return addItem(
     {
       productId: product.id,
       variantName: variant.name,
@@ -66,7 +87,7 @@ export function setQuantity(productId, variantName, quantity) {
   if (quantity < 1) return removeItem(productId, variantName);
   const items = load();
   const existing = items.find((item) => sameLine(item, productId, variantName));
-  if (existing) existing.quantity = quantity;
+  if (existing) existing.quantity = Math.min(quantity, MAX_LINE_QUANTITY);
   save(items);
 }
 

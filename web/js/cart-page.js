@@ -5,6 +5,8 @@ import {
   getCart,
   getTotal,
   lineKey,
+  MAX_LINE_QUANTITY,
+  MAX_LINE_QUANTITY_MESSAGE,
   removeItem,
   setQuantity,
 } from "./cart.js";
@@ -46,12 +48,15 @@ function createQuantityControl(item) {
   const input = document.createElement("input");
   input.type = "number";
   input.min = "1";
+  input.max = String(MAX_LINE_QUANTITY);
   input.value = String(item.quantity);
   input.setAttribute("aria-label", `Cantidad de ${item.name}`);
   input.addEventListener("change", () => {
     const value = input.valueAsNumber;
-    if (Number.isInteger(value) && value >= 1) setQuantity(item.productId, item.variantName, value);
-    else renderItems();
+    if (Number.isInteger(value) && value >= 1) {
+      if (value > MAX_LINE_QUANTITY) addStatus.textContent = MAX_LINE_QUANTITY_MESSAGE;
+      setQuantity(item.productId, item.variantName, value);
+    } else renderItems();
   });
 
   const step = (icon, label, delta) => {
@@ -68,7 +73,9 @@ function createQuantityControl(item) {
 
   const control = document.createElement("div");
   control.className = "quantity-control";
-  control.append(minus, input, step("plus", "Agregar uno de", 1));
+  const plus = step("plus", "Agregar uno de", 1);
+  plus.disabled = item.quantity >= MAX_LINE_QUANTITY;
+  control.append(minus, input, plus);
   return control;
 }
 
@@ -132,8 +139,8 @@ function createLineCard(item) {
 }
 
 // Adding re-renders the recommendation card, so announce and park focus outside it.
-function announceAdded(product) {
-  addStatus.textContent = `Agregado: ${product.name}`;
+function announceAdded(product, added) {
+  addStatus.textContent = added ? `Agregado: ${product.name}` : MAX_LINE_QUANTITY_MESSAGE;
   cartHeading.focus();
 }
 

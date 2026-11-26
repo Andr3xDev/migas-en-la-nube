@@ -1,3 +1,4 @@
+import { isAdmin } from "./auth.js";
 import { addProductVariant } from "./cart.js";
 import { createFavoriteButton } from "./favorites.js";
 import {
@@ -51,7 +52,7 @@ export function createProductCard(product, { favorites, headingLevel = 2, onAdd 
   const actions = document.createElement("div");
   actions.className = "card-actions";
   if (favorites) actions.append(createFavoriteButton(product, favorites));
-  actions.append(addButton);
+  if (!isAdmin()) actions.append(addButton);
 
   const footer = document.createElement("div");
   footer.className = "product-footer";

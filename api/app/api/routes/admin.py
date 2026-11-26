@@ -1,10 +1,11 @@
-from datetime import date
-from typing import Annotated
+from datetime import date, datetime
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Response
 
 from app.api.deps import (
     get_image_store,
+    get_now,
     get_order_repository,
     get_product_repository,
     require_role,
@@ -48,7 +49,10 @@ def to_product_data(request: ProductRequest) -> catalog.ProductData:
 
 def to_admin_response(order: Order) -> AdminOrderResponse:
     return AdminOrderResponse(
-        **vars(order_to_response(order)), customer_name=order.customer_name, phone=order.phone
+        **vars(order_to_response(order)),
+        customer_name=order.customer_name,
+        phone=order.phone,
+        pickup_date=order.pickup_date,
     )
 
 
@@ -91,10 +95,19 @@ def create_image_upload(
 
 
 @router.get("/orders")
-def list_orders(date: date, orders: Orders) -> list[AdminOrderResponse]:
-    return [
-        to_admin_response(order) for order in orders_service.list_by_date(orders, date.isoformat())
-    ]
+def list_orders(
+    orders: Orders,
+    now: Annotated[datetime, Depends(get_now)],
+    date: date | None = None,
+    scope: Literal["upcoming", "history"] = "upcoming",
+) -> list[AdminOrderResponse]:
+    if date is not None:
+        found = orders_service.list_by_date(orders, date.isoformat())
+    elif scope == "history":
+        found = orders_service.list_history(orders, now)
+    else:
+        found = orders_service.list_upcoming(orders, now)
+    return [to_admin_response(order) for order in found]
 
 
 @router.patch("/orders/{order_id}/status")

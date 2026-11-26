@@ -1,5 +1,5 @@
 import { apiFetch, ApiError } from "./api.js";
-import { setToken } from "./auth.js";
+import { isAdmin, setToken } from "./auth.js";
 import { showMessage } from "./format.js";
 
 const GENERIC_LOGIN_ERROR = "Correo o contraseña incorrectos.";
@@ -18,7 +18,7 @@ form.addEventListener("submit", async (event) => {
       body: { email: data.get("email").trim(), password: data.get("password") },
     });
     setToken(accessToken);
-    window.location.assign("/");
+    window.location.assign(isAdmin() ? "/admin/" : "/");
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     showMessage(feedback, error.status === 401 ? GENERIC_LOGIN_ERROR : error.message);

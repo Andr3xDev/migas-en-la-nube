@@ -1,3 +1,4 @@
+import { isAdmin } from "./auth.js";
 import { LAST_ORDER_KEY } from "./cart.js";
 import { createEmptyState } from "./components.js";
 import { createIcon, createIconButton, createIconLink } from "./icons.js";
@@ -42,13 +43,16 @@ function createCodeBlock(orderCode) {
   return card;
 }
 
-container.replaceChildren(
-  code
-    ? createCodeBlock(code)
-    : createEmptyState({
-        icon: "receipt",
-        title: "No hay un pedido reciente",
-        text: "Cuando hagas un pedido, aquí verás tu código.",
-        action: { icon: "utensils", text: "Ir al menú", href: "/" },
-      }),
-);
+// Admins are redirected away by nav.js; skip rendering meanwhile.
+if (!isAdmin()) {
+  container.replaceChildren(
+    code
+      ? createCodeBlock(code)
+      : createEmptyState({
+          icon: "receipt",
+          title: "No hay un pedido reciente",
+          text: "Cuando hagas un pedido, aquí verás tu código.",
+          action: { icon: "utensils", text: "Ir al menú", href: "/" },
+        }),
+  );
+}

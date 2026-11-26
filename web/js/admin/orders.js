@@ -1,19 +1,33 @@
 import { apiFetch, ApiError } from "../api.js";
+import { createEmptyState } from "../components.js";
 import { createStatusChip, formatPeso, showMessage, STATUS_LABELS } from "../format.js";
 import { requireAdmin } from "./guard.js";
 
 const SHOP_TIMEZONE = "America/Bogota";
+// Mirrors HISTORY_LIMIT in api/app/services/orders.py: a full page means older orders are hidden.
+const HISTORY_LIMIT = 100;
+const UPCOMING = "upcoming";
+const HISTORY = "history";
+const UPCOMING_COLUMNS = 6;
 
 const NEXT_STATUS = { received: "preparing", preparing: "ready", ready: "delivered" };
 const CANCELLABLE = ["received", "preparing", "ready"];
+const HISTORY_HEADINGS = ["Código", "Entrega", "Cliente", "Estado", "Productos", "Total"];
 
 const panel = document.getElementById("panel");
 const guardMessage = document.getElementById("guard-message");
 const dateInput = document.getElementById("date");
+const clearDateButton = document.getElementById("clear-date");
+const viewButtons = {
+  [UPCOMING]: document.getElementById("view-upcoming"),
+  [HISTORY]: document.getElementById("view-history"),
+};
 const container = document.getElementById("orders");
 const feedback = document.getElementById("feedback");
 
+let view = UPCOMING;
 let orders = [];
+let latestRequest = 0;
 
 function createCell(content, className = "") {
   const cell = document.createElement("td");
@@ -39,10 +53,34 @@ function formatPickup(pickupTime) {
   });
 }
 
+function formatPickupDateTime(pickupTime) {
+  return new Date(pickupTime).toLocaleString("es-CO", {
+    timeZone: SHOP_TIMEZONE,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDay(pickupDate) {
+  // Noon avoids a day shift when the browser timezone differs from the date's own.
+  return new Date(`${pickupDate}T12:00:00`).toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
 function describeItems(order) {
   return order.items
     .map((item) => `${item.quantity} x ${item.productName} (${item.variantName})`)
     .join(", ");
+}
+
+function countUnits(order) {
+  return order.items.reduce((sum, item) => sum + item.quantity, 0);
 }
 
 function createActions(order) {
@@ -56,40 +94,124 @@ function createActions(order) {
   return actions;
 }
 
+function createDayHeading(pickupDate) {
+  const row = document.createElement("tr");
+  row.className = "date-heading";
+  const heading = document.createElement("th");
+  heading.colSpan = UPCOMING_COLUMNS;
+  heading.scope = "colgroup";
+  heading.textContent = formatDay(pickupDate);
+  row.append(heading);
+  return row;
+}
+
+function createUpcomingRow(order) {
+  const row = document.createElement("tr");
+  row.append(
+    createCell(formatPickup(order.pickupTime), "cell-time"),
+    createCell(`${order.customerName} (${order.phone})`),
+    createCell(describeItems(order)),
+    createCell(formatPeso(order.total)),
+    createCell(createStatusChip(order.status)),
+    createCell(createActions(order)),
+  );
+  return row;
+}
+
+function createHistoryRow(order) {
+  const row = document.createElement("tr");
+  row.append(
+    createCell(order.code, "cell-code"),
+    createCell(formatPickupDateTime(order.pickupTime), "cell-time"),
+    createCell(order.customerName),
+    createCell(createStatusChip(order.status)),
+    createCell(String(countUnits(order))),
+    createCell(formatPeso(order.total)),
+  );
+  return row;
+}
+
+function createHistoryHead() {
+  const head = document.createElement("thead");
+  const row = document.createElement("tr");
+  for (const label of HISTORY_HEADINGS) {
+    const cell = document.createElement("th");
+    cell.scope = "col";
+    cell.textContent = label;
+    row.append(cell);
+  }
+  head.append(row);
+  return head;
+}
+
+function createEmpty() {
+  const text = {
+    [UPCOMING]: "No hay pedidos próximos.",
+    [HISTORY]: "Aún no hay pedidos anteriores.",
+  };
+  return createEmptyState({
+    icon: "receipt",
+    title: "Sin pedidos",
+    text: dateInput.value ? "No hay pedidos para esta fecha." : text[view],
+  });
+}
+
 function render() {
   if (orders.length === 0) {
-    showMessage(container, "No hay pedidos para esta fecha.");
+    container.replaceChildren(createEmpty());
     return;
   }
+  const isHistory = view === HISTORY && !dateInput.value;
   const table = document.createElement("table");
   table.className = "cart-table";
-  const sorted = [...orders].sort((a, b) => new Date(a.pickupTime) - new Date(b.pickupTime));
-  for (const order of sorted) {
-    const row = document.createElement("tr");
-    row.append(
-      createCell(formatPickup(order.pickupTime), "cell-time"),
-      createCell(`${order.customerName} (${order.phone})`),
-      createCell(describeItems(order)),
-      createCell(formatPeso(order.total)),
-      createCell(createStatusChip(order.status)),
-      createCell(createActions(order)),
-    );
-    table.append(row);
+  if (isHistory) {
+    table.append(createHistoryHead());
+    table.append(...orders.map(createHistoryRow));
+  } else {
+    let currentDay = null;
+    for (const order of orders) {
+      if (order.pickupDate !== currentDay) {
+        currentDay = order.pickupDate;
+        table.append(createDayHeading(currentDay));
+      }
+      table.append(createUpcomingRow(order));
+    }
   }
   const scroller = document.createElement("div");
   scroller.className = "table-scroll";
   scroller.append(table);
   container.replaceChildren(scroller);
+  if (isHistory && orders.length >= HISTORY_LIMIT) {
+    const note = document.createElement("p");
+    note.className = "orders-note";
+    note.textContent = `Se muestran los ${HISTORY_LIMIT} más recientes; puede haber pedidos más antiguos.`;
+    container.append(note);
+  }
+}
+
+function syncControls() {
+  const filtered = Boolean(dateInput.value);
+  for (const [name, button] of Object.entries(viewButtons)) {
+    button.setAttribute("aria-pressed", String(!filtered && name === view));
+  }
+  clearDateButton.hidden = !filtered;
 }
 
 async function loadOrders() {
   feedback.replaceChildren();
+  syncControls();
+  const query = dateInput.value
+    ? `date=${encodeURIComponent(dateInput.value)}`
+    : `scope=${view}`;
+  const requestId = ++latestRequest;
   try {
-    orders = await apiFetch(`/api/admin/orders?date=${encodeURIComponent(dateInput.value)}`);
+    const loaded = await apiFetch(`/api/admin/orders?${query}`);
+    if (requestId !== latestRequest) return;
+    orders = loaded;
     render();
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
-    showMessage(container, error.message);
+    if (requestId === latestRequest) showMessage(container, error.message);
   }
 }
 
@@ -97,7 +219,7 @@ async function changeStatus(order, status) {
   feedback.replaceChildren();
   try {
     const updated = await apiFetch(
-      `/api/admin/orders/${order.code}/status?date=${encodeURIComponent(dateInput.value)}`,
+      `/api/admin/orders/${order.code}/status?date=${encodeURIComponent(order.pickupDate)}`,
       { method: "PATCH", body: { status } },
     );
     orders = orders.map((item) => (item.code === updated.code ? updated : item));
@@ -108,12 +230,19 @@ async function changeStatus(order, status) {
   }
 }
 
-dateInput.addEventListener("change", () => {
-  if (dateInput.value) loadOrders();
+for (const [name, button] of Object.entries(viewButtons)) {
+  button.addEventListener("click", () => {
+    view = name;
+    dateInput.value = "";
+    loadOrders();
+  });
+}
+
+dateInput.addEventListener("change", loadOrders);
+
+clearDateButton.addEventListener("click", () => {
+  dateInput.value = "";
+  loadOrders();
 });
 
-if (requireAdmin(panel, guardMessage)) {
-  // en-CA formats as YYYY-MM-DD, the value format of a date input.
-  dateInput.value = new Date().toLocaleDateString("en-CA", { timeZone: SHOP_TIMEZONE });
-  loadOrders();
-}
+if (requireAdmin(panel, guardMessage)) loadOrders();

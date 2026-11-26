@@ -28,6 +28,7 @@ MAX_PICKUP_HORIZON = timedelta(days=30)
 CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 CODE_LENGTH = 8
 CODE_ATTEMPTS = 3
+HISTORY_LIMIT = 100
 
 
 @dataclass
@@ -180,6 +181,18 @@ def create_order(
 
 def list_by_date(orders: OrderRepository, pickup_date: str) -> list[Order]:
     return orders.list_by_date(pickup_date)
+
+
+def shop_today(now: datetime) -> str:
+    return now.astimezone(SHOP_TIMEZONE).date().isoformat()
+
+
+def list_upcoming(orders: OrderRepository, now: datetime) -> list[Order]:
+    return orders.list_from(shop_today(now))
+
+
+def list_history(orders: OrderRepository, now: datetime) -> list[Order]:
+    return orders.list_before(shop_today(now), HISTORY_LIMIT)
 
 
 def change_status(

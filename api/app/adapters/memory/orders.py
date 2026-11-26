@@ -32,6 +32,15 @@ class MemoryOrderRepository:
         matches = [o for o in self._orders.values() if o.pickup_date == pickup_date]
         return [deepcopy(o) for o in sorted(matches, key=lambda o: o.pickup_time)]
 
+    def list_from(self, pickup_date: str) -> list[Order]:
+        matches = [o for o in self._orders.values() if o.pickup_date >= pickup_date]
+        return [deepcopy(o) for o in sorted(matches, key=lambda o: o.pickup_time)]
+
+    def list_before(self, pickup_date: str, limit: int) -> list[Order]:
+        matches = [o for o in self._orders.values() if o.pickup_date < pickup_date]
+        newest = sorted(matches, key=lambda o: o.pickup_time, reverse=True)[:limit]
+        return [deepcopy(o) for o in newest]
+
     def list_by_user(self, user_id: str) -> list[Order]:
         return [deepcopy(o) for o in self._orders.values() if o.user_id == user_id]
 

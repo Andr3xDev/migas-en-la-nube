@@ -1,24 +1,14 @@
 import { getToken } from "./api.js";
-import { getRole, logout } from "./auth.js";
+import { isAdmin, logout } from "./auth.js";
 import { CART_CHANGED_EVENT, getItemCount } from "./cart.js";
 import { createIcon } from "./icons.js";
 
-const signedIn = Boolean(getToken());
-for (const link of document.querySelectorAll("[data-guest]")) link.hidden = signedIn;
-for (const link of document.querySelectorAll("[data-user]")) link.hidden = !signedIn;
+const SHOPPING_PAGES = ["/cart.html", "/checkout.html", "/confirmation.html"];
 
-// Admin pages already link to /admin/ in their own nav.
-if (getRole() === "admin" && !window.location.pathname.startsWith("/admin/")) {
-  const adminLink = document.createElement("a");
-  adminLink.href = "/admin/";
-  adminLink.dataset.icon = "shield-check";
-  adminLink.textContent = "Administrar";
-  document.querySelector("header nav").prepend(adminLink);
-}
-
-for (const link of document.querySelectorAll("header nav [data-icon]")) {
-  link.prepend(createIcon(link.dataset.icon));
-}
+// A page restored from the back/forward cache keeps the nav of the session it was left in.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) window.location.reload();
+});
 
 const cartCount = document.getElementById("cart-count");
 function refreshCartCount() {
@@ -32,11 +22,40 @@ function refreshCartCount() {
     count === 0 ? "Carrito" : `Carrito, ${count} productos`,
   );
 }
-refreshCartCount();
-window.addEventListener(CART_CHANGED_EVENT, refreshCartCount);
 
-document.getElementById("logout").addEventListener("click", (event) => {
-  event.preventDefault();
-  logout();
-  window.location.assign("/");
-});
+function renderNav() {
+  const signedIn = Boolean(getToken());
+  for (const link of document.querySelectorAll("[data-guest]")) link.hidden = signedIn;
+  for (const link of document.querySelectorAll("[data-user]")) link.hidden = !signedIn;
+  for (const link of document.querySelectorAll('header nav a[href="/cart.html"]')) {
+    link.hidden = isAdmin();
+  }
+
+  // Admin pages already link to /admin/ in their own nav.
+  if (isAdmin() && !window.location.pathname.startsWith("/admin/")) {
+    const adminLink = document.createElement("a");
+    adminLink.href = "/admin/";
+    adminLink.dataset.icon = "shield-check";
+    adminLink.textContent = "Administrar";
+    document.querySelector("header nav").prepend(adminLink);
+  }
+
+  for (const link of document.querySelectorAll("header nav [data-icon]")) {
+    link.prepend(createIcon(link.dataset.icon));
+  }
+
+  refreshCartCount();
+  window.addEventListener(CART_CHANGED_EVENT, refreshCartCount);
+
+  document.getElementById("logout").addEventListener("click", (event) => {
+    event.preventDefault();
+    logout();
+    window.location.assign("/");
+  });
+}
+
+if (isAdmin() && SHOPPING_PAGES.includes(window.location.pathname)) {
+  window.location.replace("/admin/");
+} else {
+  renderNav();
+}

@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends
 
 from app.api.deps import (
     get_now,
-    get_optional_principal,
     get_order_repository,
     get_product_repository,
+    get_shopper_principal,
 )
 from app.api.schemas import OrderItemResponse, OrderRequest, OrderResponse
 from app.domain.models import Order
@@ -34,7 +34,7 @@ def create_order(
     products: Annotated[ProductRepository, Depends(get_product_repository)],
     orders: Annotated[OrderRepository, Depends(get_order_repository)],
     now: Annotated[datetime, Depends(get_now)],
-    principal: Annotated[Principal | None, Depends(get_optional_principal)],
+    principal: Annotated[Principal | None, Depends(get_shopper_principal)],
 ) -> OrderResponse:
     order = orders_service.NewOrder(
         customer_name=request.customer_name,

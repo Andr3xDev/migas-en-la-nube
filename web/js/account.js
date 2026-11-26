@@ -1,4 +1,5 @@
 import { apiFetch, getToken } from "./api.js";
+import { isAdmin } from "./auth.js";
 import { addProductVariant } from "./cart.js";
 import { createProductCard } from "./components.js";
 import { createStatusChip, formatPeso, showMessage } from "./format.js";
@@ -54,7 +55,8 @@ function createOrderSummary(order, catalog) {
 
   const summary = document.createElement("article");
   summary.className = "order-summary";
-  summary.append(code, createStatusChip(order.status), details, total, again, feedback);
+  summary.append(code, createStatusChip(order.status), details, total);
+  if (!isAdmin()) summary.append(again, feedback);
   return summary;
 }
 

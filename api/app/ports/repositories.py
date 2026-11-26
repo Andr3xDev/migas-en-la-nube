@@ -26,6 +26,14 @@ class OrderRepository(Protocol):
 
     def list_by_date(self, pickup_date: str) -> list[Order]: ...
 
+    def list_from(self, pickup_date: str) -> list[Order]:
+        """Orders with pickup date >= pickup_date, earliest pickup first."""
+        ...
+
+    def list_before(self, pickup_date: str, limit: int) -> list[Order]:
+        """Up to `limit` orders with pickup date < pickup_date, latest pickup first."""
+        ...
+
     def list_by_user(self, user_id: str) -> list[Order]: ...
 
 

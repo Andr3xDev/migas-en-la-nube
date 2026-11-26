@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -65,25 +65,29 @@ def test_list_by_date_returns_only_that_day_earliest_pickup_first(orders):
     assert [o.id for o in orders_service.list_by_date(orders, DAY)] == ["EARLY000", "LATE0000"]
 
 
-def test_history_excludes_today_and_future_and_respects_limit(orders, monkeypatch):
-    now = datetime(2026, 6, 10, 23, 30, tzinfo=SHOP_TZ)
-    add_order(orders, "TODAY000")
-    add_order(orders, "FUTURE00", pickup_date="2026-06-11")
-    for day in ("2026-06-07", "2026-06-08", "2026-06-09"):
-        add_order(orders, f"P{day[-2:]}00000", pickup_date=day)
+def test_history_holds_only_delivered_and_cancelled_newest_first_and_respects_limit(
+    orders, monkeypatch
+):
+    add_order(orders, "OPEN0000")
+    add_order(orders, "FUTURE00", status="delivered", pickup_date="2026-06-11")
+    add_order(orders, "P0900000", status="cancelled", pickup_date="2026-06-09")
+    add_order(orders, "P0800000", status="delivered", pickup_date="2026-06-08")
     monkeypatch.setattr(orders_service, "HISTORY_LIMIT", 2)
 
-    assert [o.id for o in orders_service.list_history(orders, now)] == ["P0900000", "P0800000"]
+    assert [o.id for o in orders_service.list_history(orders)] == ["FUTURE00", "P0900000"]
 
 
-def test_upcoming_uses_shop_day_not_utc_day(orders):
-    # 23:30 in Bogota is already the next day in UTC; the shop day is still the 10th.
-    now = datetime(2026, 6, 11, 4, 30, tzinfo=UTC)
+def test_upcoming_holds_open_statuses_on_any_date_earliest_first(orders):
     add_order(orders, "TODAY000")
-    add_order(orders, "PAST0000", pickup_date="2026-06-09")
-    add_order(orders, "FUTURE00", pickup_date="2026-06-11")
+    add_order(orders, "PAST0000", status="ready", pickup_date="2026-06-09")
+    add_order(orders, "FUTURE00", status="preparing", pickup_date="2026-06-11")
+    add_order(orders, "DONE0000", status="delivered", pickup_date="2026-06-12")
 
-    assert [o.id for o in orders_service.list_upcoming(orders, now)] == ["TODAY000", "FUTURE00"]
+    assert [o.id for o in orders_service.list_upcoming(orders)] == [
+        "PAST0000",
+        "TODAY000",
+        "FUTURE00",
+    ]
 
 
 @pytest.mark.parametrize(

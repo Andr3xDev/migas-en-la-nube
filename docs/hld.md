@@ -63,7 +63,7 @@ El sistema cubre 8 requisitos funcionales y los 6 no funcionales que pide el cas
 | RF5 | Registrarse e iniciar sesión con correo y contraseña | Cliente |
 | RF6 | Ver historial, marcar favoritos, volver a pedir y ver sus productos más pedidos | Cliente registrado |
 | RF7 | Crear y editar productos, variantes, precios, stock y tiempo de preparación, y subir la imagen del producto. Si dos administradores editan el mismo producto, el segundo recibe un conflicto (ETag) en lugar de pisar el cambio | Administrador |
-| RF8 | Ver los pedidos próximos (de hoy en adelante, el más cercano primero) y los históricos (anteriores a hoy, el más reciente primero, hasta 100), filtrar por un día y cambiar el estado del pedido | Administrador |
+| RF8 | Ver los pedidos próximos (recibidos, en preparación y listos, de cualquier fecha, el más cercano primero) y los históricos (entregados y cancelados, de cualquier fecha, el más reciente primero, hasta 100), filtrar por un día y cambiar el estado del pedido | Administrador |
 
 ### Requisitos no funcionales
 

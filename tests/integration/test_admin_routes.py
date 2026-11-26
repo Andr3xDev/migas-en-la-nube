@@ -52,29 +52,32 @@ class FakeImageStore:
 @pytest.fixture
 def stack(stack, client):
     orders = stack.orders
-    for code, day, hour in [
-        ("LATE0000", DAY, 15),
-        ("EARLY000", DAY, 9),
-        ("NEXTDAY0", "2026-11-28", 8),
-        ("PAST0001", "2026-11-26", 10),
-        ("OLD00001", "2026-11-20", 10),
+    for code, day, hour, status in [
+        ("LATE0000", DAY, 15, "received"),
+        ("EARLY000", DAY, 9, "received"),
+        ("NEXTDAY0", "2026-11-28", 8, "received"),
+        ("STALE000", "2026-11-20", 8, "ready"),
+        ("EARLYDEL", "2026-11-29", 8, "delivered"),
+        ("PAST0001", "2026-11-26", 10, "delivered"),
+        ("OLD00001", "2026-11-20", 10, "cancelled"),
     ]:
         orders.create(
             Order(
                 id=code,
                 customer_name="Ana",
-                phone="300",
+                phone="3000000000",
                 pickup_time=datetime.fromisoformat(f"{day}T{hour:02d}:00:00-05:00"),
                 pickup_date=day,
                 items=[OrderItem("croissant", "Croissant", "Single", 6000, 1)],
                 total=6000,
+                status=status,
             )
         )
     orders.create(
         Order(
             id="ORDER001",
             customer_name="Beto",
-            phone="301",
+            phone="3010000000",
             pickup_time=datetime.fromisoformat(f"{DAY}T18:00:00-05:00"),
             pickup_date=DAY,
             items=[OrderItem("croissant", "Croissant", "Single", 6000, 1)],
@@ -216,7 +219,7 @@ def test_list_orders_returns_only_requested_day_earliest_first_with_contact(clie
     assert response.status_code == 200
     body = response.json()
     assert [o["code"] for o in body] == ["EARLY000", "LATE0000", "ORDER001"]
-    assert (body[0]["customerName"], body[0]["phone"]) == ("Ana", "300")
+    assert (body[0]["customerName"], body[0]["phone"]) == ("Ana", "3000000000")
 
 
 def test_list_orders_returns_pickup_date_for_status_changes(client, admin):
@@ -225,11 +228,12 @@ def test_list_orders_returns_pickup_date_for_status_changes(client, admin):
     assert {o["pickupDate"] for o in body} == {DAY}
 
 
-def test_list_orders_defaults_to_upcoming_earliest_first_across_days(client, admin):
+def test_list_orders_defaults_to_open_statuses_earliest_first_on_any_date(client, admin):
     response = client.get("/api/admin/orders", headers=admin)
 
     assert response.status_code == 200
     assert [o["code"] for o in response.json()] == [
+        "STALE000",
         "EARLY000",
         "LATE0000",
         "ORDER001",
@@ -237,11 +241,11 @@ def test_list_orders_defaults_to_upcoming_earliest_first_across_days(client, adm
     ]
 
 
-def test_list_orders_history_returns_only_past_days_latest_first(client, admin):
+def test_list_orders_history_returns_delivered_and_cancelled_latest_first(client, admin):
     response = client.get("/api/admin/orders?scope=history", headers=admin)
 
     assert response.status_code == 200
-    assert [o["code"] for o in response.json()] == ["PAST0001", "OLD00001"]
+    assert [o["code"] for o in response.json()] == ["EARLYDEL", "PAST0001", "OLD00001"]
 
 
 @pytest.mark.parametrize("query", ["?date=2026-13-40", "?scope=all"], ids=["date", "scope"])

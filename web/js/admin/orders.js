@@ -119,8 +119,8 @@ function createHistoryRow(order) {
 
 function createEmpty() {
   const text = {
-    [UPCOMING]: "No hay pedidos próximos.",
-    [HISTORY]: "Aún no hay pedidos anteriores.",
+    [UPCOMING]: "No hay pedidos pendientes (recibidos, en preparación o listos).",
+    [HISTORY]: "Aún no hay pedidos entregados o cancelados.",
   };
   return createEmptyState({
     icon: "receipt",
@@ -154,7 +154,7 @@ function render() {
   if (isHistory && orders.length >= HISTORY_LIMIT) {
     const note = document.createElement("p");
     note.className = "orders-note";
-    note.textContent = `Se muestran los ${HISTORY_LIMIT} más recientes; puede haber pedidos más antiguos.`;
+    note.textContent = `Se muestran los ${HISTORY_LIMIT} pedidos entregados o cancelados más recientes; puede haber más antiguos.`;
     container.append(note);
   }
 }

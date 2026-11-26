@@ -20,6 +20,8 @@ ALLOWED_TRANSITIONS = {
     CANCELLED: set(),
 }
 ORDER_STATUSES = set(ALLOWED_TRANSITIONS)
+UPCOMING_STATUSES = ["received", "preparing", "ready"]
+HISTORY_STATUSES = ["delivered", CANCELLED]
 SHOP_TIMEZONE = timezone(timedelta(hours=-5))
 OPENING_TIME = time(6, 0)
 CLOSING_TIME = time(20, 0)
@@ -183,16 +185,12 @@ def list_by_date(orders: OrderRepository, pickup_date: str) -> list[Order]:
     return orders.list_by_date(pickup_date)
 
 
-def shop_today(now: datetime) -> str:
-    return now.astimezone(SHOP_TIMEZONE).date().isoformat()
+def list_upcoming(orders: OrderRepository) -> list[Order]:
+    return orders.list_by_statuses(UPCOMING_STATUSES, newest_first=False)
 
 
-def list_upcoming(orders: OrderRepository, now: datetime) -> list[Order]:
-    return orders.list_from(shop_today(now))
-
-
-def list_history(orders: OrderRepository, now: datetime) -> list[Order]:
-    return orders.list_before(shop_today(now), HISTORY_LIMIT)
+def list_history(orders: OrderRepository) -> list[Order]:
+    return orders.list_by_statuses(HISTORY_STATUSES, newest_first=True, limit=HISTORY_LIMIT)
 
 
 def change_status(

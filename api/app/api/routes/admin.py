@@ -1,11 +1,10 @@
-from datetime import date, datetime
+from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Response
 
 from app.api.deps import (
     get_image_store,
-    get_now,
     get_order_repository,
     get_product_repository,
     require_role,
@@ -97,16 +96,15 @@ def create_image_upload(
 @router.get("/orders")
 def list_orders(
     orders: Orders,
-    now: Annotated[datetime, Depends(get_now)],
     date: date | None = None,
     scope: Literal["upcoming", "history"] = "upcoming",
 ) -> list[AdminOrderResponse]:
     if date is not None:
         found = orders_service.list_by_date(orders, date.isoformat())
     elif scope == "history":
-        found = orders_service.list_history(orders, now)
+        found = orders_service.list_history(orders)
     else:
-        found = orders_service.list_upcoming(orders, now)
+        found = orders_service.list_upcoming(orders)
     return [to_admin_response(order) for order in found]
 
 

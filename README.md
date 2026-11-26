@@ -39,7 +39,7 @@ More detail in [docs/diagramas/architecture.md](docs/diagramas/architecture.md).
 | `tests/` | Unit and integration tests |
 | `smoke/` | Bruno smoke collection run after each deploy |
 | `.github/` | Workflows (`ci`, `deploy`, `rollback`, `destroy`) and composite actions |
-| `docs/` | ADRs, Mermaid diagrams, screenshots |
+| `docs/` | HLD, deployment design, ADRs, Mermaid diagrams, screenshots |
 
 ## Local run
 
@@ -187,6 +187,8 @@ The resource groups remain until step 3. GitHub environments and the repository 
 
 ## Documentation
 
+- [High-level design (HLD, Spanish)](docs/hld.md)
+- [Deployment design (Spanish)](docs/despliegue.md)
 - [Architecture decision records](docs/adr/README.md)
-- [Diagrams](docs/diagramas/architecture.md): [architecture](docs/diagramas/architecture.md), [pipeline](docs/diagramas/pipeline.md), [rollback](docs/diagramas/rollback.md). PNG exports: [architecture](docs/diagramas/architecture.png), [pipeline](docs/diagramas/pipeline.png), [rollback](docs/diagramas/rollback.png)
+- Diagrams (Spanish, Mermaid): [context](docs/diagramas/contexto.md), [architecture](docs/diagramas/architecture.md), [network and security](docs/diagramas/red-seguridad.md), [pipeline](docs/diagramas/pipeline.md), [rollback](docs/diagramas/rollback.md). Older PNG exports (English): [architecture](docs/diagramas/architecture.png), [pipeline](docs/diagramas/pipeline.png), [rollback](docs/diagramas/rollback.png)
 - [Bootstrap and final cleanup](infra/bootstrap/README.md)

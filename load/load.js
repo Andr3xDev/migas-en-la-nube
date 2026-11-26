@@ -51,7 +51,8 @@ const visitScenarios = {
     executor: "ramping-arrival-rate",
     startRate: 1,
     timeUnit: "1s",
-    preAllocatedVUs: 20,
+    // Too few preallocated VUs made k6 drop iterations at ramp steps while it allocated more.
+    preAllocatedVUs: 100,
     maxVUs: 200,
     stages: [
       { target: 5, duration: "30s" },
@@ -208,7 +209,7 @@ function textSummary(data) {
     const failed = metricValues(data, `http_req_failed{scenario:${name}}`);
     if (!duration || !failed) continue;
     lines.push(
-      `Requests (${name}): ${duration.count}`,
+      `Requests (${name}): ${failed.passes + failed.fails}`,
       `Latency ms: avg ${duration.avg.toFixed(0)}, p90 ${duration["p(90)"].toFixed(0)}, ` +
         `p95 ${duration["p(95)"].toFixed(0)}, max ${duration.max.toFixed(0)}`,
       `Failed requests: ${(failed.rate * 100).toFixed(2)} %`,

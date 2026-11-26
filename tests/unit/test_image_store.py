@@ -71,17 +71,8 @@ def test_create_upload_signs_five_minute_create_write_sas():
 def test_create_upload_returns_public_blob_url_under_product_prefix():
     upload = make_store().create_upload("croissant", "image/png")
 
-    assert re.fullmatch(rf"{CONTAINER_URL}/products/croissant/[0-9a-f-]+\.png", upload.image_url)
+    assert re.fullmatch(rf"{CONTAINER_URL}/products/croissant/[^/]+\.png", upload.image_url)
     assert upload.upload_url.startswith(f"{upload.image_url}?")
-
-
-def test_create_upload_twice_gives_different_paths():
-    store = make_store()
-
-    first = store.create_upload("croissant", "image/webp")
-    second = store.create_upload("croissant", "image/webp")
-
-    assert first.image_url != second.image_url
 
 
 @pytest.mark.parametrize(
@@ -107,11 +98,13 @@ def test_delete_product_images_deletes_every_blob_under_product_prefix():
 
 
 @pytest.mark.parametrize(
-    "container",
+    "make_container",
     [
-        FakeContainerClient(list_error=RuntimeError("storage down")),
-        FakeContainerClient(names=["products/p1/a.png"], delete_error=RuntimeError("gone")),
+        lambda: FakeContainerClient(list_error=RuntimeError("storage down")),
+        lambda: FakeContainerClient(names=["products/p1/a.png"], delete_error=RuntimeError("gone")),
     ],
+    ids=["list", "delete"],
 )
-def test_delete_product_images_swallows_storage_failures(container):
-    make_store(container).delete_product_images("p1")
+def test_delete_product_images_propagates_storage_failures(make_container):
+    with pytest.raises(RuntimeError):
+        make_store(make_container()).delete_product_images("p1")

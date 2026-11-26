@@ -1,11 +1,11 @@
 from collections import Counter
 from itertools import islice
 
+from app.core.retry import retry_on_conflict
 from app.domain.errors import NotFoundError
 from app.domain.models import Order, Product, User
 from app.ports.repositories import OrderRepository, ProductRepository, UserRepository
 from app.services.orders import CANCELLED
-from app.services.retry import retry_on_conflict
 
 TOP_PRODUCTS_LIMIT = 3
 

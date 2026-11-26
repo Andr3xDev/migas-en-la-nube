@@ -22,13 +22,13 @@ from app.api.schemas import (
     StatusRequest,
 )
 from app.core.settings import Settings, get_settings
-from app.domain.models import Order, Variant
+from app.domain.models import ADMIN_ROLE, Order, Variant
 from app.ports.images import ImageStore
 from app.ports.repositories import OrderRepository, ProductRepository
 from app.services import catalog
 from app.services import orders as orders_service
 
-router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_role("admin"))])
+router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_role(ADMIN_ROLE))])
 
 Products = Annotated[ProductRepository, Depends(get_product_repository)]
 Orders = Annotated[OrderRepository, Depends(get_order_repository)]

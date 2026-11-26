@@ -1,6 +1,7 @@
 import { apiFetch } from "./api.js";
 import { isAdmin } from "./auth.js";
 import { addProductVariant } from "./cart.js";
+import { endLoading, showLoading } from "./components.js";
 import { createFavoriteButton, loadFavorites } from "./favorites.js";
 import { createIconButton, createIconLink } from "./icons.js";
 import {
@@ -8,6 +9,7 @@ import {
   createProductImage,
   formatAvailability,
   formatPeso,
+  isInStock,
   showMessage,
 } from "./format.js";
 
@@ -39,7 +41,7 @@ function renderProduct(product, favorites) {
   const selectedVariant = () => product.variants[Number(select.value)];
   const refresh = () => {
     price.textContent = formatPeso(selectedVariant().price);
-    availability.className = availabilityBadgeClass(selectedVariant().availability.status === "in stock");
+    availability.className = availabilityBadgeClass(isInStock(selectedVariant().availability));
     availability.textContent = formatAvailability(selectedVariant().availability);
     feedback.textContent = "";
   };
@@ -77,10 +79,13 @@ function renderProduct(product, favorites) {
 
 const productId = new URLSearchParams(location.search).get("id");
 
+showLoading(container);
 try {
   if (!productId) throw new Error("missing id");
   const product = await apiFetch(`/api/products/${encodeURIComponent(productId)}`);
   renderProduct(product, await loadFavorites());
 } catch {
   showMessage(container, "No pudimos cargar el producto. Intenta de nuevo más tarde.");
+} finally {
+  endLoading(container);
 }

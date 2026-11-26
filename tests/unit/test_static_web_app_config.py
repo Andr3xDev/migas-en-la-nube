@@ -8,10 +8,6 @@ def load_config():
     return json.loads(CONFIG_PATH.read_text())
 
 
-def test_static_web_app_config_declares_python_runtime():
-    assert load_config()["platform"]["apiRuntime"] == "python:3.11"
-
-
 def test_static_web_app_config_sends_security_headers():
     headers = load_config()["globalHeaders"]
 

@@ -1,0 +1,22 @@
+meta {
+  name: pick-product
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseURL}}/api/products
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body[0].id: isString
+  res.body[0].variants[0].name: isString
+}
+
+script:post-response {
+  bru.setVar("productId", res.body[0].id);
+  bru.setVar("variantName", res.body[0].variants[0].name);
+}

@@ -1,5 +1,5 @@
 import { getToken } from "../api.js";
-import { getRole } from "../auth.js";
+import { isAdmin } from "../auth.js";
 import { showMessage } from "../format.js";
 
 // The role check is UI gating only: the API enforces the admin role on every request.
@@ -9,7 +9,7 @@ export function requireAdmin(panel, feedback) {
     window.location.assign("/login.html");
     return false;
   }
-  if (getRole() !== "admin") {
+  if (!isAdmin()) {
     showMessage(feedback, "Acceso denegado: esta sección es solo para administradores.");
     return false;
   }

@@ -1,6 +1,10 @@
-import sys
-
 import pytest
+
+from app.adapters.local_auth import LocalAuthProvider
+from app.adapters.memory.users import MemoryUserRepository
+from app.domain.errors import AuthenticationError, ConflictError
+from app.domain.models import ADMIN_ROLE, User
+from scripts.seed_admin import seed_admin
 
 EMAIL = "Admin@Example.com"
 PASSWORD = "initial-admin-pass"
@@ -8,12 +12,6 @@ PASSWORD = "initial-admin-pass"
 
 @pytest.fixture
 def seeding():
-    # test_health purges app.*; a cached seed module would hold stale error classes.
-    sys.modules.pop("scripts.seed_admin", None)
-    from app.adapters.local_auth import LocalAuthProvider
-    from app.adapters.memory.users import MemoryUserRepository
-    from scripts.seed_admin import seed_admin
-
     users = MemoryUserRepository()
     auth = LocalAuthProvider(
         users,
@@ -29,7 +27,7 @@ def test_seed_admin_first_run_creates_admin_who_can_log_in(seeding):
 
     seed_admin({"ADMIN_EMAIL": EMAIL, "ADMIN_INITIAL_PASSWORD": PASSWORD}, auth)
 
-    assert users.get_by_email("admin@example.com").role == "admin"
+    assert users.get_by_email("admin@example.com").role == ADMIN_ROLE
     assert auth.login(EMAIL, PASSWORD)
 
 
@@ -43,15 +41,13 @@ def test_seed_admin_rerun_is_idempotent(seeding):
     seed_admin(env, auth)
 
     admin = users.get_by_email("admin@example.com")
-    assert admin.role == "admin"
+    assert admin.role == ADMIN_ROLE
     assert admin.etag == etag_after_first_run
     assert auth.login(EMAIL, PASSWORD)
 
 
 def test_seed_admin_retries_when_user_appears_between_read_and_create(seeding):
     seed_admin, auth, users = seeding
-    from app.domain.errors import ConflictError
-    from app.domain.models import User
 
     real_create = users.create
     calls = []
@@ -70,13 +66,12 @@ def test_seed_admin_retries_when_user_appears_between_read_and_create(seeding):
 
     promoted = users.get_by_email("admin@example.com")
     assert promoted.id == "other"
-    assert promoted.role == "admin"
+    assert promoted.role == ADMIN_ROLE
     assert auth.login(EMAIL, PASSWORD)
 
 
 def test_seed_admin_promotes_existing_customer_and_replaces_password(seeding):
     seed_admin, auth, users = seeding
-    from app.domain.errors import AuthenticationError
 
     customer = auth.register(EMAIL, "old-customer-pass")
     customer_id = customer.id
@@ -87,7 +82,7 @@ def test_seed_admin_promotes_existing_customer_and_replaces_password(seeding):
 
     promoted = users.get_by_email("admin@example.com")
     assert promoted.id == customer_id
-    assert promoted.role == "admin"
+    assert promoted.role == ADMIN_ROLE
     assert promoted.favorites == ["product-1"]
     assert auth.login(EMAIL, PASSWORD)
     with pytest.raises(AuthenticationError):

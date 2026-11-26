@@ -1,10 +1,14 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from azure.cosmos.exceptions import CosmosAccessConditionFailedError, CosmosResourceNotFoundError
+from azure.cosmos.exceptions import (
+    CosmosAccessConditionFailedError,
+    CosmosResourceExistsError,
+    CosmosResourceNotFoundError,
+)
 
 from app.adapters.cosmos.orders import CosmosOrderRepository, to_document
-from app.domain.errors import ConcurrencyConflictError
+from app.domain.errors import ConcurrencyConflictError, ConflictError, NotFoundError
 from app.domain.models import Order, OrderItem, StockDecrement
 
 ORDER = Order(
@@ -20,28 +24,59 @@ ORDER = Order(
 )
 
 
+STALE = CosmosAccessConditionFailedError(status_code=412, message="stale")
+MISSING = CosmosResourceNotFoundError(status_code=404, message="missing")
+EXISTS = CosmosResourceExistsError(status_code=409, message="exists")
+
+
 class FakeContainer:
-    def read_item(self, item, partition_key):
-        raise CosmosResourceNotFoundError(status_code=404, message="missing")
+    """Reads find nothing, queries are recorded, writes fail with the configured errors."""
 
-    def create_item(self, body):
-        return {**body, "_etag": "e1", "_rid": "r", "_ts": 1}
-
-    def replace_item(self, *args, **kwargs):
-        raise CosmosAccessConditionFailedError(status_code=412, message="stale")
-
-
-class QueryContainer:
-    def __init__(self):
+    def __init__(self, create_error=None, replace_error=None):
+        self.create_error = create_error
+        self.replace_error = replace_error
         self.calls = []
+
+    def read_item(self, item, partition_key):
+        raise MISSING
 
     def query_items(self, query, **kwargs):
         self.calls.append((query, kwargs))
         return []
 
+    def create_item(self, body):
+        if self.create_error:
+            raise self.create_error
+        return {**body, "_etag": "e1", "_rid": "r", "_ts": 1}
+
+    def replace_item(self, *args, **kwargs):
+        raise self.replace_error
+
+
+def test_create_maps_409_to_conflict():
+    with pytest.raises(ConflictError):
+        CosmosOrderRepository(FakeContainer(create_error=EXISTS)).create(ORDER)
+
+
+def test_replace_maps_404_to_not_found():
+    with pytest.raises(NotFoundError):
+        CosmosOrderRepository(FakeContainer(replace_error=MISSING)).replace(ORDER)
+
+
+def test_list_by_date_runs_single_partition_query_earliest_first():
+    container = FakeContainer()
+
+    CosmosOrderRepository(container).list_by_date("2026-06-10")
+
+    query, kwargs = container.calls[0]
+    assert "c.pickupDate = @date ORDER BY c.pickupTime" in query
+    assert kwargs["partition_key"] == "2026-06-10"
+    assert {"name": "@date", "value": "2026-06-10"} in kwargs["parameters"]
+    assert "enable_cross_partition_query" not in kwargs
+
 
 def test_list_before_runs_capped_cross_partition_query_newest_first():
-    container = QueryContainer()
+    container = FakeContainer()
 
     CosmosOrderRepository(container).list_before("2026-06-10", 5)
 
@@ -52,12 +87,23 @@ def test_list_before_runs_capped_cross_partition_query_newest_first():
 
 
 def test_list_from_runs_cross_partition_query_earliest_first():
-    container = QueryContainer()
+    container = FakeContainer()
 
     CosmosOrderRepository(container).list_from("2026-06-10")
 
     query, kwargs = container.calls[0]
     assert "c.pickupDate >= @date ORDER BY c.pickupTime" in query
+    assert kwargs["enable_cross_partition_query"] is True
+
+
+def test_list_by_user_runs_cross_partition_query_filtered_by_user_id():
+    container = FakeContainer()
+
+    CosmosOrderRepository(container).list_by_user("u1")
+
+    query, kwargs = container.calls[0]
+    assert "c.userId = @userId" in query
+    assert {"name": "@userId", "value": "u1"} in kwargs["parameters"]
     assert kwargs["enable_cross_partition_query"] is True
 
 
@@ -67,7 +113,7 @@ def test_get_returns_none_when_missing():
 
 def test_replace_maps_412_to_concurrency_conflict():
     with pytest.raises(ConcurrencyConflictError):
-        CosmosOrderRepository(FakeContainer()).replace(ORDER)
+        CosmosOrderRepository(FakeContainer(replace_error=STALE)).replace(ORDER)
 
 
 def test_document_round_trip_keeps_offset_and_decrements():

@@ -3,8 +3,9 @@ from datetime import UTC, datetime, timedelta, timezone
 import jwt
 import pytest
 
-KEY = "route-test-signing-key-32-bytes-min"
-PASSWORD = "correct horse"
+from app.api.deps import get_now
+from app.domain.models import ADMIN_ROLE, CUSTOMER_ROLE
+
 SHOP_TZ = timezone(timedelta(hours=-5))
 NOW = datetime(2026, 6, 10, 12, 0, tzinfo=SHOP_TZ)
 ORDER_BODY = {
@@ -16,72 +17,24 @@ ORDER_BODY = {
 
 
 @pytest.fixture
-def stack(client):
-    # Imported after `client` so both come from the same app.* module instances.
-    from app.adapters.local_auth import LocalAuthProvider
-    from app.adapters.memory.orders import MemoryOrderRepository
-    from app.adapters.memory.products import MemoryProductRepository
-    from app.adapters.memory.users import MemoryUserRepository
-    from app.api.deps import (
-        get_auth_provider,
-        get_now,
-        get_order_repository,
-        get_product_repository,
-        get_user_repository,
-    )
-    from app.domain.models import Product, Variant
-
-    users = MemoryUserRepository()
-    orders = MemoryOrderRepository()
-    products = MemoryProductRepository()
-    products.create(
-        Product(
-            "croissant", "Croissant", "bakery", "Buttery", None, 90, [Variant("Single", 6000, 5)]
-        )
-    )
-    auth = LocalAuthProvider(users, KEY, login_failure_delay_seconds=0, sleep=lambda _: None)
-    overrides = client.app.dependency_overrides
-    overrides[get_user_repository] = lambda: users
-    overrides[get_auth_provider] = lambda: auth
-    overrides[get_order_repository] = lambda: orders
-    overrides[get_product_repository] = lambda: products
-    overrides[get_now] = lambda: NOW
-    return auth, users, orders
+def stack(stack, client):
+    client.app.dependency_overrides[get_now] = lambda: NOW
+    return stack
 
 
-def bearer(token: str) -> dict[str, str]:
-    return {"X-Pdc-Token": f"Bearer {token}"}
+def expired_token(key: str) -> str:
+    claims = {"sub": "u1", "email": "a@example.com", "role": CUSTOMER_ROLE}
+    return jwt.encode({**claims, "exp": datetime.now(UTC) - timedelta(minutes=1)}, key)
 
 
-def token_for(auth, email: str, role: str = "customer") -> str:
-    auth.register(email, PASSWORD, role=role)
-    return auth.login(email, PASSWORD)
-
-
-def expired_token() -> str:
-    claims = {"sub": "u1", "email": "a@example.com", "role": "customer"}
-    return jwt.encode({**claims, "exp": datetime.now(UTC) - timedelta(minutes=1)}, KEY)
-
-
-def forged_token() -> str:
-    claims = {"sub": "u1", "email": "a@example.com", "role": "admin"}
-    return jwt.encode({**claims, "exp": datetime.now(UTC) + timedelta(hours=1)}, "x" * 40)
-
-
-@pytest.fixture
-def admin_probe(client):
-    from fastapi import Depends
-
-    from app.api.deps import require_role
-
-    client.app.add_api_route(
-        "/api/admin/probe", lambda: {"ok": True}, dependencies=[Depends(require_role("admin"))]
-    )
+def forged_token(key: str) -> str:
+    claims = {"sub": "u1", "email": "a@example.com", "role": ADMIN_ROLE}
+    return jwt.encode({**claims, "exp": datetime.now(UTC) + timedelta(hours=1)}, f"not-{key}")
 
 
 def test_register_returns_201_with_lowercase_email_and_no_secrets(client, stack):
     response = client.post(
-        "/api/auth/register", json={"email": "Ana@Example.com", "password": PASSWORD}
+        "/api/auth/register", json={"email": "Ana@Example.com", "password": stack.password}
     )
 
     assert response.status_code == 201
@@ -93,7 +46,7 @@ def test_register_returns_201_with_lowercase_email_and_no_secrets(client, stack)
 def test_register_with_role_in_body_still_creates_customer(client, stack):
     response = client.post(
         "/api/auth/register",
-        json={"email": "ana@example.com", "password": PASSWORD, "role": "admin"},
+        json={"email": "ana@example.com", "password": stack.password, "role": "admin"},
     )
 
     assert response.json()["role"] == "customer"
@@ -102,25 +55,23 @@ def test_register_with_role_in_body_still_creates_customer(client, stack):
 @pytest.mark.parametrize(
     "payload",
     [
-        {"email": "not-an-email", "password": PASSWORD},
+        {"email": "not-an-email", "password": "correct horse"},
         {"email": "ana@example.com", "password": "1234567"},
         {"email": "ana@example.com", "password": "x" * 1025},
     ],
 )
 def test_register_with_invalid_input_returns_422_and_creates_no_user(client, stack, payload):
-    _, users, _ = stack
-
     response = client.post("/api/auth/register", json=payload)
 
     assert response.status_code == 422
-    assert users.get_by_email("ana@example.com") is None
+    assert stack.users.get_by_email("ana@example.com") is None
 
 
 def test_register_duplicate_email_in_other_case_returns_409(client, stack):
-    client.post("/api/auth/register", json={"email": "ana@example.com", "password": PASSWORD})
+    client.post("/api/auth/register", json={"email": "ana@example.com", "password": stack.password})
 
     response = client.post(
-        "/api/auth/register", json={"email": "ANA@example.com", "password": PASSWORD}
+        "/api/auth/register", json={"email": "ANA@example.com", "password": stack.password}
     )
 
     assert response.status_code == 409
@@ -128,40 +79,24 @@ def test_register_duplicate_email_in_other_case_returns_409(client, stack):
     assert "ana@example.com" not in response.text.lower()
 
 
-def test_default_auth_provider_without_jwt_key_can_register(client):
-    from app.api.deps import get_auth_provider, get_user_repository
-    from app.core.settings import get_settings
-
-    get_settings.cache_clear()
-    get_user_repository.cache_clear()
-    get_auth_provider.cache_clear()
-    try:
-        provider = get_auth_provider(get_user_repository())
-
-        assert provider.register("Admin@Example.com", PASSWORD, role="admin").role == "admin"
-    finally:
-        get_auth_provider.cache_clear()
-        get_user_repository.cache_clear()
-        get_settings.cache_clear()
-
-
 def test_login_returns_200_with_access_token(client, stack):
-    client.post("/api/auth/register", json={"email": "ana@example.com", "password": PASSWORD})
+    client.post("/api/auth/register", json={"email": "ana@example.com", "password": stack.password})
 
     response = client.post(
-        "/api/auth/login", json={"email": "ANA@example.com", "password": PASSWORD}
+        "/api/auth/login", json={"email": "ANA@example.com", "password": stack.password}
     )
 
     assert response.status_code == 200
-    assert (
-        jwt.decode(response.json()["accessToken"], KEY, algorithms=["HS256"])["role"] == "customer"
-    )
+    token = response.json()["accessToken"]
+    assert jwt.decode(token, stack.key, algorithms=["HS256"])["role"] == "customer"
 
 
 def test_login_unknown_email_and_wrong_password_return_identical_401(client, stack):
-    client.post("/api/auth/register", json={"email": "ana@example.com", "password": PASSWORD})
+    client.post("/api/auth/register", json={"email": "ana@example.com", "password": stack.password})
 
-    unknown = client.post("/api/auth/login", json={"email": "no@example.com", "password": PASSWORD})
+    unknown = client.post(
+        "/api/auth/login", json={"email": "no@example.com", "password": stack.password}
+    )
     wrong = client.post(
         "/api/auth/login", json={"email": "ana@example.com", "password": "wrong-one"}
     )
@@ -170,76 +105,49 @@ def test_login_unknown_email_and_wrong_password_return_identical_401(client, sta
     assert unknown.json() == wrong.json()
 
 
-def test_admin_route_without_token_returns_401(client, stack, admin_probe):
-    assert client.get("/api/admin/probe").status_code == 401
-
-
 @pytest.mark.parametrize("token", [expired_token, forged_token])
-def test_admin_route_with_expired_or_tampered_token_returns_401(client, stack, admin_probe, token):
-    assert client.get("/api/admin/probe", headers=bearer(token())).status_code == 401
+def test_admin_route_with_expired_or_tampered_token_returns_401(client, stack, token):
+    headers = {"X-Pdc-Token": f"Bearer {token(stack.key)}"}
 
-
-def test_admin_route_with_customer_token_returns_403(client, stack, admin_probe):
-    auth, _, _ = stack
-
-    response = client.get("/api/admin/probe", headers=bearer(token_for(auth, "c@example.com")))
-
-    assert response.status_code == 403
-
-
-def test_admin_route_with_admin_token_is_processed(client, stack, admin_probe):
-    auth, _, _ = stack
-
-    response = client.get(
-        "/api/admin/probe", headers=bearer(token_for(auth, "a@example.com", role="admin"))
-    )
-
-    assert response.status_code == 200
+    assert client.get("/api/admin/orders", headers=headers).status_code == 401
 
 
 def test_post_order_with_session_links_order_to_user(client, stack):
-    auth, users, orders = stack
-
     response = client.post(
-        "/api/orders", json=ORDER_BODY, headers=bearer(token_for(auth, "ana@example.com"))
+        "/api/orders", json=ORDER_BODY, headers=stack.headers_for("ana@example.com")
     )
 
     assert response.status_code == 201
-    [order] = orders.list_by_user(users.get_by_email("ana@example.com").id)
+    [order] = stack.orders.list_by_user(stack.users.get_by_email("ana@example.com").id)
     assert order.id == response.json()["code"]
 
 
 def test_post_order_as_guest_stores_no_owner(client, stack):
-    _, _, orders = stack
-
     client.post("/api/orders", json=ORDER_BODY)
 
-    assert [o.user_id for o in orders.list_by_date("2026-06-10")] == [None]
+    assert [o.user_id for o in stack.orders.list_by_date("2026-06-10")] == [None]
 
 
 def test_authorization_header_is_ignored_for_guest_order(client, stack):
-    _, _, orders = stack
     garbage = {"Authorization": "Bearer garbage"}
 
     response = client.post("/api/orders", json=ORDER_BODY, headers=garbage)
 
     assert response.status_code == 201
-    assert [o.user_id for o in orders.list_by_date("2026-06-10")] == [None]
+    assert [o.user_id for o in stack.orders.list_by_date("2026-06-10")] == [None]
 
 
 def test_authorization_header_alone_does_not_authenticate_me_route(client, stack):
-    auth, _, _ = stack
-    valid_in_wrong_header = {"Authorization": f"Bearer {token_for(auth, 'ana@example.com')}"}
+    token = stack.headers_for("ana@example.com")["X-Pdc-Token"].removeprefix("Bearer ")
+    valid_in_wrong_header = {"Authorization": f"Bearer {token}"}
 
     assert client.get("/api/me/orders", headers=valid_in_wrong_header).status_code == 401
 
 
 def test_token_scheme_is_case_insensitive(client, stack):
-    auth, _, _ = stack
+    token = stack.headers_for("ana@example.com")["X-Pdc-Token"].removeprefix("Bearer ")
 
-    response = client.get(
-        "/api/me/orders", headers={"X-Pdc-Token": f"bearer {token_for(auth, 'ana@example.com')}"}
-    )
+    response = client.get("/api/me/orders", headers={"X-Pdc-Token": f"bearer {token}"})
 
     assert response.status_code == 200
 
@@ -253,9 +161,9 @@ def test_malformed_or_invalid_token_header_returns_401(client, stack, value):
 
 @pytest.mark.parametrize("token", [expired_token, forged_token])
 def test_post_order_with_invalid_token_returns_401_and_stores_nothing(client, stack, token):
-    _, _, orders = stack
+    headers = {"X-Pdc-Token": f"Bearer {token(stack.key)}"}
 
-    response = client.post("/api/orders", json=ORDER_BODY, headers=bearer(token()))
+    response = client.post("/api/orders", json=ORDER_BODY, headers=headers)
 
     assert response.status_code == 401
-    assert orders.list_by_date("2026-06-10") == []
+    assert stack.orders.list_by_date("2026-06-10") == []

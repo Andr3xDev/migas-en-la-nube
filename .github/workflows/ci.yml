@@ -109,7 +109,7 @@ jobs:
       - name: Plan prod
         working-directory: infra/envs/prod
         env:
-          # Plan-only placeholder, never applied.
+          # Plan needs an address; the real ALERT_EMAIL is only set in the deploy environment.
           TF_VAR_alert_email: plan-only@example.com
         run: |
           terraform init -input=false \

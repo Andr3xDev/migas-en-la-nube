@@ -34,7 +34,7 @@ export function getCart() {
   return load();
 }
 
-export function addItem({ productId, variantName, name, price }, quantity = 1) {
+function addItem({ productId, variantName, name, price }, quantity = 1) {
   const items = load();
   const existing = items.find((item) => sameLine(item, productId, variantName));
   if (existing) {

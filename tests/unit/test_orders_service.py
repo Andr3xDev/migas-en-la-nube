@@ -59,10 +59,6 @@ def stock_of(products, product_id: str = "croissant") -> int:
     return products.get(product_id).variants[0].stock
 
 
-def test_shop_timezone_is_fixed_utc_minus_5():
-    assert orders_service.SHOP_TIMEZONE.utcoffset(None) == timedelta(hours=-5)
-
-
 def test_create_order_stores_received_order_with_code_total_and_partition(products, orders):
     products.create(make_product(stock=5))
 
@@ -85,7 +81,7 @@ def test_create_order_with_duplicate_items_aggregates_quantity(products, orders)
         order_for(local(12, 10), ("croissant", "Single", 1), ("croissant", "Single", 2)),
     )
 
-    assert [(i.quantity) for i in order.items] == [3]
+    assert [i.quantity for i in order.items] == [3]
     assert stock_of(products) == 2
 
 
@@ -103,7 +99,12 @@ def test_create_order_with_unknown_product_or_variant_raises_rule_violation(
 def test_create_order_at_closing_time_is_accepted(products, orders):
     products.create(make_product())
 
-    place(products, orders, order_for(local(20, 0), ("croissant", "Single", 1)), now=local(4))
+    order = place(
+        products, orders, order_for(local(20, 0), ("croissant", "Single", 1)), now=local(4)
+    )
+
+    assert order.status == "received"
+    assert order.pickup_time == local(20, 0)
 
 
 @pytest.mark.parametrize("pickup", [local(5, 59), local(20, 1)])
@@ -113,6 +114,66 @@ def test_create_order_outside_business_hours_raises_rule_violation(products, ord
     with pytest.raises(RuleViolationError):
         place(products, orders, order_for(pickup, ("croissant", "Single", 1)), now=local(4))
     assert orders.list_by_date(DAY) == []
+
+
+def test_create_order_at_opening_time_is_accepted(products, orders):
+    products.create(make_product())
+
+    order = place(
+        products, orders, order_for(local(6, 0), ("croissant", "Single", 1)), now=local(4)
+    )
+
+    assert order.pickup_time == local(6, 0)
+
+
+def test_create_order_converts_utc_pickup_to_shop_time_for_hours_and_partition(products, orders):
+    products.create(make_product())
+    pickup_utc = datetime.fromisoformat("2026-06-11T01:00:00+00:00")
+
+    order = place(products, orders, order_for(pickup_utc, ("croissant", "Single", 1)))
+
+    assert order.pickup_date == DAY
+    assert order.pickup_time == local(20)
+    assert order.pickup_time.utcoffset() == timedelta(hours=-5)
+
+
+def test_create_order_with_utc_pickup_before_opening_in_shop_time_raises_rule_violation(
+    products, orders
+):
+    products.create(make_product())
+    pickup_utc = datetime.fromisoformat("2026-06-10T10:30:00+00:00")
+
+    with pytest.raises(RuleViolationError):
+        place(products, orders, order_for(pickup_utc, ("croissant", "Single", 1)), now=local(4))
+    assert orders.list_by_date(DAY) == []
+
+
+def test_create_order_total_sums_every_line_across_products(products, orders):
+    products.create(make_product())
+    loaf_and_half = [Variant("Loaf", 4500, 10), Variant("Half", 2500, 10)]
+    products.create(Product("bread", "Bread", "bakery", "Crusty", None, 90, loaf_and_half))
+
+    order = place(
+        products,
+        orders,
+        order_for(
+            local(12, 10),
+            ("croissant", "Single", 2),
+            ("bread", "Loaf", 1),
+            ("bread", "Half", 3),
+        ),
+    )
+
+    assert order.total == 2 * 6000 + 4500 + 3 * 2500
+
+
+def test_create_order_with_pickup_without_timezone_raises_rule_violation(products, orders):
+    products.create(make_product())
+    naive_pickup = datetime(2026, 6, 10, 13, 0)
+
+    with pytest.raises(RuleViolationError, match="timezone offset"):
+        place(products, orders, order_for(naive_pickup, ("croissant", "Single", 1)))
+    assert stock_of(products) == 5 and orders.list_by_date(DAY) == []
 
 
 def test_create_order_with_pickup_in_the_past_raises_rule_violation(products, orders):
@@ -131,20 +192,34 @@ def test_create_order_beyond_pickup_horizon_raises_rule_violation(products, orde
     assert stock_of(products) == 5
 
 
+def test_create_order_at_exactly_the_pickup_horizon_is_accepted(products, orders):
+    products.create(make_product())
+    last_pickup = NOON + orders_service.MAX_PICKUP_HORIZON
+
+    order = place(products, orders, order_for(last_pickup, ("croissant", "Single", 1)))
+
+    assert order.pickup_time == last_pickup
+
+
+@pytest.mark.parametrize("pickup", [local(12, 30), local(13, 29)])
 def test_create_order_made_to_order_before_prep_time_is_rejected_and_stock_unchanged(
-    products, orders
+    products, orders, pickup
 ):
     products.create(make_product(stock=0, prep=90))
 
     with pytest.raises(RuleViolationError):
-        place(products, orders, order_for(local(12, 30), ("croissant", "Single", 1)))
+        place(products, orders, order_for(pickup, ("croissant", "Single", 1)))
     assert stock_of(products) == 0 and orders.list_by_date(DAY) == []
 
 
 def test_create_order_made_to_order_after_prep_time_is_accepted(products, orders):
     products.create(make_product(stock=0, prep=90))
 
-    place(products, orders, order_for(local(13, 30), ("croissant", "Single", 1)))
+    order = place(products, orders, order_for(local(13, 30), ("croissant", "Single", 1)))
+
+    assert order.status == "received"
+    assert order.pickup_time == local(13, 30)
+    assert order.stock_decrements == []
 
 
 def test_create_order_decrements_in_stock_variant_and_records_it(products, orders):
@@ -278,3 +353,22 @@ def test_create_order_retries_with_new_code_when_code_collides(products, orders,
 
     assert order.id == "FRESH000"
     assert stock_of(products) == 4
+
+
+def test_create_order_when_every_code_collides_restores_stock_and_raises_conflict(
+    products, orders, monkeypatch
+):
+    products.create(make_product(stock=5))
+    attempts = []
+
+    def always_collides(order):
+        attempts.append(order.id)
+        raise ConflictError(order.id)
+
+    monkeypatch.setattr(orders, "create", always_collides)
+
+    with pytest.raises(ConflictError):
+        place(products, orders, order_for(local(12, 10), ("croissant", "Single", 2)))
+
+    assert len(attempts) == orders_service.CODE_ATTEMPTS
+    assert stock_of(products) == 5

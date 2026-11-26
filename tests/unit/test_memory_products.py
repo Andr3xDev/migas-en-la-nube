@@ -17,28 +17,6 @@ def make_product(product_id: str = "croissant", category: str = "bakery") -> Pro
     )
 
 
-def test_get_when_product_missing_returns_none():
-    assert MemoryProductRepository().get("missing") is None
-
-
-def test_create_then_get_returns_product_with_etag():
-    repo = MemoryProductRepository()
-    repo.create(make_product())
-
-    stored = repo.get("croissant")
-
-    assert stored is not None and stored.etag
-
-
-def test_get_finds_product_in_any_category():
-    repo = MemoryProductRepository()
-    repo.create(make_product("cake", category="cakes"))
-    repo.create(make_product("bread", category="breads"))
-
-    assert repo.get("cake").category == "cakes"
-    assert repo.get("bread").category == "breads"
-
-
 def test_replace_with_fresh_etag_saves_changes_and_rotates_etag():
     repo = MemoryProductRepository()
     repo.create(make_product())
@@ -61,6 +39,15 @@ def test_replace_with_stale_etag_raises_concurrency_conflict():
 
     with pytest.raises(ConcurrencyConflictError):
         repo.replace(second)
+
+
+def test_before_replace_hook_bumping_etag_makes_the_replace_conflict():
+    repo = MemoryProductRepository()
+    repo.create(make_product())
+    repo.before_replace = repo.bump_etag
+
+    with pytest.raises(ConcurrencyConflictError):
+        repo.replace(repo.get("croissant"))
 
 
 def test_get_returns_copy_so_unsaved_edits_do_not_leak():

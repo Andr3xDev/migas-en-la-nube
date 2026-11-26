@@ -1,7 +1,7 @@
 meta {
   name: create-order
   type: http
-  seq: 3
+  seq: 4
 }
 
 post {
@@ -20,7 +20,7 @@ body:json {
     "phone": "3001234567",
     "pickupTime": "{{pickupTime}}",
     "items": [
-      { "productId": "torta-chocolate", "variantName": "Porción", "quantity": 1 }
+      { "productId": "{{productId}}", "variantName": "{{variantName}}", "quantity": 1 }
     ]
   }
 }

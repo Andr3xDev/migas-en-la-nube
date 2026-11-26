@@ -1,7 +1,8 @@
 import { apiFetch, ApiError } from "../api.js";
-import { createEmptyState } from "../components.js";
+import { createEmptyState, endLoading, showLoading } from "../components.js";
 import { createStatusChip, formatPeso, showMessage, STATUS_LABELS } from "../format.js";
 import { requireAdmin } from "./guard.js";
+import { createButton, createCell, createTableHead, createTableScroller } from "./table.js";
 
 const SHOP_TIMEZONE = "America/Bogota";
 // Mirrors HISTORY_LIMIT in api/app/services/orders.py: a full page means older orders are hidden.
@@ -12,6 +13,7 @@ const UPCOMING_COLUMNS = 6;
 
 const NEXT_STATUS = { received: "preparing", preparing: "ready", ready: "delivered" };
 const CANCELLABLE = ["received", "preparing", "ready"];
+const UPCOMING_HEADINGS = ["Hora", "Cliente", "Productos", "Total", "Estado", "Acciones"];
 const HISTORY_HEADINGS = ["Código", "Entrega", "Cliente", "Estado", "Productos", "Total"];
 
 const panel = document.getElementById("panel");
@@ -28,22 +30,6 @@ const feedback = document.getElementById("feedback");
 let view = UPCOMING;
 let orders = [];
 let latestRequest = 0;
-
-function createCell(content, className = "") {
-  const cell = document.createElement("td");
-  cell.className = className;
-  cell.append(content);
-  return cell;
-}
-
-function createButton(label, onClick, variant = "") {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = `button ${variant}`.trim();
-  button.textContent = label;
-  button.addEventListener("click", onClick);
-  return button;
-}
 
 function formatPickup(pickupTime) {
   return new Date(pickupTime).toLocaleTimeString("es-CO", {
@@ -131,19 +117,6 @@ function createHistoryRow(order) {
   return row;
 }
 
-function createHistoryHead() {
-  const head = document.createElement("thead");
-  const row = document.createElement("tr");
-  for (const label of HISTORY_HEADINGS) {
-    const cell = document.createElement("th");
-    cell.scope = "col";
-    cell.textContent = label;
-    row.append(cell);
-  }
-  head.append(row);
-  return head;
-}
-
 function createEmpty() {
   const text = {
     [UPCOMING]: "No hay pedidos próximos.",
@@ -164,8 +137,8 @@ function render() {
   const isHistory = view === HISTORY && !dateInput.value;
   const table = document.createElement("table");
   table.className = "cart-table";
+  table.append(createTableHead(isHistory ? HISTORY_HEADINGS : UPCOMING_HEADINGS));
   if (isHistory) {
-    table.append(createHistoryHead());
     table.append(...orders.map(createHistoryRow));
   } else {
     let currentDay = null;
@@ -177,10 +150,7 @@ function render() {
       table.append(createUpcomingRow(order));
     }
   }
-  const scroller = document.createElement("div");
-  scroller.className = "table-scroll";
-  scroller.append(table);
-  container.replaceChildren(scroller);
+  container.replaceChildren(createTableScroller(table, "Pedidos"));
   if (isHistory && orders.length >= HISTORY_LIMIT) {
     const note = document.createElement("p");
     note.className = "orders-note";
@@ -204,6 +174,7 @@ async function loadOrders() {
     ? `date=${encodeURIComponent(dateInput.value)}`
     : `scope=${view}`;
   const requestId = ++latestRequest;
+  showLoading(container);
   try {
     const loaded = await apiFetch(`/api/admin/orders?${query}`);
     if (requestId !== latestRequest) return;
@@ -212,6 +183,9 @@ async function loadOrders() {
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     if (requestId === latestRequest) showMessage(container, error.message);
+  } finally {
+    // A stale response must not clear the busy mark of the newer request.
+    if (requestId === latestRequest) endLoading(container);
   }
 }
 
@@ -219,7 +193,7 @@ async function changeStatus(order, status) {
   feedback.replaceChildren();
   try {
     const updated = await apiFetch(
-      `/api/admin/orders/${order.code}/status?date=${encodeURIComponent(order.pickupDate)}`,
+      `/api/admin/orders/${encodeURIComponent(order.code)}/status?date=${encodeURIComponent(order.pickupDate)}`,
       { method: "PATCH", body: { status } },
     );
     orders = orders.map((item) => (item.code === updated.code ? updated : item));

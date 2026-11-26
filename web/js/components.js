@@ -6,6 +6,7 @@ import {
   createProductImage,
   formatAvailability,
   formatPeso,
+  isInStock,
 } from "./format.js";
 import { createIcon, createIconButton, createIconLink } from "./icons.js";
 
@@ -19,7 +20,7 @@ export function createProductCard(product, { favorites, headingLevel = 2, onAdd 
 
   const availability = document.createElement("p");
   availability.className = availabilityBadgeClass(
-    product.variants.every((variant) => variant.availability.status === "in stock"),
+    product.variants.every((variant) => isInStock(variant.availability)),
   );
   availability.textContent = product.variants
     .map((variant) => formatAvailability(variant.availability))
@@ -110,4 +111,81 @@ export function createEmptyState({ icon, title, text, action }) {
   block.append(createIcon(icon), heading, description);
   if (action) block.append(createIconLink(action));
   return block;
+}
+
+export function createLoadingState(text = "Cargando…", { announce = true } = {}) {
+  const block = document.createElement("div");
+  block.className = "loading-state";
+  if (announce) {
+    block.setAttribute("role", "status");
+    block.setAttribute("aria-live", "polite");
+  }
+  const spinner = document.createElement("span");
+  spinner.className = "spinner";
+  spinner.setAttribute("aria-hidden", "true");
+  block.append(spinner, text);
+  return block;
+}
+
+export function createSkeletonCards(count) {
+  return Array.from({ length: count }, () => {
+    const card = document.createElement("div");
+    card.className = "product-card skeleton-card";
+    card.setAttribute("aria-hidden", "true");
+    for (const part of ["skeleton-image", "skeleton-line", "skeleton-line skeleton-short"]) {
+      const block = document.createElement("div");
+      block.className = `skeleton ${part}`;
+      card.append(block);
+    }
+    return card;
+  });
+}
+
+// Containers are live regions already: the spinner stays silent and aria-busy marks the wait; endLoading clears it.
+export function showLoading(container, content = createLoadingState(undefined, { announce: false })) {
+  container.setAttribute("aria-busy", "true");
+  container.replaceChildren(...[content].flat());
+}
+
+export function endLoading(container) {
+  container.removeAttribute("aria-busy");
+}
+
+// For text-only buttons: the label is replaced by plain text, so icons are lost.
+// Returns a function that restores the button's label and enables it again.
+export function setBusy(button, busyText) {
+  const label = button.textContent;
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  button.textContent = busyText;
+  return () => {
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+    button.textContent = label;
+  };
+}
+
+function isOutsideBox(event, element) {
+  const box = element.getBoundingClientRect();
+  return (
+    event.clientX < box.left ||
+    event.clientX > box.right ||
+    event.clientY < box.top ||
+    event.clientY > box.bottom
+  );
+}
+
+// A backdrop press targets the dialog itself but lies outside its box; padding presses are inside.
+// Requiring the press to start on the backdrop keeps a drag that ends there from closing it.
+export function closeDialogOnBackdropClick(dialog) {
+  let pressedBackdrop = false;
+  dialog.addEventListener("pointerdown", (event) => {
+    pressedBackdrop = event.target === dialog && isOutsideBox(event, dialog);
+  });
+  dialog.addEventListener("click", (event) => {
+    if (pressedBackdrop && event.target === dialog && isOutsideBox(event, dialog)) {
+      dialog.close();
+    }
+    pressedBackdrop = false;
+  });
 }

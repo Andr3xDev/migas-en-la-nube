@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from app.api import deps
@@ -8,6 +10,12 @@ REPOSITORY_FACTORIES = [
     deps.get_order_repository,
     deps.get_user_repository,
 ]
+
+
+@pytest.fixture(autouse=True)
+def isolated_from_developer_env(monkeypatch):
+    for name in [name for name in os.environ if name.startswith("PDC_")]:
+        monkeypatch.delenv(name)
 
 
 @pytest.mark.parametrize("factory", REPOSITORY_FACTORIES)
@@ -25,6 +33,14 @@ def test_image_store_requires_container_url_outside_local(monkeypatch):
     deps.get_image_store.cache_clear()
 
     with pytest.raises(RuntimeError, match="PDC_IMAGES_CONTAINER_URL"):
+        deps.get_image_store()
+
+
+def test_image_store_requires_storage_connection_string_outside_local(monkeypatch):
+    monkeypatch.setattr(deps, "get_settings", lambda: Settings(environment="prod"))
+    deps.get_image_store.cache_clear()
+
+    with pytest.raises(RuntimeError, match="PDC_STORAGE_CONNECTION_STRING"):
         deps.get_image_store()
 
 

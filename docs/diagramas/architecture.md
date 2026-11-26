@@ -37,5 +37,3 @@ flowchart TB
     Ports --> BlobA["adapters/blob"]
     Ports --> Auth["adapters/local_auth<br/>scrypt + JWT"]
 ```
-
-El archivo `architecture.png` es la exportación anterior de este diagrama y está en inglés.

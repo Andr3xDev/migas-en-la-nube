@@ -29,6 +29,7 @@
 
   --size-icon: 1.25em;
   --size-icon-large: 3.5rem;
+  --height-table-max: 60vh;
   --width-narrow: 36rem;
   --width-reading: 44rem;
   --width-card-form: 26rem;
@@ -421,7 +422,8 @@ a.product-card:hover {
 
 /* Tables */
 .table-scroll {
-  overflow-x: auto;
+  max-height: var(--height-table-max);
+  overflow: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-surface);
@@ -448,6 +450,12 @@ a.product-card:hover {
   letter-spacing: 0.04em;
   color: var(--color-muted);
   background: var(--color-wheat);
+}
+
+.cart-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .cart-table .cell-time {
@@ -909,6 +917,64 @@ form p {
   color: var(--color-accent);
 }
 
+/* Loading */
+.loading-state {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-6);
+  color: var(--color-muted);
+}
+
+.line-prep .loading-state {
+  justify-content: flex-start;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.spinner {
+  flex: none;
+  width: var(--size-icon);
+  height: var(--size-icon);
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+.skeleton {
+  border-radius: var(--radius-small);
+  background: var(--color-wheat);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.skeleton-image {
+  aspect-ratio: 4 / 3;
+}
+
+.skeleton-line {
+  height: 1rem;
+  margin-top: var(--space-3);
+}
+
+.skeleton-short {
+  width: 50%;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
 /* Order confirmation */
 .confirmation-card {
   display: flex;
@@ -954,6 +1020,11 @@ form p {
 /* Orders list */
 .order-list {
   grid-template-columns: 1fr;
+}
+
+.order-list .load-more {
+  grid-column: 1 / -1;
+  justify-self: center;
 }
 
 .order-summary {
@@ -1042,6 +1113,7 @@ main > section .product-card {
   justify-content: space-between;
   gap: var(--space-3);
   margin-top: var(--space-8);
+  margin-bottom: var(--space-4);
 }
 
 .list-heading h2 {

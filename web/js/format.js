@@ -8,8 +8,12 @@ export function formatPeso(amount) {
   return pesoFormatter.format(amount);
 }
 
+const IN_STOCK = "in stock";
+
+export const isInStock = (availability) => availability.status === IN_STOCK;
+
 export function formatAvailability(availability) {
-  if (availability.status === "in stock") return "Disponible";
+  if (isInStock(availability)) return "Disponible";
   return `Por encargo (listo en ${availability.readyMinutes} min)`;
 }
 
@@ -26,7 +30,7 @@ export function availabilityBadgeClass(inStock) {
   return `badge ${inStock ? "badge-in-stock" : "badge-made-to-order"}`;
 }
 
-export const PLACEHOLDER_IMAGE = "/img/placeholder.svg";
+const PLACEHOLDER_IMAGE = "/img/placeholder.svg";
 
 export function createProductImage(product) {
   const img = document.createElement("img");

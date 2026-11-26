@@ -39,7 +39,23 @@ Los umbrales solo miden los escenarios `visits` y `orders`, y solo se registran 
 2. Elegir `environment` (`dev` o `prod`) y `scenario`. En `prod` el environment pide aprobación.
 3. El workflow usa su propio grupo de concurrencia (`load-<ambiente>`) y no coordina con el despliegue: no lo lances mientras haya un despliegue en curso.
 
-## Resultados
+## Resultados de las corridas
+
+Corridas del 26 de noviembre de 2026 (UTC). Las peticiones y las iteraciones incluyen el calentamiento y el `setup`.
+
+| Ambiente | Escenario | Corrida | p95 (ms) | Promedio / p90 / máximo (ms) | Fallidas | Peticiones | Iteraciones | Descartadas | VUs máximos | Resultado |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| dev | `realistic` | [45757984915](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45757984915) | 90 | 61 / 88 / 1.744 | 0 % | 271 | 31 | 0 | 3 | Pasa |
+| dev | `orders` | [45758851277](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45758851277) | 343 | 185 / 263 / 400 | 0 % | 30 | 24 | 0 | 3 | Pasa |
+| prod | `realistic` | [45759342723](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45759342723) | 74 | 40 / 62 / 132 | 0 % | 271 | 31 | 0 | 3 | Pasa |
+| prod | `peak3x` | [45763172806](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45763172806) | 91 | 55 / 87 / 671 | 0 % (0 de 771) | 771 | 81 | 0 | 6 | Pasa |
+| prod | `stress` | [45761827371](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45761827371) | 111 | 54 / 92 / 4.835 | 0 % | 52.991 (unas 160 por segundo en promedio) | 5.303 | 41 | 62 | Falla solo por `dropped_iterations` |
+
+**Nota sobre `stress`.** El sistema absorbió unas 53.000 peticiones con 0 % de errores y un p95 de 111 ms. Las 41 iteraciones descartadas (0,77 %) vienen de que k6 no asignó VUs con la rapidez necesaria en los saltos de la rampa (`preAllocatedVUs` en 20; solo se usaron 62 de 200): es un límite del generador de carga, no un error del servidor. El máximo de 4,8 s es una cola aislada, probablemente un arranque en frío al escalar. `preAllocatedVUs` sube a 100 para las próximas corridas.
+
+Las corridas anteriores a la corrección del resumen muestran `undefined` en las líneas `Requests (...)` de `summary.txt`; los conteos reales están en `summary.json`.
+
+## Dónde ver los resultados
 
 - Log del paso `Run k6` y resumen en la página de la corrida (`GITHUB_STEP_SUMMARY`).
 - Artefacto `load-results-<ambiente>-<escenario>` con `summary.txt` y `summary.json`.

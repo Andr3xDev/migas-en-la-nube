@@ -74,7 +74,7 @@ El sistema cubre 8 requisitos funcionales y los 6 no funcionales que pide el cas
 | Seguridad | HTTPS, secretos fuera del código, mínimo privilegio | HTTPS por defecto, secretos generados por Terraform, una identidad por ambiente | Checkov y CodeQL en el pipeline, escaneo de secretos activado en el repositorio |
 | Respaldo | RPO 24 h y RTO 4 h | Respaldo continuo de 7 días en Cosmos DB y toda la infraestructura en Terraform | Procedimiento de restauración documentado (sección 5). Simulacro de restauración pendiente |
 | Escalabilidad | Soportar 3 veces la carga en temporada alta | Functions y Cosmos DB serverless escalan solos | Cálculo de capacidad en la sección 3 |
-| Observabilidad | Logs centralizados, métricas y al menos una alerta | Application Insights sobre Log Analytics, alertas de errores, de disponibilidad y de tráfico alto | Prueba de las alertas en la demo (pendiente) |
+| Observabilidad | Logs centralizados, métricas y al menos una alerta | Application Insights sobre Log Analytics, alertas de errores, de disponibilidad y de tráfico alto | Alerta de tráfico verificada: se disparó y se resolvió con correos (sección 6). Las de disponibilidad y 5xx no se han disparado (no hubo una falla real) |
 
 ### Supuestos
 
@@ -303,20 +303,29 @@ Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un
 | Alerta | Se dispara cuando | Acción |
 | --- | --- | --- |
 | Errores del API (prod) | Más de 5 peticiones fallidas con 5xx en 15 minutos (se evalúa cada 5 minutos) | Correo mediante un grupo de acción |
-| Disponibilidad (prod) | La prueba `GET /api/health`, que corre cada 15 minutos desde 2 ubicaciones (`us-tx-sn1-azr` y `us-il-ch1-azr`) con reintento, falla desde las 2 en una ventana de 30 minutos (se evalúa cada 5 minutos), de modo que las ejecuciones de las dos ubicaciones caen dentro de la ventana | Correo mediante el mismo grupo de acción. Se mantiene `failed_location_count = 2` para no alertar por una sola ubicación inestable. Se verificará en la demostración de alertas (pendiente) |
+| Disponibilidad (prod) | La prueba `GET /api/health`, que corre cada 15 minutos desde 2 ubicaciones (`us-tx-sn1-azr` y `us-il-ch1-azr`) con reintento, falla desde las 2 en una ventana de 30 minutos (se evalúa cada 5 minutos), de modo que las ejecuciones de las dos ubicaciones caen dentro de la ventana | Correo mediante el mismo grupo de acción. Se mantiene `failed_location_count = 2` para no alertar por una sola ubicación inestable. No se ha disparado porque no hubo una falla real; su disparo no está verificado |
 | Tráfico alto (prod) | Más de 1.500 peticiones al API (`requests/count`) en 5 minutos (se evalúa cada minuto, severidad 3, se resuelve sola al bajar el tráfico) | Correo mediante el mismo grupo de acción. Es un aviso de tráfico por encima del diseño, no una falla |
 | Presupuesto (suscripción) | El gasto real llega al 50, 80 y 100 % del monto mensual del presupuesto | Correo a `budget_email` |
 
-El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (el ejemplo del repositorio usa 20, menos que el tope de USD 150), así que los umbrales son porcentajes de ese monto y no de 150. Esta sección debe comprobarse en el portal (pendiente): que el presupuesto exista, porque en algunas suscripciones de estudiante puede ser rechazado, y que la alerta de errores se dispare con tráfico de prueba durante la demo.
+El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (el ejemplo del repositorio usa 20, menos que el tope de USD 150), así que los umbrales son porcentajes de ese monto y no de 150. Falta comprobar en el portal (pendiente) que el presupuesto exista, porque en algunas suscripciones de estudiante puede ser rechazado. La alerta de errores 5xx no se ha disparado con tráfico de prueba.
 
 **Umbral de tráfico alto.** El umbral de 1.500 peticiones en 5 minutos es unas 5 veces el pico de un sábado a 3x (450 llamadas al API en 5 minutos). Solo cuentan las llamadas al API, porque los archivos estáticos los sirve Static Web Apps y no pasan por Functions. Los escenarios de [load/README.md](../load/README.md) quedan así: `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Umbral, ventana y frecuencia son las variables `traffic_spike_threshold`, `traffic_spike_window` y `traffic_spike_frequency` del módulo `alerts`.
 
 **Demostración de alertas.**
 
 1. Fuera de horario, correr `stress` en prod desde el workflow `load.yml` (una sola vez).
-2. En el portal, en Monitor > Alertas, la alerta de tráfico alto pasa a `Fired` pocos minutos después de empezar. `[PENDIENTE: captura alerta Fired]`
-3. Llega el correo al buzón de `ALERT_EMAIL`. `[PENDIENTE: captura correo]`
+2. En el portal, en Monitor > Alertas, la alerta de tráfico alto pasa a `Fired` pocos minutos después de empezar.
+3. Llega el correo al buzón de `ALERT_EMAIL`.
 4. Al terminar la prueba y bajar el tráfico, la alerta se resuelve sola y llega el aviso de resuelta.
+
+**Resultado (verificado el 26 de noviembre de 2026).** `alert-pdc-prod-traffic` (severidad 3, `appi-pdc-prod`, `rg-pdc-prod`, "More than 1500 API requests in the evaluation window") se disparó durante la corrida de `stress` y se resolvió sola; el correo `Resolved` llegó a las 05:43:30 UTC, unos 8 minutos después de terminar `stress` (hacia las 05:35). La corrida `peak3x` (05:40) quedó por debajo del umbral. Los correos reales prueban el canal de correo. Las alertas de errores 5xx y de disponibilidad no se dispararon porque no hubo una falla real; no se simuló ninguna, así que su disparo no está verificado.
+
+![Correo de alerta Fired](img/evidencia/alerta-trafico-fired.png)
+
+![Correo de alerta Resolved](img/evidencia/alerta-trafico-resolved.png)
+
+![Historial de la alerta en el portal, de Fired a Resolved](img/evidencia/alerta-trafico-historial.png)
+
 5. Prueba del canal de correo sin generar tráfico: en el portal, grupo de acción `ag-<prefijo>-prod` > `Probar grupo de acción` (Test action group), tipo de muestra `Metric alert` (Alerta de métricas), y comprobar que llega el correo. El comando `az monitor action-group test-notifications create` existe, pero sus argumentos no se verificaron, por eso se documenta el botón del portal.
 
 `stress` también puede disparar las alertas de 5xx, de disponibilidad y de tráfico alto; es esperado.
@@ -342,13 +351,25 @@ Umbrales: tasa de peticiones fallidas menor a 1 %, p95 del tiempo de respuesta m
 
 **Riesgo de `stress` en producción.** Es la validación del escalado y se permite en producción, pero puede producir errores reales (Cosmos DB serverless puede responder 429 ante una ráfaga), añadir latencia a clientes reales y disparar las alertas de 5xx, de disponibilidad y de tráfico alto (correos). Se corre fuera de horario y una sola vez. El costo por corrida es despreciable; el riesgo es de disponibilidad, no de dinero.
 
-| Resultado | Valor |
+**Resultados.** Corridas del workflow `load` del 26 de noviembre de 2026 (UTC). Las peticiones y las iteraciones incluyen el calentamiento y el `setup`.
+
+| Ambiente | Escenario | Corrida | p95 (ms) | Promedio / p90 / máximo (ms) | Peticiones fallidas | Peticiones | Iteraciones | Descartadas | VUs máximos | Resultado |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| dev | `realistic` | [45757984915](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45757984915) | 90 | 61 / 88 / 1.744 | 0 % | 271 | 31 | 0 | 3 | Pasa |
+| dev | `orders` | [45758851277](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45758851277) | 343 | 185 / 263 / 400 | 0 % | 30 | 24 | 0 | 3 | Pasa |
+| prod | `realistic` | [45759342723](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45759342723) | 74 | 40 / 62 / 132 | 0 % | 271 | 31 | 0 | 3 | Pasa |
+| prod | `peak3x` | [45763172806](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45763172806) | 91 | 55 / 87 / 671 | 0 % (0 de 771) | 771 | 81 | 0 | 6 | Pasa |
+| prod | `stress` | [45761827371](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45761827371) | 111 | 54 / 92 / 4.835 | 0 % | 52.991 (unas 160 por segundo en promedio) | 5.303 | 41 | 62 | Falla solo por `dropped_iterations` |
+
+| Resultado de `stress` en prod | Valor |
 | --- | --- |
-| p95 del tiempo de respuesta | [PENDIENTE: resultados de la corrida] |
-| Tasa de peticiones fallidas | [PENDIENTE: resultados de la corrida] |
-| Tasa máxima alcanzada sin degradación | [PENDIENTE: resultados de la corrida] |
-| Instancias máximas observadas | [PENDIENTE: resultados de la corrida] |
-| Observaciones | [PENDIENTE: resultados de la corrida] |
+| p95 del tiempo de respuesta | 111 ms (umbral: 1000 ms) |
+| Tasa de peticiones fallidas | 0 % |
+| Carga absorbida | Unas 53.000 peticiones con 0 % de errores |
+| Iteraciones descartadas | 41 (0,77 %) |
+| Instancias máximas observadas | Ver captura `escalado-instancias.png` (más abajo) |
+
+**Interpretación de `stress`.** El sistema absorbió unas 53.000 peticiones con 0 % de errores y un p95 de 111 ms. Las 41 iteraciones descartadas (0,77 %) se deben a que k6 no asignó VUs con la rapidez necesaria en los saltos de la rampa (`preAllocatedVUs` en 20; solo se usaron 62 de los 200 VUs máximos): es un límite del generador de carga, no un error del servidor. El máximo de 4,8 s es una cola aislada, probablemente un arranque en frío mientras escalaba. Por eso el umbral `dropped_iterations` marcó la corrida como fallida aunque la latencia y los errores cumplieron. Para próximas corridas `preAllocatedVUs` sube a 100 en `load/load.js`. `realistic` y `peak3x` (3 veces el pico) pasan todos los umbrales en prod.
 
 **Evidencia de escalado y desescalado.** k6 prueba que el sistema absorbe la carga (p95, errores, iteraciones descartadas), pero no cuántas instancias hubo. Durante y después de la corrida de `stress` en prod, en el portal (Application Insights, Logs) se ejecuta:
 
@@ -361,9 +382,9 @@ requests
 
 Se espera que `instancias` suba durante `stress` y baje unos minutos después de que termine (desescalado). No está verificado que las Functions administradas de Static Web Apps reporten un `cloud_RoleInstance` por instancia; si el gráfico muestra siempre 1, la evidencia es la latencia estable de k6 y las métricas de Cosmos DB. Cosmos DB serverless no tiene instancias: su evidencia es la métrica `Total Request Units` (portal, cuenta de Cosmos DB, Metrics) durante la corrida y si aparecieron respuestas 429. La alerta de tráfico alto pasando a `Fired` y luego a `Resolved` también muestra la subida y la bajada de la carga.
 
-[PENDIENTE: captura gráfico de instancias]
+![Instancias por minuto durante stress (05:25 a 05:50 UTC)](img/evidencia/escalado-instancias.png)
 
-[PENDIENTE: captura RU de Cosmos]
+![Total Request Units de Cosmos DB durante stress (05:25 a 05:50 UTC)](img/evidencia/cosmos-ru.png)
 
 ## 7. Diseño de despliegue
 

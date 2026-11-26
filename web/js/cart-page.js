@@ -10,7 +10,7 @@ import {
   removeItem,
   setQuantity,
 } from "./cart.js";
-import { estimateWaitMinutes, findVariant, placeOrder } from "./checkout.js";
+import { estimateWaitMinutes, findVariant, placeOrder, setPickupBounds } from "./checkout.js";
 import {
   createEmptyState,
   createLoadingState,
@@ -247,6 +247,7 @@ form.addEventListener("submit", async (event) => {
 // Admins are redirected away by nav.js; skip rendering and API calls meanwhile.
 if (!isAdmin()) {
   window.addEventListener(CART_CHANGED_EVENT, renderItems);
+  setPickupBounds(form.elements.pickupTime);
 
   renderItems();
   try {

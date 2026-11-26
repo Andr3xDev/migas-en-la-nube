@@ -1,4 +1,4 @@
-import { apiFetch } from "./api.js";
+import { apiFetch, ApiError, getToken } from "./api.js";
 import { LAST_ORDER_KEY } from "./cart.js";
 
 // Fixed UTC-5 (no DST).
@@ -25,7 +25,24 @@ export function estimateWaitMinutes(lines, catalog) {
   return wait;
 }
 
+const SHOP_UTC_OFFSET_MS = -5 * 60 * 60 * 1000;
+const PICKUP_HORIZON_MS = 30 * 24 * 60 * 60 * 1000;
+const SESSION_EXPIRED_MESSAGE =
+  "Tu sesión venció. Inicia sesión de nuevo o envía el pedido como invitado.";
+
+// datetime-local wants shop wall-clock time; shifting by the offset makes toISOString print it.
+const toShopLocalValue = (epochMs) =>
+  new Date(epochMs + SHOP_UTC_OFFSET_MS).toISOString().slice(0, 16);
+
+// Hints only; the server stays the source of truth for the pickup rules.
+export function setPickupBounds(input) {
+  const now = Date.now();
+  input.min = toShopLocalValue(now);
+  input.max = toShopLocalValue(now + PICKUP_HORIZON_MS);
+}
+
 export async function placeOrder(formData, lines) {
+  const hadToken = Boolean(getToken());
   const order = await apiFetch("/api/orders", {
     method: "POST",
     body: {
@@ -38,6 +55,11 @@ export async function placeOrder(formData, lines) {
         quantity,
       })),
     },
+  }).catch((error) => {
+    if (error instanceof ApiError && error.status === 401 && hadToken) {
+      throw new ApiError(401, SESSION_EXPIRED_MESSAGE);
+    }
+    throw error;
   });
   localStorage.setItem(LAST_ORDER_KEY, order.code);
   return order;

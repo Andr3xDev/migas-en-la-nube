@@ -14,7 +14,7 @@ export const isInStock = (availability) => availability.status === IN_STOCK;
 
 function formatAvailability(availability) {
   if (isInStock(availability)) return "Disponible";
-  return `Por encargo (listo en ${availability.readyMinutes} min)`;
+  return `Por encargo (listo en ${formatMinutes(availability.readyMinutes)})`;
 }
 
 export function formatVariantAvailability(variant) {

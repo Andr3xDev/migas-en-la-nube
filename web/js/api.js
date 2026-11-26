@@ -43,14 +43,47 @@ export async function apiFetch(path, { method = "GET", body, redirectOnUnauthori
     }
   }
   if (!response.ok) {
-    const detail = payload && payload.detail;
-    const message = Array.isArray(detail)
-      ? detail.map((issue) => issue.msg).filter(Boolean).join(". ")
-      : detail;
-    throw new ApiError(
-      response.status,
-      typeof message === "string" && message ? message : "Ocurrió un error inesperado.",
-    );
+    throw new ApiError(response.status, toSpanishMessage(response.status, payload && payload.detail));
   }
   return payload;
+}
+
+// The API answers in English and sometimes with a bare id or email as detail; never show those.
+const KNOWN_MESSAGES = {
+  "Invalid credentials": "Correo o contraseña incorrectos.",
+  "Email already registered": "Ese correo ya está registrado.",
+  "Too many concurrent updates, try again": "Hubo demasiados cambios a la vez. Inténtalo de nuevo.",
+  "Forbidden": "No tienes permiso para esta acción.",
+  "Admins cannot place orders": "Los administradores no pueden hacer pedidos.",
+  "pickupTime must include a timezone offset": "La hora de recogida no es válida.",
+  "Pickup must be between 06:00 and 20:00": "La recogida debe ser entre las 6:00 y las 20:00.",
+  "Pickup time is in the past": "La hora de recogida ya pasó.",
+  "Pickup is before the preparation time": "La hora de recogida es antes de que el pedido esté listo.",
+  "A product needs at least one variant": "Un producto necesita al menos una variante.",
+  "Price and stock cannot be negative": "El precio y el stock no pueden ser negativos.",
+  "Variant names must be unique": "Los nombres de las variantes deben ser únicos.",
+  "prepMinutes cannot be negative": "El tiempo de preparación no puede ser negativo.",
+  "imageUrl must point to the images container": "La imagen debe venir del contenedor de imágenes.",
+};
+const KNOWN_PREFIXES = [
+  ["Unknown product", "Uno de los productos ya no está disponible."],
+  ["Pickup cannot be more than", "La recogida no puede ser con más de 30 días de anticipación."],
+  ["Cannot change status", "No se puede cambiar el estado del pedido."],
+  ["Unknown status", "Estado de pedido no válido."],
+  ["Unsupported image type", "Tipo de imagen no admitido."],
+];
+const STATUS_MESSAGES = {
+  404: "No encontrado.",
+  409: "Otro usuario modificó este dato; recarga e inténtalo de nuevo.",
+  422: "Revisa los datos ingresados.",
+};
+const GENERIC_ERROR = "Ocurrió un error inesperado.";
+
+function toSpanishMessage(status, detail) {
+  if (typeof detail === "string") {
+    if (KNOWN_MESSAGES[detail]) return KNOWN_MESSAGES[detail];
+    const prefixed = KNOWN_PREFIXES.find(([prefix]) => detail.startsWith(prefix));
+    if (prefixed) return prefixed[1];
+  }
+  return STATUS_MESSAGES[status] ?? GENERIC_ERROR;
 }

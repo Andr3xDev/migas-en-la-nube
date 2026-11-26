@@ -95,3 +95,28 @@ def test_post_order_when_stock_retries_exhausted_returns_409(client, stores):
     assert response.status_code == 409
     assert orders.list_by_date("2026-06-10") == []
     assert products.get("croissant").variants[0].stock == 5
+
+
+@pytest.mark.parametrize(("role", "status"), [("admin", 403), ("customer", 201)])
+def test_post_order_with_token_allows_customer_and_forbids_admin(client, stores, role, status):
+    from app.adapters.local_auth import LocalAuthProvider
+    from app.adapters.memory.users import MemoryUserRepository
+    from app.api.deps import get_auth_provider
+
+    auth = LocalAuthProvider(
+        MemoryUserRepository(),
+        "route-test-signing-key-32-bytes-min",
+        login_failure_delay_seconds=0,
+        sleep=lambda _: None,
+    )
+    client.app.dependency_overrides[get_auth_provider] = lambda: auth
+    auth.register("user@example.com", "correct horse", role=role)
+    token = auth.login("user@example.com", "correct horse")
+    _, orders = stores
+
+    response = client.post("/api/orders", json=body(), headers={"X-Pdc-Token": f"Bearer {token}"})
+
+    assert response.status_code == status
+    if status == 403:
+        assert response.json() == {"detail": "Admins cannot place orders"}
+        assert orders.list_by_date("2026-06-10") == []

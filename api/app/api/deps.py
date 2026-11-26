@@ -93,6 +93,8 @@ def get_auth_provider(
 # Not `Authorization`: Azure SWA managed Functions overwrite it with their own token.
 TOKEN_HEADER = "X-Pdc-Token"
 BEARER_SCHEME = "bearer"
+ADMIN_ROLE = "admin"
+ADMIN_CANNOT_ORDER = "Admins cannot place orders"
 
 
 def get_optional_principal(
@@ -122,6 +124,14 @@ def require_role(role: str) -> Callable[..., Principal]:
         return principal
 
     return check
+
+
+def get_shopper_principal(
+    principal: Annotated[Principal | None, Depends(get_optional_principal)],
+) -> Principal | None:
+    if principal is not None and principal.role == ADMIN_ROLE:
+        raise HTTPException(status_code=403, detail=ADMIN_CANNOT_ORDER)
+    return principal
 
 
 def get_now() -> datetime:

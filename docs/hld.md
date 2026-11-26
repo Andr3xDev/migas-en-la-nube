@@ -335,6 +335,8 @@ Producción cuesta unos USD 15 al mes con el tráfico de la sección 2, muy por 
 | Soporte | Sin plan de soporte | 0,00 | 0 | 0,00 | 0 |
 | **Total** | | **13,4** | **161** | **15,0** | **180** |
 
+Los totales anuales se calculan sobre el total mensual y se redondean (por eso el total anual del MVP es 161 y no la suma de las filas, 160).
+
 La exportación no desglosa Azure Monitor. Por diferencia, las pruebas web cuestan unos USD 3,3 al mes (3,59 menos unos 0,30 de alertas y logs menores); es una estimación.
 
 Dev (Static Web Apps Free, uso serverless mínimo) y el estado de Terraform (una cuenta de Storage de 1 GB) quedan fuera de la estimación por su costo despreciable.

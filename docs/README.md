@@ -25,4 +25,3 @@ Estos son los entregables de diseño del proyecto del curso; el equipo los rende
 
 - Los archivos `.drawio` (en `diagramas/`) son las fuentes editables, con iconos de Azure. Exporta el PNG desde draw.io.
 - Los bloques Mermaid de los archivos `.md` se renderizan en GitHub y en la mayoría de herramientas de Markdown a PDF que soporten Mermaid.
-- Los archivos `.png` antiguos (`architecture.png`, `pipeline.png`, `rollback.png`) son exportaciones en inglés.

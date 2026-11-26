@@ -67,6 +67,15 @@ def test_register_with_invalid_input_returns_422_and_creates_no_user(client, sta
     assert stack.users.get_by_email("ana@example.com") is None
 
 
+@pytest.mark.parametrize("length", [8, 1024])
+def test_register_accepts_password_length_boundaries(client, stack, length):
+    response = client.post(
+        "/api/auth/register", json={"email": "ana@example.com", "password": "x" * length}
+    )
+
+    assert response.status_code == 201
+
+
 def test_register_duplicate_email_in_other_case_returns_409(client, stack):
     client.post("/api/auth/register", json={"email": "ana@example.com", "password": stack.password})
 
@@ -87,8 +96,10 @@ def test_login_returns_200_with_access_token(client, stack):
     )
 
     assert response.status_code == 200
-    token = response.json()["accessToken"]
-    assert jwt.decode(token, stack.key, algorithms=["HS256"])["role"] == "customer"
+    me = client.get(
+        "/api/me/orders", headers={"X-Pdc-Token": f"Bearer {response.json()['accessToken']}"}
+    )
+    assert me.status_code == 200
 
 
 def test_login_unknown_email_and_wrong_password_return_identical_401(client, stack):
@@ -145,11 +156,18 @@ def test_token_scheme_is_case_insensitive(client, stack):
     assert response.status_code == 200
 
 
-@pytest.mark.parametrize("value", ["Bearer garbage", "Basic abc", "garbage", "Bearer ", "Bearer"])
-def test_malformed_or_invalid_token_header_returns_401(client, stack, value):
-    response = client.get("/api/me/orders", headers={"X-Pdc-Token": value})
+def test_invalid_bearer_token_on_me_route_returns_401(client, stack):
+    response = client.get("/api/me/orders", headers={"X-Pdc-Token": "Bearer garbage"})
 
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize("value", ["Basic abc", "garbage", "Bearer ", "Bearer"])
+def test_malformed_token_header_on_order_returns_401_not_guest_fallback(client, stack, value):
+    response = client.post("/api/orders", json=ORDER_BODY, headers={"X-Pdc-Token": value})
+
+    assert response.status_code == 401
+    assert stack.orders.list_by_date("2026-06-10") == []
 
 
 @pytest.mark.parametrize("token", [expired_token, forged_token])

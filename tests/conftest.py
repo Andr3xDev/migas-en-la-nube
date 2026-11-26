@@ -42,7 +42,7 @@ def client():
 
 @pytest.fixture
 def stack(client):
-    """In-memory auth, users, orders and a single `croissant` product wired into the app."""
+    """Seeds a single `croissant` product only."""
     users = MemoryUserRepository()
     orders = MemoryOrderRepository()
     products = MemoryProductRepository()

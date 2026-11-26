@@ -1,3 +1,4 @@
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -75,3 +76,20 @@ def test_html_loads_auth_boot_before_stylesheet(path: Path) -> None:
 def test_js_does_not_write_raw_html(path: Path) -> None:
     source = path.read_text(encoding="utf-8")
     assert [api for api in RAW_HTML_APIS if api in source] == []
+
+
+def test_auth_boot_reads_the_token_key_that_api_js_writes() -> None:
+    api_key = re.search(r'TOKEN_KEY = "([^"]+)"', (WEB_DIR / "js/api.js").read_text("utf-8"))
+    boot_key = re.search(r'getItem\("([^"]+)"\)', (WEB_DIR / "js/auth-boot.js").read_text("utf-8"))
+    assert api_key and boot_key
+    assert boot_key.group(1) == api_key.group(1)
+
+
+def test_auth_boot_redirect_targets_are_existing_pages() -> None:
+    targets = re.findall(
+        r'location\.replace\("([^"]+)"\)', (WEB_DIR / "js/auth-boot.js").read_text("utf-8")
+    )
+    assert targets
+    for target in targets:
+        page = WEB_DIR / target.lstrip("/")
+        assert (page / "index.html" if target.endswith("/") else page).is_file(), target

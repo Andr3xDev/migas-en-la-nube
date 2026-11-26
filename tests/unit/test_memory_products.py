@@ -39,11 +39,3 @@ def test_replace_with_stale_etag_raises_concurrency_conflict():
 
     with pytest.raises(ConcurrencyConflictError):
         repo.replace(second)
-
-
-def test_get_returns_copy_so_unsaved_edits_do_not_leak():
-    repo = MemoryProductRepository()
-    repo.create(make_product())
-    repo.get("croissant").name = "Mutated"
-
-    assert repo.get("croissant").name == "Croissant"

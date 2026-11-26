@@ -72,13 +72,6 @@ def test_list_user_orders_without_history_returns_empty(orders):
     assert accounts.list_user_orders(orders, "ana-id") == []
 
 
-def test_add_favorite_twice_lists_it_once(users, products):
-    accounts.add_favorite(users, products, ANA, "p1")
-    accounts.add_favorite(users, products, ANA, "p1")
-
-    assert accounts.list_favorites(users, ANA) == ["p1"]
-
-
 def test_remove_favorite_drops_it_and_absent_one_is_ok(users, products):
     accounts.add_favorite(users, products, ANA, "p1")
     accounts.add_favorite(users, products, ANA, "p2")

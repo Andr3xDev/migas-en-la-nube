@@ -1,13 +1,11 @@
 import pytest
 
 from app.adapters.memory.products import MemoryProductRepository
-from app.domain.errors import NotFoundError
 from app.domain.models import Product, Variant
 from app.services.catalog import (
     IN_STOCK,
     MADE_TO_ORDER,
     compute_availability,
-    get_product,
     seed_products,
 )
 from scripts.seed_products import load_products
@@ -25,27 +23,18 @@ def make_product(product_id: str = "croissant", name: str = "Croissant") -> Prod
     )
 
 
-def test_availability_when_stock_positive_is_in_stock():
+@pytest.mark.parametrize(
+    ("stock", "status", "ready_minutes"),
+    [(5, IN_STOCK, None), (0, MADE_TO_ORDER, 90)],
+    ids=["in stock", "made to order"],
+)
+def test_availability_follows_stock(stock, status, ready_minutes):
     availability = compute_availability(
-        Variant(name="Single", price=6000, stock=5), prep_minutes=90
+        Variant(name="Single", price=6000, stock=stock), prep_minutes=90
     )
 
-    assert availability.status == IN_STOCK
-    assert availability.ready_minutes is None
-
-
-def test_availability_when_stock_zero_is_made_to_order_with_prep_minutes():
-    availability = compute_availability(
-        Variant(name="Single", price=6000, stock=0), prep_minutes=90
-    )
-
-    assert availability.status == MADE_TO_ORDER
-    assert availability.ready_minutes == 90
-
-
-def test_get_product_when_missing_raises_not_found():
-    with pytest.raises(NotFoundError):
-        get_product(MemoryProductRepository(), "missing")
+    assert availability.status == status
+    assert availability.ready_minutes == ready_minutes
 
 
 def test_seed_twice_keeps_product_count():

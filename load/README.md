@@ -1,7 +1,6 @@
 # Prueba de carga
 
-Prueba de carga con [k6](https://grafana.com/docs/k6/) que valida el requisito de escalabilidad del HLD (soportar 3 veces la carga del pico del sábado). Corre como el workflow `load.yml`, lo dispara una persona con `workflow_dispatch` y la evidencia son los logs y el artefacto de la corrida. No requiere instalar nada en local.
-
+Prueba de carga con [k6](https://grafana.com/docs/k6/) que valida el requisito de escalabilidad del HLD (soportar 3 veces la carga del pico del sábado). Corre como el workflow `load.yml`, lo dispara una persona con `workflow_dispatch` y la evidencia son los logs y el artefacto de la corrida.
 ## Supuestos y tasas
 
 Del HLD (sección 2): el pico es el sábado de 9:00 a 11:00, con unas **300 visitas por hora** (5 por minuto). El script (`load.js`) define estos valores como constantes con nombre.
@@ -35,7 +34,7 @@ Los umbrales solo miden los escenarios `visits` y `orders`, y solo se registran 
 
 ## Cómo correrla
 
-1. En GitHub: Actions, workflow `load`, Run workflow. El workflow aparece en "Run workflow" solo después de que `load.yml` se fusione a la rama por defecto (`main`), y se lanza desde `main`.
+1. En GitHub: Actions, workflow `load`, Run workflow, desde `main`.
 2. Elegir `environment` (`dev` o `prod`) y `scenario`. En `prod` el environment pide aprobación.
 3. El workflow usa su propio grupo de concurrencia (`load-<ambiente>`) y no coordina con el despliegue: no lo lances mientras haya un despliegue en curso.
 
@@ -51,9 +50,9 @@ Corridas del 26 de noviembre de 2026 (UTC). Las peticiones y las iteraciones inc
 | prod | `peak3x` | [45763172806](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45763172806) | 91 | 55 / 87 / 671 | 0 % | 771 | 81 | 0 | 6 | Pasa |
 | prod | `stress` | [45761827371](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45761827371) | 111 | 54 / 92 / 4.835 | 0 % | 52.991 (unas 160 por segundo en promedio) | 5.303 | 41 | 62 | Falla solo por `dropped_iterations` |
 
-**Nota sobre `stress`.** El sistema absorbió unas 53.000 peticiones con 0 % de errores y un p95 de 111 ms. Las 41 iteraciones descartadas (0,77 %) vienen de que k6 no asignó VUs con la rapidez necesaria en los saltos de la rampa (`preAllocatedVUs` en 20; solo se usaron 62 de 200): es un límite del generador de carga, no un error del servidor. El máximo de 4,8 s es una cola aislada, probablemente un arranque en frío al escalar. `preAllocatedVUs` sube a 100 para las próximas corridas.
+**Nota sobre `stress`.** El sistema absorbió unas 53.000 peticiones con 0 % de errores y un p95 de 111 ms. Las 41 iteraciones descartadas (0,77 %) vienen de que k6 no asignó VUs con la rapidez necesaria en los saltos de la rampa (`preAllocatedVUs` en 20; solo se usaron 62 de 200): es un límite del generador de carga, no un error del servidor. El máximo de 4,8 s es una cola aislada, probablemente un arranque en frío al escalar. La corrida usó `preAllocatedVUs` en 20; el script ya usa 100.
 
-Las corridas anteriores a la corrección del resumen muestran `undefined` en las líneas `Requests (...)` de `summary.txt`; los conteos reales están en `summary.json`.
+El `summary.txt` de las corridas del 26 de noviembre muestra `undefined` en `Requests (...)`; las cifras reales están en `summary.json`.
 
 ## Dónde ver los resultados
 

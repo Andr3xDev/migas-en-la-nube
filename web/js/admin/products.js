@@ -193,6 +193,7 @@ async function loadProducts() {
     products = await apiFetch("/api/products");
     renderList();
   } catch (error) {
+    summary.replaceChildren();
     if (!(error instanceof ApiError)) throw error;
     showMessage(list, error.message);
   } finally {

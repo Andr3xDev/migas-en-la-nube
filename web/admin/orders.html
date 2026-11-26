@@ -17,13 +17,20 @@
       </nav>
     </header>
     <main>
-      <h1>Pedidos del día</h1>
+      <h1>Preparación de pedidos</h1>
       <div id="guard-message" aria-live="polite"></div>
       <div id="panel" hidden>
-        <p>
-          <label for="date">Fecha de entrega</label>
-          <input id="date" type="date" required />
-        </p>
+        <div class="orders-toolbar">
+          <div class="orders-views" role="group" aria-label="Vista de pedidos">
+            <button type="button" class="button button-secondary" id="view-upcoming" aria-pressed="true">Próximos</button>
+            <button type="button" class="button button-secondary" id="view-history" aria-pressed="false">Históricos</button>
+          </div>
+          <p class="orders-date">
+            <label for="date">Un solo día</label>
+            <input id="date" type="date" />
+            <button type="button" class="button button-secondary" id="clear-date" hidden>Quitar fecha</button>
+          </p>
+        </div>
         <div id="orders"></div>
         <div id="feedback" aria-live="polite"></div>
       </div>

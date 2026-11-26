@@ -53,6 +53,19 @@ Cosmos DB serverless cobra por unidad de solicitud y Static Web Apps Standard (p
 
 `stress` sobre producción es la validación del escalado y está permitido, pero puede producir errores reales: Cosmos DB serverless puede responder 429 ante una ráfaga y los clientes reales pueden notar latencia. También puede disparar las alertas de 5xx, de disponibilidad de producción y de tráfico alto (correos). Córrelo fuera de horario de atención y una sola vez.
 
+## Evidencia de escalado y desescalado
+
+k6 no muestra instancias. Durante y después de `stress` en prod, en el portal (Application Insights, Logs) ejecuta:
+
+```kusto
+requests
+| where timestamp > ago(1h)
+| summarize instancias = dcount(cloud_RoleInstance), peticiones = count() by bin(timestamp, 1m)
+| render timechart
+```
+
+`instancias` debe subir durante `stress` y bajar unos minutos después de que termine. No está verificado que las Functions administradas de Static Web Apps reporten un `cloud_RoleInstance` por instancia; si siempre muestra 1, la evidencia es la latencia estable de k6 y la métrica `Total Request Units` de Cosmos DB (portal, cuenta de Cosmos DB, Metrics), junto con la presencia de respuestas 429. La alerta de tráfico alto pasando a `Fired` y luego a `Resolved` también lo muestra. Las capturas van en [docs/hld.md](../docs/hld.md).
+
 ## Demostración de la alerta de tráfico alto
 
 La alerta de prod se dispara con más de 1.500 peticiones al API en 5 minutos. `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Correr `stress` en prod es entonces la demostración de la alerta: pasa a `Fired`, llega el correo y se resuelve al terminar. El procedimiento y las capturas están en la sección de observabilidad de [docs/hld.md](../docs/hld.md).

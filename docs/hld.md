@@ -347,7 +347,23 @@ Umbrales: tasa de peticiones fallidas menor a 1 %, p95 del tiempo de respuesta m
 | p95 del tiempo de respuesta | [PENDIENTE: resultados de la corrida] |
 | Tasa de peticiones fallidas | [PENDIENTE: resultados de la corrida] |
 | Tasa máxima alcanzada sin degradación | [PENDIENTE: resultados de la corrida] |
+| Instancias máximas observadas | [PENDIENTE: resultados de la corrida] |
 | Observaciones | [PENDIENTE: resultados de la corrida] |
+
+**Evidencia de escalado y desescalado.** k6 prueba que el sistema absorbe la carga (p95, errores, iteraciones descartadas), pero no cuántas instancias hubo. Durante y después de la corrida de `stress` en prod, en el portal (Application Insights, Logs) se ejecuta:
+
+```kusto
+requests
+| where timestamp > ago(1h)
+| summarize instancias = dcount(cloud_RoleInstance), peticiones = count() by bin(timestamp, 1m)
+| render timechart
+```
+
+Se espera que `instancias` suba durante `stress` y baje unos minutos después de que termine (desescalado). No está verificado que las Functions administradas de Static Web Apps reporten un `cloud_RoleInstance` por instancia; si el gráfico muestra siempre 1, la evidencia es la latencia estable de k6 y las métricas de Cosmos DB. Cosmos DB serverless no tiene instancias: su evidencia es la métrica `Total Request Units` (portal, cuenta de Cosmos DB, Metrics) durante la corrida y si aparecieron respuestas 429. La alerta de tráfico alto pasando a `Fired` y luego a `Resolved` también muestra la subida y la bajada de la carga.
+
+[PENDIENTE: captura gráfico de instancias]
+
+[PENDIENTE: captura RU de Cosmos]
 
 ## 7. Diseño de despliegue
 

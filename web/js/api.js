@@ -81,7 +81,7 @@ const GENERIC_ERROR = "Ocurrió un error inesperado.";
 
 function toSpanishMessage(status, detail) {
   if (typeof detail === "string") {
-    if (KNOWN_MESSAGES[detail]) return KNOWN_MESSAGES[detail];
+    if (Object.hasOwn(KNOWN_MESSAGES, detail)) return KNOWN_MESSAGES[detail];
     const prefixed = KNOWN_PREFIXES.find(([prefix]) => detail.startsWith(prefix));
     if (prefixed) return prefixed[1];
   }

@@ -1,21 +1,21 @@
-# Rollback de la aplicación
+# Application rollback
 
-Fuente Mermaid: GitHub la muestra en la vista previa.
+Mermaid source: GitHub renders it in the preview.
 
 ```mermaid
 flowchart TD
-    Start["Ejecutar rollback.yml desde main<br/>con el tag, por ejemplo v12"] --> Approve["Aprobación del environment prod"]
-    Approve --> Check{"El tag cumple ^v[0-9]+$ ?"}
-    Check -->|no| Fail1["Falla"]
-    Check -->|sí| Login["az login (OIDC)"]
-    Login --> Find{"Hay un deploy exitoso en main<br/>con ese número de ejecución?"}
-    Find -->|no| Fail2["Falla: tag desconocido o fuera de las últimas 200 ejecuciones"]
-    Find -->|sí| Download{"El artefacto release-vN sigue existiendo?"}
-    Download -->|"no, venció a los 90 días"| Fail3["Falla"]
-    Download -->|sí| Key["Lee el token y el host de la SWA"]
-    Key --> Upload["Sube dist/web y dist/api a la SWA de prod"]
-    Upload --> Smoke["Espera /api/health y corre el smoke de solo lectura"]
-    Smoke --> Done["Prod sirve el build anterior<br/>PDC_VERSION sigue mostrando el SHA más nuevo"]
+    Start["Run rollback.yml from main<br/>with the tag, for example v12"] --> Approve["Approval of the prod environment"]
+    Approve --> Check{"Does the tag match ^v[0-9]+$ ?"}
+    Check -->|no| Fail1["Fails"]
+    Check -->|yes| Login["az login (OIDC)"]
+    Login --> Find{"Is there a successful deploy on main<br/>with that run number?"}
+    Find -->|no| Fail2["Fails: unknown tag or outside the last 200 runs"]
+    Find -->|yes| Download{"Does the release-vN artifact still exist?"}
+    Download -->|"no, expired after 90 days"| Fail3["Fails"]
+    Download -->|yes| Key["Reads the SWA token and host"]
+    Key --> Upload["Uploads dist/web and dist/api to the prod SWA"]
+    Upload --> Smoke["Waits for /api/health and runs the read-only smoke"]
+    Smoke --> Done["Prod serves the previous build<br/>PDC_VERSION still shows the newest SHA"]
 ```
 
-El rollback no corre Terraform ni toca los datos.
+The rollback does not run Terraform or touch the data.

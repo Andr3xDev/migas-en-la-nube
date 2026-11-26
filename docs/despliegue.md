@@ -8,18 +8,18 @@ Todo llega a Azure por GitHub Actions: nada se despliega a mano. Este documento 
 flowchart TD
     PR["Pull request"] --> Lint["lint<br/>ruff, terraform fmt"]
     Lint --> Sec["security<br/>Checkov, CodeQL"]
-    Lint --> TfPlan["terraform<br/>plan de dev y prod (OIDC de solo lectura)"]
-    Sec --> Test["test<br/>pytest, cobertura mínima 70 %"]
-    Test --> Build["build<br/>empaqueta api/ y web/"]
+    Lint --> TfPlan["terraform<br/>dev and prod plan (read-only OIDC)"]
+    Sec --> Test["test<br/>pytest, minimum coverage 70 %"]
+    Test --> Build["build<br/>packages api/ and web/"]
 
-    Push["Push a dev o main<br/>(merge del PR)"] --> B["build<br/>artefactos api y web"]
-    B --> Gate{"Rama"}
-    Gate -->|"dev: environment dev, sin aprobación"| Apply
-    Gate -->|"main: environment prod, requiere aprobación"| Apply
-    Apply["deploy: login OIDC<br/>terraform apply"] --> Seeds["seed de productos<br/>y del administrador"]
-    Seeds --> Upload["sube web y api a SWA"]
-    Upload --> Smoke["smoke: espera /api/health<br/>colección Bruno"]
-    Smoke -->|"solo main"| Release["release: artefacto release-vN (90 días)<br/>etiqueta vN"]
+    Push["Push to dev or main<br/>(PR merge)"] --> B["build<br/>api and web artifacts"]
+    B --> Gate{"Branch"}
+    Gate -->|"dev: environment dev, no approval"| Apply
+    Gate -->|"main: environment prod, requires approval"| Apply
+    Apply["deploy: OIDC login<br/>terraform apply"] --> Seeds["seed products<br/>and the admin"]
+    Seeds --> Upload["upload web and api to SWA"]
+    Upload --> Smoke["smoke: wait for /api/health<br/>Bruno collection"]
+    Smoke -->|"main only"| Release["release: release-vN artifact (90 days)<br/>tag vN"]
 ```
 
 El workflow `ci` corre en el pull request y el workflow `deploy` corre al hacer merge. El despliegue no repite lint ni pruebas.
@@ -102,18 +102,18 @@ Los IDs son variables y no secretos porque no sirven sin el token OIDC del repos
 
 ```mermaid
 flowchart TD
-    Start["Ejecutar rollback.yml desde main<br/>con el tag, por ejemplo v12"] --> Approve["Aprobación del environment prod"]
-    Approve --> Check{"El tag cumple ^v[0-9]+$ ?"}
-    Check -->|no| Fail1["Falla"]
-    Check -->|sí| Login["az login (OIDC)"]
-    Login --> Find{"Hay un deploy exitoso en main<br/>con ese número de ejecución?"}
-    Find -->|no| Fail2["Falla: tag desconocido o fuera de las últimas 200 ejecuciones"]
-    Find -->|sí| Download{"El artefacto release-vN sigue existiendo?"}
-    Download -->|"no, venció a los 90 días"| Fail3["Falla"]
-    Download -->|sí| Key["Lee el token y el host de la SWA"]
-    Key --> Upload["Sube dist/web y dist/api a la SWA de prod"]
-    Upload --> Smoke["Espera /api/health y corre el smoke de solo lectura"]
-    Smoke --> Done["Prod sirve el build anterior<br/>PDC_VERSION sigue mostrando el SHA más nuevo"]
+    Start["Run rollback.yml from main<br/>with the tag, for example v12"] --> Approve["Approval of the prod environment"]
+    Approve --> Check{"Does the tag match ^v[0-9]+$ ?"}
+    Check -->|no| Fail1["Fails"]
+    Check -->|yes| Login["az login (OIDC)"]
+    Login --> Find{"Is there a successful deploy on main<br/>with that run number?"}
+    Find -->|no| Fail2["Fails: unknown tag or outside the last 200 runs"]
+    Find -->|yes| Download{"Does the release-vN artifact still exist?"}
+    Download -->|"no, expired after 90 days"| Fail3["Fails"]
+    Download -->|yes| Key["Reads the SWA token and host"]
+    Key --> Upload["Uploads dist/web and dist/api to the prod SWA"]
+    Upload --> Smoke["Waits for /api/health and runs the read-only smoke"]
+    Smoke --> Done["Prod serves the previous build<br/>PDC_VERSION still shows the newest SHA"]
 ```
 
 Pasos para el rollback de la aplicación:

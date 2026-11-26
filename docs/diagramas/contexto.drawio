@@ -1,46 +1,46 @@
 <mxfile host="app.diagrams.net">
-  <diagram id="contexto" name="Contexto">
+  <diagram id="contexto" name="Context">
     <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="700" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
-        <mxCell id="guest" value="Cliente invitado&#xa;[Persona]&#xa;Consulta el catálogo y pide sin cuenta" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fontSize=12;" vertex="1" parent="1">
+        <mxCell id="guest" value="Guest customer&#xa;[Person]&#xa;Browses the catalog and orders without an account" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="60" y="60" width="40" height="80" as="geometry"/>
         </mxCell>
-        <mxCell id="customer" value="Cliente registrado&#xa;[Persona]&#xa;Pide, ve su historial y sus favoritos" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fontSize=12;" vertex="1" parent="1">
+        <mxCell id="customer" value="Registered customer&#xa;[Person]&#xa;Orders, sees their history and favorites" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="60" y="270" width="40" height="80" as="geometry"/>
         </mxCell>
-        <mxCell id="admin" value="Administrador&#xa;[Persona]&#xa;Gestiona productos, imágenes y pedidos" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fontSize=12;" vertex="1" parent="1">
+        <mxCell id="admin" value="Admin&#xa;[Person]&#xa;Manages products, images and orders" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="60" y="480" width="40" height="80" as="geometry"/>
         </mxCell>
-        <mxCell id="system" value="&lt;b&gt;Migas en la Nube&lt;/b&gt;&lt;br&gt;[Sistema de software]&lt;br&gt;Tienda web para pedir y recoger en tienda" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+        <mxCell id="system" value="&lt;b&gt;Migas en la Nube&lt;/b&gt;&lt;br&gt;[Software system]&lt;br&gt;Web store to order and pick up in store" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
           <mxGeometry x="440" y="270" width="220" height="100" as="geometry"/>
         </mxCell>
-        <mxCell id="azure" value="&lt;b&gt;Microsoft Azure&lt;/b&gt;&lt;br&gt;[Sistema externo]&lt;br&gt;Plataforma que aloja el sistema" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+        <mxCell id="azure" value="&lt;b&gt;Microsoft Azure&lt;/b&gt;&lt;br&gt;[External system]&lt;br&gt;Platform that hosts the system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="840" y="270" width="200" height="100" as="geometry"/>
         </mxCell>
-        <mxCell id="github" value="&lt;b&gt;GitHub&lt;/b&gt;&lt;br&gt;[Sistema externo]&lt;br&gt;Repositorio y GitHub Actions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+        <mxCell id="github" value="&lt;b&gt;GitHub&lt;/b&gt;&lt;br&gt;[External system]&lt;br&gt;Repository and GitHub Actions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="840" y="50" width="200" height="100" as="geometry"/>
         </mxCell>
-        <mxCell id="mail" value="&lt;b&gt;Correo electrónico&lt;/b&gt;&lt;br&gt;[Sistema externo]&lt;br&gt;Recibe las alertas de prod y del presupuesto" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+        <mxCell id="mail" value="&lt;b&gt;Email&lt;/b&gt;&lt;br&gt;[External system]&lt;br&gt;Receives the prod and budget alerts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="840" y="490" width="200" height="100" as="geometry"/>
         </mxCell>
-        <mxCell id="e1" value="Consulta y pide por HTTPS" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="guest" target="system">
+        <mxCell id="e1" value="Browses and orders over HTTPS" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="guest" target="system">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e2" value="Pide y consulta su cuenta por HTTPS" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="customer" target="system">
+        <mxCell id="e2" value="Orders and checks their account over HTTPS" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="customer" target="system">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e3" value="Administra por HTTPS" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="admin" target="system">
+        <mxCell id="e3" value="Administers over HTTPS" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="admin" target="system">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e4" value="Se ejecuta en" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="system" target="azure">
+        <mxCell id="e4" value="Runs on" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="system" target="azure">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e5" value="Despliega con Terraform y OIDC" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="github" target="azure">
+        <mxCell id="e5" value="Deploys with Terraform and OIDC" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="github" target="azure">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e6" value="Envía alertas" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="azure" target="mail">
+        <mxCell id="e6" value="Sends alerts" style="endArrow=classic;html=1;fontSize=11;" edge="1" parent="1" source="azure" target="mail">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
       </root>

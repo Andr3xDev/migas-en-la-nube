@@ -1,25 +1,25 @@
-# Contexto (C4 nivel 1)
+# Context (C4 level 1)
 
-Quién usa Migas en la Nube y con qué sistemas externos se relaciona. Fuente Mermaid: GitHub la muestra en la vista previa.
+Who uses Migas en la Nube and which external systems it relates to. Mermaid source: GitHub renders it in the preview.
 
 ```mermaid
 flowchart TB
-    guest["Cliente invitado<br/>[Persona]<br/>Consulta el catálogo y pide sin cuenta"]
-    customer["Cliente registrado<br/>[Persona]<br/>Pide, ve su historial y sus favoritos"]
-    admin["Administrador<br/>[Persona]<br/>Gestiona productos, imágenes y pedidos"]
+    guest["Guest customer<br/>[Person]<br/>Browses the catalog and orders without an account"]
+    customer["Registered customer<br/>[Person]<br/>Orders, sees their history and favorites"]
+    admin["Admin<br/>[Person]<br/>Manages products, images and orders"]
 
-    system["Migas en la Nube<br/>[Sistema de software]<br/>Tienda web para pedir y recoger en tienda"]
+    system["Migas en la Nube<br/>[Software system]<br/>Web store to order and pick up in store"]
 
-    azure["Microsoft Azure<br/>[Sistema externo]<br/>Plataforma que aloja el sistema"]
-    github["GitHub<br/>[Sistema externo]<br/>Repositorio y GitHub Actions"]
-    mail["Correo electrónico<br/>[Sistema externo]<br/>Recibe las alertas de prod y del presupuesto"]
+    azure["Microsoft Azure<br/>[External system]<br/>Platform that hosts the system"]
+    github["GitHub<br/>[External system]<br/>Repository and GitHub Actions"]
+    mail["Email<br/>[External system]<br/>Receives the prod and budget alerts"]
 
-    guest -->|"Consulta y pide por HTTPS"| system
-    customer -->|"Pide y consulta su cuenta por HTTPS"| system
-    admin -->|"Administra por HTTPS"| system
-    system -->|"Se ejecuta en"| azure
-    github -->|"Despliega con Terraform y OIDC"| azure
-    azure -->|"Envía alertas"| mail
+    guest -->|"Browses and orders over HTTPS"| system
+    customer -->|"Orders and checks their account over HTTPS"| system
+    admin -->|"Administers over HTTPS"| system
+    system -->|"Runs on"| azure
+    github -->|"Deploys with Terraform and OIDC"| azure
+    azure -->|"Sends alerts"| mail
 ```
 
-El administrador usa el mismo sitio web que los clientes, con un rol distinto. Las alertas por correo solo existen en producción, y el aviso de presupuesto lo envía la suscripción de Azure.
+The admin uses the same website as customers, with a different role. Email alerts exist only in production, and the budget notice is sent by the Azure subscription.

@@ -20,22 +20,22 @@ Migas en la Nube es una panadería de barrio con una sede que hoy recibe pedidos
 
 ```mermaid
 flowchart TB
-    guest["Cliente invitado<br/>[Persona]<br/>Consulta el catálogo y pide sin cuenta"]
-    customer["Cliente registrado<br/>[Persona]<br/>Pide, ve su historial y sus favoritos"]
-    admin["Administrador<br/>[Persona]<br/>Gestiona productos, imágenes y pedidos"]
+    guest["Guest customer<br/>[Person]<br/>Browses the catalog and orders without an account"]
+    customer["Registered customer<br/>[Person]<br/>Orders, sees their history and favorites"]
+    admin["Admin<br/>[Person]<br/>Manages products, images and orders"]
 
-    system["Migas en la Nube<br/>[Sistema de software]<br/>Tienda web para pedir y recoger en tienda"]
+    system["Migas en la Nube<br/>[Software system]<br/>Web store to order and pick up in store"]
 
-    azure["Microsoft Azure<br/>[Sistema externo]<br/>Plataforma que aloja el sistema"]
-    github["GitHub<br/>[Sistema externo]<br/>Repositorio y GitHub Actions"]
-    mail["Correo electrónico<br/>[Sistema externo]<br/>Recibe las alertas de prod y del presupuesto"]
+    azure["Microsoft Azure<br/>[External system]<br/>Platform that hosts the system"]
+    github["GitHub<br/>[External system]<br/>Repository and GitHub Actions"]
+    mail["Email<br/>[External system]<br/>Receives the prod and budget alerts"]
 
-    guest -->|"Consulta y pide por HTTPS"| system
-    customer -->|"Pide y consulta su cuenta por HTTPS"| system
-    admin -->|"Administra por HTTPS"| system
-    system -->|"Se ejecuta en"| azure
-    github -->|"Despliega con Terraform y OIDC"| azure
-    azure -->|"Envía alertas"| mail
+    guest -->|"Browses and orders over HTTPS"| system
+    customer -->|"Orders and checks their account over HTTPS"| system
+    admin -->|"Administers over HTTPS"| system
+    system -->|"Runs on"| azure
+    github -->|"Deploys with Terraform and OIDC"| azure
+    azure -->|"Sends alerts"| mail
 ```
 
 **Alcance del MVP (implementado; desplegado en dev, prod se publica con el primer release (vN), pendiente de verificar).**
@@ -98,26 +98,26 @@ La solución es serverless sobre Azure: un sitio estático en Static Web Apps, u
 
 ```mermaid
 flowchart LR
-    Browser["Navegador<br/>HTML y módulos ES"]
+    Browser["Browser<br/>HTML and ES modules"]
     subgraph SWA["Azure Static Web Apps"]
-        Static["Archivos estáticos de web/<br/>cabeceras CSP"]
-        Func["Functions administradas<br/>FastAPI (Python 3.11)"]
+        Static["Static files from web/<br/>CSP headers"]
+        Func["Managed Functions<br/>FastAPI (Python 3.11)"]
     end
     Cosmos[("Cosmos DB NoSQL<br/>serverless<br/>products, orders, users")]
-    Blob[("Blob Storage<br/>contenedor images")]
-    AI["Application Insights<br/>sobre Log Analytics"]
-    Probe["Prueba de disponibilidad<br/>(solo prod, 2 ubicaciones)"]
-    Mail["Correo de alertas<br/>(solo prod)"]
+    Blob[("Blob Storage<br/>images container")]
+    AI["Application Insights<br/>on Log Analytics"]
+    Probe["Availability test<br/>(prod only, 2 locations)"]
+    Mail["Alert email<br/>(prod only)"]
 
     Browser -->|"HTML, CSS, JS"| Static
     Browser -->|"/api/* JSON<br/>X-Pdc-Token: Bearer jwt"| Func
-    Func -->|"SDK de Cosmos<br/>ETag en stock y productos"| Cosmos
-    Func -->|"firma URL SAS<br/>(5 min, https)"| Browser
-    Browser -->|"PUT de la imagen con SAS<br/>(regla CORS)"| Blob
-    Func -->|"logs JSON por petición<br/>correlation_id"| AI
-    Probe -->|"GET /api/health cada 15 min"| Func
+    Func -->|"Cosmos SDK<br/>ETag on stock and products"| Cosmos
+    Func -->|"signs SAS URL<br/>(5 min, https)"| Browser
+    Browser -->|"PUT image with SAS<br/>(CORS rule)"| Blob
+    Func -->|"JSON logs per request<br/>correlation_id"| AI
+    Probe -->|"GET /api/health every 15 min"| Func
     Probe --> AI
-    AI -->|"alertas de disponibilidad, errores 5xx y tráfico alto"| Mail
+    AI -->|"availability, 5xx error and high traffic alerts"| Mail
 ```
 
 ### Servicios por capa
@@ -143,10 +143,10 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    Routes["api/routes<br/>solo HTTP"] --> Services["services<br/>catálogo, pedidos, cuentas"]
-    Services --> Ports["ports<br/>repositorios, auth, imágenes"]
+    Routes["api/routes<br/>HTTP only"] --> Services["services<br/>catalog, orders, accounts"]
+    Services --> Ports["ports<br/>repositories, auth, images"]
     Ports --> Cosmos["adapters/cosmos"]
-    Ports --> Memory["adapters/memory<br/>(solo local)"]
+    Ports --> Memory["adapters/memory<br/>(local only)"]
     Ports --> BlobA["adapters/blob"]
     Ports --> Auth["adapters/local_auth<br/>scrypt + JWT"]
 ```
@@ -164,47 +164,47 @@ Toda la comunicación va por HTTPS, ningún secreto vive en el código y cada id
 ```mermaid
 flowchart TB
     subgraph Internet["Internet"]
-        User["Navegador<br/>cliente o administrador"]
+        User["Browser<br/>customer or admin"]
     end
 
-    subgraph GH["GitHub: repositorio Andr3xDev/migas-en-la-nube"]
-        Actions["GitHub Actions<br/>environments dev y prod"]
+    subgraph GH["GitHub: repository Andr3xDev/migas-en-la-nube"]
+        Actions["GitHub Actions<br/>environments dev and prod"]
     end
 
-    subgraph Azure["Suscripción de Azure"]
+    subgraph Azure["Azure subscription"]
         subgraph RGProd["rg-pdc-prod"]
-            SwaProd["Static Web Apps Standard<br/>Functions administradas"]
+            SwaProd["Static Web Apps Standard<br/>Managed Functions"]
             CosmosProd[("Cosmos DB")]
             BlobProd[("Blob Storage images")]
             AiProd["Application Insights"]
-            Alerts["Alertas y prueba de disponibilidad"]
+            Alerts["Alerts and availability test"]
         end
 
         subgraph RGDev["rg-pdc-dev"]
-            SwaDev["Static Web Apps Free<br/>Functions administradas"]
+            SwaDev["Static Web Apps Free<br/>Managed Functions"]
             CosmosDev[("Cosmos DB")]
             BlobDev[("Blob Storage images")]
             AiDev["Application Insights"]
         end
 
         subgraph RGTF["rg-pdc-tfstate"]
-            IdPlan["id-pdc-ci-plan<br/>Reader en rg-pdc-dev y rg-pdc-prod<br/>Blob Data Reader en la cuenta del estado"]
-            IdDev["id-pdc-deploy-dev<br/>Contributor en rg-pdc-dev<br/>Blob Data Contributor en tfstate-dev"]
-            IdProd["id-pdc-deploy-prod<br/>Contributor en rg-pdc-prod<br/>Blob Data Contributor en tfstate-prod"]
-            State[("Storage del estado de Terraform<br/>sin llaves compartidas ni acceso anónimo")]
+            IdPlan["id-pdc-ci-plan<br/>Reader on rg-pdc-dev and rg-pdc-prod<br/>Blob Data Reader on the state account"]
+            IdDev["id-pdc-deploy-dev<br/>Contributor on rg-pdc-dev<br/>Blob Data Contributor on tfstate-dev"]
+            IdProd["id-pdc-deploy-prod<br/>Contributor on rg-pdc-prod<br/>Blob Data Contributor on tfstate-prod"]
+            State[("Terraform state storage<br/>no shared keys or anonymous access")]
         end
     end
 
-    Mail["Correo de alertas"]
+    Mail["Alert email"]
 
     User -->|"HTTPS"| SwaProd
-    User -->|"PUT de la imagen con SAS<br/>(5 min, https)"| BlobProd
-    User -->|"GET de imágenes (lectura pública)"| BlobProd
-    SwaProd -->|"llave de Cosmos<br/>(app setting)"| CosmosProd
-    SwaProd -->|"llave de Storage, firma el SAS<br/>(app setting)"| BlobProd
-    SwaProd -->|"logs JSON"| AiProd
+    User -->|"PUT image with SAS<br/>(5 min, https)"| BlobProd
+    User -->|"GET images (public read)"| BlobProd
+    SwaProd -->|"Cosmos key<br/>(app setting)"| CosmosProd
+    SwaProd -->|"Storage key, signs the SAS<br/>(app setting)"| BlobProd
+    SwaProd -->|"JSON logs"| AiProd
     AiProd --> Alerts
-    Alerts -->|"correo"| Mail
+    Alerts -->|"email"| Mail
     SwaDev --> CosmosDev
     SwaDev --> BlobDev
     SwaDev --> AiDev
@@ -212,11 +212,11 @@ flowchart TB
     Actions -->|"OIDC, subject pull_request"| IdPlan
     Actions -->|"OIDC, subject environment:dev"| IdDev
     Actions -->|"OIDC, subject environment:prod"| IdProd
-    IdDev -->|"terraform apply y sube el artefacto"| SwaDev
-    IdProd -->|"terraform apply y sube el artefacto"| SwaProd
-    IdPlan -->|"lee el estado"| State
-    IdDev -->|"estado de dev"| State
-    IdProd -->|"estado de prod"| State
+    IdDev -->|"terraform apply and uploads the artifact"| SwaDev
+    IdProd -->|"terraform apply and uploads the artifact"| SwaProd
+    IdPlan -->|"reads the state"| State
+    IdDev -->|"dev state"| State
+    IdProd -->|"prod state"| State
 ```
 
 **Usuarios de la aplicación.** El API maneja su propio registro e inicio de sesión con correo y contraseña (ADR 3).

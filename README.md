@@ -183,5 +183,5 @@ The final cleanup order (only after the project defense) is in [infra/bootstrap/
 - [High-level design (HLD, Spanish)](docs/hld.md)
 - [Deployment design (Spanish)](docs/despliegue.md)
 - [Architecture decision records](docs/adr/README.md)
-- Diagrams (Spanish, Mermaid): [context](docs/diagramas/contexto.md), [architecture](docs/diagramas/architecture.md), [network and security](docs/diagramas/red-seguridad.md), [pipeline](docs/diagramas/pipeline.md), [rollback](docs/diagramas/rollback.md).
+- Diagrams (English, Mermaid): [context](docs/diagramas/contexto.md), [architecture](docs/diagramas/architecture.md), [network and security](docs/diagramas/red-seguridad.md), [pipeline](docs/diagramas/pipeline.md), [rollback](docs/diagramas/rollback.md).
 - [Bootstrap and final cleanup](infra/bootstrap/README.md)

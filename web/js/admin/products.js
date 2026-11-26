@@ -168,7 +168,8 @@ function validateImage(file) {
 class UploadError extends Error {}
 
 async function uploadImage(productId, file) {
-  const { uploadUrl, imageUrl } = await apiFetch(`/api/admin/products/${encodeURIComponent(productId)}/image-upload-url`, {
+  const path = `/api/admin/products/${encodeURIComponent(productId)}/image-upload-url`;
+  const { uploadUrl, imageUrl } = await apiFetch(path, {
     method: "POST",
     body: { contentType: file.type },
   });
@@ -202,7 +203,8 @@ async function loadProducts() {
 async function removeProduct(product) {
   if (!window.confirm(`¿Eliminar "${product.name}"?`)) return;
   try {
-    await apiFetch(`/api/admin/products/${encodeURIComponent(product.id)}`, { method: "DELETE" });
+    const path = `/api/admin/products/${encodeURIComponent(product.id)}`;
+    await apiFetch(path, { method: "DELETE" });
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     showMessage(listFeedback, error.message);
@@ -233,8 +235,9 @@ function upsertLocal(saved) {
 }
 
 async function updateProduct(id, body) {
+  const path = `/api/admin/products/${encodeURIComponent(id)}`;
   try {
-    return await apiFetch(`/api/admin/products/${encodeURIComponent(id)}`, { method: "PUT", body });
+    return await apiFetch(path, { method: "PUT", body });
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
       throw new ApiError(409, STALE_PRODUCT_MESSAGE);

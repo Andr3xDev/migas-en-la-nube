@@ -151,6 +151,7 @@ export function endLoading(container) {
   container.removeAttribute("aria-busy");
 }
 
+// For text-only buttons: the label is replaced by plain text, so icons are lost.
 // Returns a function that restores the button's label and enables it again.
 export function setBusy(button, busyText) {
   const label = button.textContent;

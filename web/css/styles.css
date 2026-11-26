@@ -1024,12 +1024,47 @@ form p small {
 
 /* Orders list */
 .order-list {
-  grid-template-columns: 1fr;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(16rem, 22rem);
 }
 
 .order-list .load-more {
-  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  align-self: center;
   justify-self: center;
+}
+
+.order-list,
+.product-carousel {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  padding-bottom: var(--space-2);
+}
+
+.order-list > *,
+.product-carousel > * {
+  scroll-snap-align: start;
+}
+
+.product-carousel {
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(14rem, 16rem);
+}
+
+/* Loading and error messages are not cards: lay them out as plain blocks. */
+.order-list:not(:has(.order-summary)),
+.product-carousel:not(:has(.product-card)) {
+  display: block;
+  overflow-x: visible;
+}
+
+.in-cart {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-muted);
 }
 
 .order-summary {
@@ -1238,10 +1273,6 @@ input[type="date"] {
   .cart-layout {
     grid-template-columns: 1fr var(--width-cart-side);
     align-items: start;
-  }
-
-  .order-list {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 

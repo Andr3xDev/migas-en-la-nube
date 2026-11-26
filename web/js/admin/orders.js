@@ -14,7 +14,7 @@ const UPCOMING_COLUMNS = 6;
 const NEXT_STATUS = { received: "preparing", preparing: "ready", ready: "delivered" };
 const CANCELLABLE = ["received", "preparing", "ready"];
 const UPCOMING_HEADINGS = ["Hora", "Cliente", "Productos", "Total", "Estado", "Acciones"];
-const HISTORY_HEADINGS =["Código", "Entrega", "Cliente", "Estado", "Productos", "Total"];
+const HISTORY_HEADINGS = ["Código", "Entrega", "Cliente", "Estado", "Productos", "Total"];
 
 const panel = document.getElementById("panel");
 const guardMessage = document.getElementById("guard-message");

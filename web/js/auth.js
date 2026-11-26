@@ -10,7 +10,7 @@ export function logout() {
 
 // The payload is decoded without verifying the signature: the result is for UI gating only,
 // the API enforces roles on every request.
-export function getRole() {
+function getRole() {
   const token = getToken();
   if (!token) return null;
   try {

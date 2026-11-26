@@ -2,7 +2,9 @@ import { apiFetch, ApiError } from "../api.js";
 import { createSummaryPanel } from "../components.js";
 import { createProductImage, formatPeso, showMessage } from "../format.js";
 import { requireAdmin } from "./guard.js";
+import { createButton, createCell } from "./table.js";
 
+const UPLOAD_FAILED_MESSAGE = "No se pudo subir la imagen.";
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const STALE_PRODUCT_MESSAGE =
@@ -27,21 +29,6 @@ const resetButton = document.getElementById("reset");
 let products = [];
 let editing = null;
 let dialogTrigger = null;
-
-function createButton(label, onClick, variant = "") {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = `button ${variant}`.trim();
-  button.textContent = label;
-  button.addEventListener("click", onClick);
-  return button;
-}
-
-function createCell(content) {
-  const cell = document.createElement("td");
-  cell.append(content);
-  return cell;
-}
 
 function describeVariants(product) {
   return product.variants
@@ -156,7 +143,6 @@ function openDialog(trigger, product = null) {
 }
 
 function startEdit(product) {
-  editing = product;
   HTMLFormElement.prototype.reset.call(form);
   form.elements.name.value = product.name;
   form.elements.category.value = product.category;
@@ -164,7 +150,7 @@ function startEdit(product) {
   form.elements.prepMinutes.value = String(product.prepMinutes);
   variantsContainer.replaceChildren();
   for (const variant of product.variants) addVariantRow(variant);
-  formTitle.textContent = `Editar ${product.name}`;
+  startEditKeepingValues(product);
   renderCurrentImage();
 }
 
@@ -177,7 +163,7 @@ function validateImage(file) {
 class UploadError extends Error {}
 
 async function uploadImage(productId, file) {
-  const { uploadUrl, imageUrl } = await apiFetch(`/api/admin/products/${productId}/image-upload-url`, {
+  const { uploadUrl, imageUrl } = await apiFetch(`/api/admin/products/${encodeURIComponent(productId)}/image-upload-url`, {
     method: "POST",
     body: { contentType: file.type },
   });
@@ -189,9 +175,9 @@ async function uploadImage(productId, file) {
       body: file,
     });
   } catch {
-    throw new UploadError("No se pudo subir la imagen.");
+    throw new UploadError(UPLOAD_FAILED_MESSAGE);
   }
-  if (!response.ok) throw new UploadError("No se pudo subir la imagen.");
+  if (!response.ok) throw new UploadError(UPLOAD_FAILED_MESSAGE);
   return imageUrl;
 }
 
@@ -208,7 +194,7 @@ async function loadProducts() {
 async function removeProduct(product) {
   if (!window.confirm(`¿Eliminar "${product.name}"?`)) return;
   try {
-    await apiFetch(`/api/admin/products/${product.id}`, { method: "DELETE" });
+    await apiFetch(`/api/admin/products/${encodeURIComponent(product.id)}`, { method: "DELETE" });
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     showMessage(listFeedback, error.message);
@@ -240,7 +226,7 @@ function upsertLocal(saved) {
 
 async function updateProduct(id, body) {
   try {
-    return await apiFetch(`/api/admin/products/${id}`, { method: "PUT", body });
+    return await apiFetch(`/api/admin/products/${encodeURIComponent(id)}`, { method: "PUT", body });
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
       throw new ApiError(409, STALE_PRODUCT_MESSAGE);

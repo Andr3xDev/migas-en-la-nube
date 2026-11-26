@@ -6,6 +6,7 @@ import {
   createProductImage,
   formatAvailability,
   formatPeso,
+  isInStock,
 } from "./format.js";
 import { createIcon, createIconButton, createIconLink } from "./icons.js";
 
@@ -19,7 +20,7 @@ export function createProductCard(product, { favorites, headingLevel = 2, onAdd 
 
   const availability = document.createElement("p");
   availability.className = availabilityBadgeClass(
-    product.variants.every((variant) => variant.availability.status === "in stock"),
+    product.variants.every((variant) => isInStock(variant.availability)),
   );
   availability.textContent = product.variants
     .map((variant) => formatAvailability(variant.availability))

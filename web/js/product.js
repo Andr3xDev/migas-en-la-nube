@@ -8,6 +8,7 @@ import {
   createProductImage,
   formatAvailability,
   formatPeso,
+  isInStock,
   showMessage,
 } from "./format.js";
 
@@ -39,7 +40,7 @@ function renderProduct(product, favorites) {
   const selectedVariant = () => product.variants[Number(select.value)];
   const refresh = () => {
     price.textContent = formatPeso(selectedVariant().price);
-    availability.className = availabilityBadgeClass(selectedVariant().availability.status === "in stock");
+    availability.className = availabilityBadgeClass(isInStock(selectedVariant().availability));
     availability.textContent = formatAvailability(selectedVariant().availability);
     feedback.textContent = "";
   };

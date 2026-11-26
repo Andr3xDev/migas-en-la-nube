@@ -108,7 +108,7 @@ function createLineCard(item) {
         ? `Por encargo: listo en ${formatMinutes(product.prepMinutes)}`
         : "Disponible",
     );
-  } else if (catalogPending) prep.append(createLoadingState("Cargando detalles…"));
+  } else if (catalogPending) prep.append(createLoadingState("Cargando detalles…", { announce: false }));
   else prep.hidden = true;
 
   const remove = createIconButton({
@@ -140,12 +140,14 @@ function announceAdded(product) {
 
 function renderRecommendations(items) {
   if (catalogPending) {
-    recommendations.hidden = false;
-    recommendationList.replaceChildren(createLoadingState());
+    recommendations.hidden = items.length === 0;
+    recommendationList.replaceChildren(...(items.length > 0 ? [createLoadingState()] : []));
     return;
   }
   const inCart = new Set(items.map((item) => item.productId));
-  const cartCategories = new Set(items.map((item) => findProduct(item)?.category));
+  const cartCategories = new Set(
+    items.map((item) => findVariant(catalog, item.productId, item.variantName).product?.category),
+  );
   const candidates = catalog.filter(
     (product) =>
       !inCart.has(product.id) &&

@@ -142,7 +142,7 @@ Each environment has its own resource group, Terraform state, Cosmos account, st
 <summary>Costs</summary>
 
 - Prod costs about USD 15 per month (limit: USD 150). Dev uses the free SWA tier.
-- Cosmos DB is serverless; Blob Storage and Application Insights are pay per use. The bootstrap stack creates a subscription budget with alerts at 50, 80 and 100 percent.
+- Cosmos DB is serverless; Blob Storage and Application Insights are pay per use. The bootstrap stack creates a USD 20 monthly subscription budget with alerts at 50, 80 and 100 percent (USD 10, 16 and 20).
 - The prod availability test is the main recurring monitoring cost (about USD 3.3 per month). Use one location to reduce it.
 - Sources: [docs/costs/azure.xlsx](docs/costs/azure.xlsx) and the [shared estimate](https://pruebacorreoescuelaingeduco-my.sharepoint.com/:f:/g/personal/andres_chavarro-p_mail_escuelaing_edu_co/IgCR8FX61djzRbgw5dP906NYAepx9R_9yznGnveKeQa_p98?e=jm11ry).
 

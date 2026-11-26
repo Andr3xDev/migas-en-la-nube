@@ -22,7 +22,7 @@ El caso del curso es la Panadería «Pan de la Casa»; la plataforma se llama Mi
 
 Diagrama de contexto. Fuente editable: [context.drawio](diagrams/context.drawio).
 
-**Alcance del MVP (implementado; desplegado en dev y prod. Prod verificado: el pipeline publica releases con tag vN, por ejemplo v30; el smoke test de Bruno está en verde en prod, y las pruebas de carga del 26 de noviembre de 2026 se ejecutaron contra prod).**
+**Alcance del MVP (implementado y desplegado en dev y prod; el smoke test de Bruno pasa en prod y las pruebas de carga del 26 de noviembre de 2026 corrieron contra prod).**
 
 - Catálogo con variantes, precio, imagen y estimado de preparación cuando no hay stock.
 - Carrito en el navegador, con selección de las líneas que se quieren pedir, y pedido como invitado.
@@ -217,8 +217,7 @@ Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un
 | Tráfico alto (prod) | Más de 1.500 peticiones al API (`requests/count`) en 5 minutos (se evalúa cada minuto, severidad 3, se resuelve sola al bajar el tráfico) | Correo mediante el mismo grupo de acción. Es un aviso de tráfico por encima del diseño, no una falla |
 | Presupuesto (suscripción) | El gasto real llega al 50, 80 y 100 % del monto mensual del presupuesto | Correo a `budget_email` |
 
-El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (sin valor por defecto; `infra/bootstrap/terraform.tfvars.example` usa 20): USD 20 al mes, con alertas al 50, 80 y 100 % (USD 10, 16 y 20; lo crea el stack de bootstrap). Se eligió cerca del gasto esperado (unos USD 15 al mes en prod más un dev despreciable) para notar pronto cualquier desvío: el 50 % y cerca del 75 % se alcanzan en un mes normal y el 100 % solo ante un exceso real. Los USD 150 del requisito son el tope que la arquitectura se mantiene muy por debajo de alcanzar, no el umbral de alerta. La alerta de errores 5xx no se ha disparado con tráfico de prueba.
-
+El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (sin valor por defecto; `infra/bootstrap/terraform.tfvars.example` usa 20): USD 20 al mes, con alertas al 50, 80 y 100 % (USD 10, 16 y 20; lo crea el stack de bootstrap). Se eligió cerca del gasto esperado (unos USD 15 al mes en prod más un dev despreciable) para notar pronto cualquier desvío: el 50 % y cerca del 75 % se alcanzan en un mes normal y el 100 % solo ante un exceso real. Los USD 150 del requisito son el tope que la arquitectura se mantiene muy por debajo de alcanzar, no el umbral de alerta.
 **Umbral de tráfico alto.** El umbral de 1.500 peticiones en 5 minutos es unas 10 veces el pico de un sábado (150 llamadas al API en 5 minutos) y unas 3,3 veces la carga de diseño de 3x (450 en 5 minutos). Solo cuentan las llamadas al API, porque los archivos estáticos los sirve Static Web Apps y no pasan por Functions. Los escenarios de [load/README.md](../load/README.md) quedan así: `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Umbral, ventana y frecuencia son las variables `traffic_spike_threshold`, `traffic_spike_window` y `traffic_spike_frequency` del módulo `alerts`.
 
 **Demostración de alertas.**
@@ -296,7 +295,7 @@ Resultado: `cloud_RoleInstance` reporta una instancia por serie, y se ven 4 inst
 
 Cosmos DB serverless no tiene instancias: su evidencia es la métrica `Total Request Units` (promedio) de la cuenta `cosmos-pdc-prod-webwdv`, con un pico de unas 14.300 hacia las 05:33 UTC y de vuelta a casi 0 hacia las 05:37. La captura no muestra respuestas 429; k6 registró 0 % de peticiones fallidas, así que ninguna limitación llegó a los clientes. La alerta de tráfico alto pasando a `Fired` y luego a `Resolved` también muestra la subida y la bajada de la carga.
 
-![Instancias por minuto durante stress (05:25 a 05:50 UTC)](img/evidence/scaling-instances.png)
+![Instancias por intervalo de 5 minutos durante stress (05:25 a 05:50 UTC)](img/evidence/scaling-instances.png)
 
 ![Total Request Units de Cosmos DB durante stress (05:25 a 05:50 UTC)](img/evidence/cosmos-ru.png)
 
@@ -312,7 +311,7 @@ Todo llega a Azure por GitHub Actions: nada se despliega a mano. Cada etapa del 
 | Repositorio | https://github.com/Andr3xDev/migas-en-la-nube |
 
 - **Ambientes.** `dev` (rama `dev`, Static Web Apps Free, sin aprobación ni alertas) y `prod` (rama `main`, Standard, revisor requerido y alertas). Cada uno tiene su propio grupo de recursos, estado de Terraform, cuenta de Cosmos DB y de Storage e identidad.
-- **Promoción.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. El workflow `ci` corre en el pull request (lint, seguridad, pruebas con cobertura mínima de 70 %, build y plan de Terraform). Al hacer merge, `deploy` aplica Terraform, carga los seeds, sube la aplicación y corre el smoke test. En `main` espera la aprobación del environment `prod` y publica el release `vN`. Los checks requeridos del ruleset de GitHub deben ser los jobs de `ci.yml`; el ruleset está activo en `main` y `dev`, con los checks requeridos.
+- **Promoción.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. El workflow `ci` corre en el pull request (lint, seguridad, pruebas con cobertura mínima de 70 %, build y plan de Terraform). Al hacer merge, `deploy` aplica Terraform, carga los seeds, sube la aplicación y corre el smoke test. En `main` espera la aprobación del environment `prod` y publica el release `vN`. El ruleset está activo en `main` y `dev` y exige como checks los jobs de `ci.yml`: `lint`, `security`, `test`, `build` y `terraform`.
 - **OIDC.** El acceso a Azure usa las identidades de la sección 4, sin contraseñas guardadas. El único secreto en GitHub es la contraseña inicial del administrador, y los tokens leídos de las salidas de Terraform se enmascaran en los logs.
 - **Rollback.** De la aplicación: workflow manual `rollback` con el tag de una versión anterior, que vuelve a publicar su artefacto sin tocar la infraestructura. De la infraestructura: revertir el commit. De los datos: restauración de Cosmos DB (sección 5).
 - **Prueba de carga.** Workflow manual `load` (k6, inputs `environment` y `scenario`), sin identidad de Azure: solo llama a la URL pública. En `prod` pide aprobación y corre solo desde `main`; `orders` se rechaza en `prod`. Detalle en [load/README.md](../load/README.md).

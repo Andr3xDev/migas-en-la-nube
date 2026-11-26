@@ -76,6 +76,15 @@ def test_register_accepts_password_length_boundaries(client, stack, length):
     assert response.status_code == 201
 
 
+@pytest.mark.parametrize(("length", "status"), [(254, 201), (255, 422)])
+def test_register_email_length_boundary(client, stack, length, status):
+    email = "a" * (length - len("@example.com")) + "@example.com"
+
+    response = client.post("/api/auth/register", json={"email": email, "password": stack.password})
+
+    assert response.status_code == status
+
+
 def test_register_duplicate_email_in_other_case_returns_409(client, stack):
     client.post("/api/auth/register", json={"email": "ana@example.com", "password": stack.password})
 

@@ -42,7 +42,7 @@ def client():
 
 @pytest.fixture
 def stack(client):
-    """Seeds a single `croissant` product only."""
+    """In-memory repos and auth overrides, seeded with one `croissant` product."""
     users = MemoryUserRepository()
     orders = MemoryOrderRepository()
     products = MemoryProductRepository()

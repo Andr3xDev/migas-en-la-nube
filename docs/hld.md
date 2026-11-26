@@ -4,7 +4,7 @@ Nov 25, 2026 · @Andres
 
 ## 1. Contexto del negocio y alcance
 
-Migas en la Nube es una panadería de barrio con una sede que hoy recibe pedidos por teléfono y WhatsApp. La solución lleva esa operación a la nube con una tienda web para pedir y recoger en tienda, sobre Azure, serverless y con un costo de producción menor a USD 150 al mes.
+El caso del curso es la Panadería «Pan de la Casa»; la plataforma se llama Migas en la Nube. Es una panadería de barrio con una sede que hoy recibe pedidos por teléfono y WhatsApp. La solución lleva esa operación a la nube con una tienda web para pedir y recoger en tienda, sobre Azure, serverless y con un costo de producción menor a USD 150 al mes.
 
 **Problema.** Los pedidos se pierden o se anotan mal, el cliente no sabe si un producto está disponible ni cuándo estará listo, y los fines de semana la demanda se triplica.
 
@@ -54,7 +54,7 @@ El sistema cubre 8 requisitos funcionales y los 6 no funcionales que pide el cas
 | Requisito | Meta | Cómo se cumple | Cómo se comprueba |
 | --- | --- | --- | --- |
 | Presupuesto | Máximo USD 150 al mes en producción | Servicios serverless que se pagan por uso | Calculadora de Azure ([costs/azure.xlsx](costs/azure.xlsx)) y presupuesto con alertas al 50, 80 y 100 % |
-| Disponibilidad | 99,5 % en horario comercial | Servicios con SLA publicado de 99,9 % o más y escalado automático | Prueba de disponibilidad en Application Insights, cada 15 minutos desde 2 ubicaciones |
+| Disponibilidad | 99,5 % en horario comercial | Servicios con SLA publicado de 99,9 % o más en la ruta del cliente (sección 5) y escalado automático | Prueba de disponibilidad en Application Insights, cada 15 minutos desde 2 ubicaciones |
 | Seguridad | HTTPS, secretos fuera del código, mínimo privilegio | HTTPS por defecto, secretos generados por Terraform, una identidad por ambiente | Checkov y CodeQL en el pipeline, escaneo de secretos activado en el repositorio |
 | Respaldo | RPO 24 h y RTO 4 h | Respaldo continuo de 7 días en Cosmos DB y toda la infraestructura en Terraform | Procedimiento de restauración documentado (sección 5), basado en la copia de seguridad continua de 7 días de Cosmos DB (restauración a un punto en el tiempo en una cuenta nueva) y Terraform. El simulacro de restauración no se ejecutó dentro del plazo del proyecto; se propone como primera tarea operativa después del lanzamiento |
 | Escalabilidad | Soportar 3 veces la carga en temporada alta | Functions y Cosmos DB serverless escalan solos | Cálculo de capacidad en la sección 3 |
@@ -151,7 +151,7 @@ Así, un error en dev no puede tocar prod, y un pull request no puede cambiar na
 
 Los IDs de tenant, suscripción e identidades son variables de GitHub, no secretos. Static Web Apps no tiene identidad administrada, por eso el API usa llaves de Cosmos DB y Storage en lugar de identidades.
 
-**Escaneo y análisis.** El pipeline corre Checkov sobre Terraform y CodeQL sobre Python. En el repositorio están activados el escaneo de secretos y su protección contra push (verificado con la API de GitHub el 25 de noviembre de 2026). La demostración de que un push con un secreto es bloqueado queda como verificación pendiente.
+**Escaneo y análisis.** El pipeline corre Checkov sobre Terraform y CodeQL sobre Python. En el repositorio están activados el escaneo de secretos y su protección contra push (verificado con la API de GitHub el 25 de noviembre de 2026). La demostración de que un push con un secreto es bloqueado no está demostrada dentro del proyecto.
 
 **Protecciones adicionales.**
 
@@ -171,11 +171,15 @@ La solución cumple el 99,5 % en horario comercial, el RPO de 24 horas y el RTO 
 
 | Servicio | SLA del proveedor |
 | --- | --- |
-| Static Web Apps Standard (prod) | 99,95 % |
-| Cosmos DB en una región | 99,99 % |
-| Blob Storage LRS | 99,9 % en lectura |
+| Static Web Apps Standard (prod) | 99,95 % (el plan Free de dev no tiene SLA) |
+| Azure Functions (administradas dentro de Static Web Apps) | 99,95 % |
+| Blob Storage LRS, nivel Hot | 99,9 % en lectura y 99,9 % en escritura |
+| Cosmos DB en una región | 99,99 % solo con capacidad aprovisionada; la cuenta serverless no tiene SLA con créditos |
+| Application Insights y Azure Monitor | 99,9 % en consultas, reglas de alerta y envío de notificaciones |
 
-La combinación queda por encima del 99,5 % pedido: aun con 99,9 % en los tres servicios el producto es de 99,7 %. Los valores son los publicados por Microsoft y no se verifican en el repositorio, por lo que se deben confirmar en la página de SLA antes de entregar (pendiente). Producción usa el plan Standard de Static Web Apps (`infra/envs/prod/main.tf`) porque el plan Free no tiene SLA. Dev usa Free para ahorrar. El escalado automático evita caídas por carga en el pico de fin de semana, y la prueba de disponibilidad avisa si el sitio deja de responder.
+La ruta que ve el cliente (Static Web Apps y Blob Storage) tiene un SLA compuesto de 99,95 % × 99,9 % ≈ 99,85 %. Cosmos DB serverless queda fuera de ese cálculo porque el documento de SLA de Microsoft solo da créditos de servicio para capacidad aprovisionada. Es un compromiso aceptado por costo (ADR 2); pasar a capacidad aprovisionada o autoscale añadiría el SLA de 99,99 % por unos USD 23 al mes con 400 unidades por segundo (sección 8). Frente al 99,5 % en horario comercial, el compuesto de la ruta con SLA lo supera, y el diseño lo respalda con escalado automático y la prueba de disponibilidad; las pruebas de carga dieron 0 % de errores. No hay una medición de disponibilidad en el tiempo, así que el cumplimiento del 99,5 % se apoya en el diseño y estas pruebas, no en un porcentaje medido. Producción usa el plan Standard de Static Web Apps (`infra/envs/prod/main.tf`) porque el plan Free no tiene SLA. Dev usa Free para ahorrar. El escalado automático evita caídas por carga en el pico de fin de semana, y la prueba de disponibilidad avisa si el sitio deja de responder.
+
+Fuentes (documento de noviembre de 2026): [Service Level Agreements (SLA) for Online Services](https://www.microsoft.com/licensing/docs/view/Service-Level-Agreements-SLA-for-Online-Services) y [precios de Static Web Apps](https://azure.microsoft.com/pricing/details/app-service/static/), que indica que el plan Free no tiene SLA y el Standard sí.
 
 **Respaldo.** La cuenta de Cosmos DB se crea con respaldo continuo de 7 días (`type = "Continuous"`, `tier = "Continuous7Days"` en `infra/modules/cosmos/main.tf`), que permite restaurar los datos a cualquier momento de esa semana. Eso deja el RPO en minutos, muy por debajo de las 24 horas pedidas, siempre que el problema se detecte dentro de los 7 días. No hay respaldo periódico configurado. Las imágenes están en una cuenta de Blob Storage LRS con versionado y retención de borrado de 7 días (`infra/modules/storage/main.tf`): se puede recuperar una imagen reemplazada o borrada en ese plazo, pero no hay copia en otra región. Las imágenes subidas por el administrador no están en el repositorio.
 
@@ -211,7 +215,7 @@ Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un
 
 El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (el ejemplo del repositorio usa 20, menos que el tope de USD 150), así que los umbrales son porcentajes de ese monto y no de 150. El presupuesto de la suscripción está configurado con alertas al 50, 80 y 100 % (lo crea el stack de bootstrap). La alerta de errores 5xx no se ha disparado con tráfico de prueba.
 
-**Umbral de tráfico alto.** El umbral de 1.500 peticiones en 5 minutos es unas 5 veces el pico de un sábado a 3x (450 llamadas al API en 5 minutos). Solo cuentan las llamadas al API, porque los archivos estáticos los sirve Static Web Apps y no pasan por Functions. Los escenarios de [load/README.md](../load/README.md) quedan así: `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Umbral, ventana y frecuencia son las variables `traffic_spike_threshold`, `traffic_spike_window` y `traffic_spike_frequency` del módulo `alerts`.
+**Umbral de tráfico alto.** El umbral de 1.500 peticiones en 5 minutos es unas 10 veces el pico de un sábado (150 llamadas al API en 5 minutos) y unas 3,3 veces la carga de diseño de 3x (450 en 5 minutos). Solo cuentan las llamadas al API, porque los archivos estáticos los sirve Static Web Apps y no pasan por Functions. Los escenarios de [load/README.md](../load/README.md) quedan así: `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Umbral, ventana y frecuencia son las variables `traffic_spike_threshold`, `traffic_spike_window` y `traffic_spike_frequency` del módulo `alerts`.
 
 **Demostración de alertas.**
 
@@ -296,6 +300,13 @@ Cosmos DB serverless no tiene instancias: su evidencia es la métrica `Total Req
 
 Todo llega a Azure por GitHub Actions: nada se despliega a mano. Cada etapa del pipeline bloquea a la siguiente si falla, y producción necesita aprobación. Las etapas, los disparadores, los secretos y el rollback paso a paso están en [deployment.md](deployment.md).
 
+| Enlace | URL |
+| --- | --- |
+| Producción | https://salmon-stone-0be061010.6.azurestaticapps.net |
+| Desarrollo | https://wonderful-field-023b47e10.4.azurestaticapps.net |
+| Ejecuciones del pipeline | https://github.com/Andr3xDev/migas-en-la-nube/actions |
+| Repositorio | https://github.com/Andr3xDev/migas-en-la-nube |
+
 - **Ambientes.** `dev` (rama `dev`, Static Web Apps Free, sin aprobación ni alertas) y `prod` (rama `main`, Standard, revisor requerido y alertas). Cada uno tiene su propio grupo de recursos, estado de Terraform, cuenta de Cosmos DB y de Storage e identidad.
 - **Promoción.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. El workflow `ci` corre en el pull request (lint, seguridad, pruebas con cobertura mínima de 70 %, build y plan de Terraform). Al hacer merge, `deploy` aplica Terraform, carga los seeds, sube la aplicación y corre el smoke test. En `main` espera la aprobación del environment `prod` y publica el release `vN`. Los checks requeridos del ruleset de GitHub deben ser los jobs de `ci.yml`; el ruleset está activo en `main` y `dev`, con los checks requeridos.
 - **OIDC.** El acceso a Azure usa las identidades de la sección 4, sin contraseñas guardadas. El único secreto en GitHub es la contraseña inicial del administrador, y los tokens leídos de las salidas de Terraform se enmascaran en los logs.
@@ -342,7 +353,7 @@ Dev (Static Web Apps Free, uso serverless mínimo) y el estado de Terraform (una
 
 Además hay un presupuesto mensual de la suscripción con alertas al 50, 80 y 100 %.
 
-Exportación de la calculadora de Azure (Central US, USD): [docs/costs/azure.xlsx](costs/azure.xlsx).
+Exportación de la calculadora de Azure (Central US, USD): [docs/costs/azure.xlsx](costs/azure.xlsx). Estimación compartida: [enlace](https://pruebacorreoescuelaingeduco-my.sharepoint.com/:f:/g/personal/andres_chavarro-p_mail_escuelaing_edu_co/IgCR8FX61djzRbgw5dP906NYAepx9R_9yznGnveKeQa_p98?e=jm11ry).
 
 ## 9. Riesgos y mitigaciones
 
@@ -393,7 +404,7 @@ Se tomaron 5 decisiones principales. Cada una responde qué problema había, qu�
 
 **Decisión.** Cosmos DB serverless con la base `migas` y un contenedor por colección (`products` por `/category`, `orders` por `/pickupDate`, `users` por `/email`). El stock se protege con bloqueo optimista usando el ETag.
 
-**Consecuencias.** Se paga por solicitud y almacenamiento, sin esquema que migrar y con seeds idempotentes. A cambio, leer un producto por id es una consulta entre particiones, y el bloqueo con ETag no cubre una caída entre pasos de stock ni evita que la última unidad se venda dos veces en una carrera. Ambas ventanas se aceptan.
+**Consecuencias.** Se paga por solicitud y almacenamiento, sin esquema que migrar y con seeds idempotentes. A cambio, la cuenta serverless no tiene el SLA financiero de 99,99 % de la capacidad aprovisionada, y leer un producto por id es una consulta entre particiones, y el bloqueo con ETag no cubre una caída entre pasos de stock ni evita que la última unidad se venda dos veces en una carrera. Ambas ventanas se aceptan.
 
 ### ADR 3. Autenticación propia con JWT
 

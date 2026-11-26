@@ -9,7 +9,7 @@ Estos son los entregables de diseño del proyecto del curso; el equipo los rende
 | HLD | [hld.md](hld.md) |
 | ADRs | [adr/](adr/README.md) (5 decisiones) |
 | Diagramas | [diagrams/](diagrams/) (contexto, arquitectura cloud, red y seguridad, pipeline, y rollback) |
-| Estimación de costos | [hld.md](hld.md) sección 8, más la exportación de la calculadora en [costs/azure.xlsx](costs/azure.xlsx) |
+| Estimación de costos | [hld.md](hld.md) sección 8, más la exportación de la calculadora en [costs/azure.xlsx](costs/azure.xlsx) y la [estimación compartida](https://pruebacorreoescuelaingeduco-my.sharepoint.com/:f:/g/personal/andres_chavarro-p_mail_escuelaing_edu_co/IgCR8FX61djzRbgw5dP906NYAepx9R_9yznGnveKeQa_p98?e=jm11ry) |
 | Diseño de despliegue | [deployment.md](deployment.md) |
 | Código en GitHub | [../README.md](../README.md) |
 | Prueba de carga | [hld.md](hld.md) sección 6 y [../load/README.md](../load/README.md) |

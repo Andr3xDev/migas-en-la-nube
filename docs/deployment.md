@@ -31,6 +31,8 @@ El workflow `ci` corre en el pull request y el workflow `deploy` corre al hacer 
 | dev | `dev` | `dev` | Free | No | No |
 | prod | `main` | `prod` | Standard | Revisor requerido | Sí |
 
+URLs: prod https://salmon-stone-0be061010.6.azurestaticapps.net y dev https://wonderful-field-023b47e10.4.azurestaticapps.net. Las ejecuciones están en [GitHub Actions](https://github.com/Andr3xDev/migas-en-la-nube/actions).
+
 Cada ambiente tiene su propio grupo de recursos (`rg-pdc-dev` y `rg-pdc-prod`), estado de Terraform (`tfstate-dev` y `tfstate-prod`), cuenta de Cosmos DB, cuenta de Storage e identidad de despliegue.
 
 Un cambio se promueve así:

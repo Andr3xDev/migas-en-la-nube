@@ -23,7 +23,7 @@ flowchart LR
     Func -->|"logs JSON por petición<br/>correlation_id"| AI
     Probe -->|"GET /api/health cada 15 min"| Func
     Probe --> AI
-    AI -->|"alertas de disponibilidad y de errores 5xx"| Mail
+    AI -->|"alertas de disponibilidad, errores 5xx y tráfico alto"| Mail
 ```
 
 ## Capas dentro del API

@@ -125,7 +125,7 @@ Diagram source: [docs/diagramas/pipeline.md](docs/diagramas/pipeline.md).
 
 ### Alerts (prod only)
 
-Terraform creates an availability test (`GET /api/health`, every 15 minutes from two locations), an alert when both locations fail within 30 minutes, and an alert for more than 5 server errors (5xx) in 15 minutes. Both send email through an action group. The address is the GitHub variable `ALERT_EMAIL` of the `prod` environment.
+Terraform creates an availability test (`GET /api/health`, every 15 minutes from two locations), an alert when both locations fail within 30 minutes, an alert for more than 5 server errors (5xx) in 15 minutes, and an informational alert for more than 1,500 API requests in 5 minutes (traffic above design; the `stress` load scenario fires it). All send email through an action group. The address is the GitHub variable `ALERT_EMAIL` of the `prod` environment.
 
 ### Logs
 

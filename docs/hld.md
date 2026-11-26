@@ -74,7 +74,7 @@ El sistema cubre 8 requisitos funcionales y los 6 no funcionales que pide el cas
 | Seguridad | HTTPS, secretos fuera del código, mínimo privilegio | HTTPS por defecto, secretos generados por Terraform, una identidad por ambiente | Checkov y CodeQL en el pipeline, escaneo de secretos activado en el repositorio |
 | Respaldo | RPO 24 h y RTO 4 h | Respaldo continuo de 7 días en Cosmos DB y toda la infraestructura en Terraform | Procedimiento de restauración documentado (sección 5). Simulacro de restauración pendiente |
 | Escalabilidad | Soportar 3 veces la carga en temporada alta | Functions y Cosmos DB serverless escalan solos | Cálculo de capacidad en la sección 3 |
-| Observabilidad | Logs centralizados, métricas y al menos una alerta | Application Insights sobre Log Analytics, alertas de errores y de disponibilidad | Prueba de las alertas en la demo (pendiente) |
+| Observabilidad | Logs centralizados, métricas y al menos una alerta | Application Insights sobre Log Analytics, alertas de errores, de disponibilidad y de tráfico alto | Prueba de las alertas en la demo (pendiente) |
 
 ### Supuestos
 
@@ -117,7 +117,7 @@ flowchart LR
     Func -->|"logs JSON por petición<br/>correlation_id"| AI
     Probe -->|"GET /api/health cada 15 min"| Func
     Probe --> AI
-    AI -->|"alertas de disponibilidad y de errores 5xx"| Mail
+    AI -->|"alertas de disponibilidad, errores 5xx y tráfico alto"| Mail
 ```
 
 ### Servicios por capa
@@ -290,7 +290,7 @@ Tiempo estimado del procedimiento: entre 1 y 2 horas, dentro del RTO de 4 horas.
 
 ## 6. Observabilidad y operación
 
-Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un workspace de Log Analytics, y en producción hay dos alertas de Application Insights y un presupuesto con alertas, todos por correo.
+Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un workspace de Log Analytics, y en producción hay tres alertas de Application Insights y un presupuesto con alertas, todos por correo.
 
 **Qué se recoge.**
 
@@ -304,9 +304,22 @@ Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un
 | --- | --- | --- |
 | Errores del API (prod) | Más de 5 peticiones fallidas con 5xx en 15 minutos (se evalúa cada 5 minutos) | Correo mediante un grupo de acción |
 | Disponibilidad (prod) | La prueba `GET /api/health`, que corre cada 15 minutos desde 2 ubicaciones (`us-tx-sn1-azr` y `us-il-ch1-azr`) con reintento, falla desde las 2 en una ventana de 30 minutos (se evalúa cada 5 minutos), de modo que las ejecuciones de las dos ubicaciones caen dentro de la ventana | Correo mediante el mismo grupo de acción. Se mantiene `failed_location_count = 2` para no alertar por una sola ubicación inestable. Se verificará en la demostración de alertas (pendiente) |
+| Tráfico alto (prod) | Más de 1.500 peticiones al API (`requests/count`) en 5 minutos (se evalúa cada minuto, severidad 3, se resuelve sola al bajar el tráfico) | Correo mediante el mismo grupo de acción. Es un aviso de tráfico por encima del diseño, no una falla |
 | Presupuesto (suscripción) | El gasto real llega al 50, 80 y 100 % del monto mensual del presupuesto | Correo a `budget_email` |
 
 El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (el ejemplo del repositorio usa 20, menos que el tope de USD 150), así que los umbrales son porcentajes de ese monto y no de 150. Esta sección debe comprobarse en el portal (pendiente): que el presupuesto exista, porque en algunas suscripciones de estudiante puede ser rechazado, y que la alerta de errores se dispare con tráfico de prueba durante la demo.
+
+**Umbral de tráfico alto.** El umbral de 1.500 peticiones en 5 minutos es unas 5 veces el pico de un sábado a 3x (450 llamadas al API en 5 minutos). Solo cuentan las llamadas al API, porque los archivos estáticos los sirve Static Web Apps y no pasan por Functions. Los escenarios de [load/README.md](../load/README.md) quedan así: `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Umbral, ventana y frecuencia son las variables `traffic_spike_threshold`, `traffic_spike_window` y `traffic_spike_frequency` del módulo `alerts`.
+
+**Demostración de alertas.**
+
+1. Fuera de horario, correr `stress` en prod desde el workflow `load.yml` (una sola vez).
+2. En el portal, en Monitor > Alertas, la alerta de tráfico alto pasa a `Fired` pocos minutos después de empezar. `[PENDIENTE: captura alerta Fired]`
+3. Llega el correo al buzón de `ALERT_EMAIL`. `[PENDIENTE: captura correo]`
+4. Al terminar la prueba y bajar el tráfico, la alerta se resuelve sola y llega el aviso de resuelta.
+5. Prueba del canal de correo sin generar tráfico: en el portal, grupo de acción `ag-<prefijo>-prod` > `Probar grupo de acción` (Test action group), tipo de muestra `Metric alert` (Alerta de métricas), y comprobar que llega el correo. El comando `az monitor action-group test-notifications create` existe, pero sus argumentos no se verificaron, por eso se documenta el botón del portal.
+
+`stress` también puede disparar las alertas de 5xx, de disponibilidad y de tráfico alto; es esperado.
 
 **Métricas que se revisan.** Tiempo de respuesta y tasa de peticiones fallidas del API, disponibilidad y consumo de Cosmos DB en unidades de solicitud, todas en el portal de Azure. Los pedidos por hora se obtienen contando en los logs las peticiones `POST /api/orders` con estado 201. No hay un panel (dashboard) definido en Terraform.
 
@@ -327,7 +340,7 @@ Para comprobar el requisito de escalabilidad (3 veces la carga del pico) se usa 
 
 Umbrales: tasa de peticiones fallidas menor a 1 %, p95 del tiempo de respuesta menor a 1000 ms y ninguna iteración descartada (`dropped_iterations` igual a 0), sin contar el calentamiento inicial de 30 s que absorbe el arranque en frío.
 
-**Riesgo de `stress` en producción.** Es la validación del escalado y se permite en producción, pero puede producir errores reales (Cosmos DB serverless puede responder 429 ante una ráfaga), añadir latencia a clientes reales y disparar las alertas de 5xx y de disponibilidad (correos). Se corre fuera de horario y una sola vez. El costo por corrida es despreciable; el riesgo es de disponibilidad, no de dinero.
+**Riesgo de `stress` en producción.** Es la validación del escalado y se permite en producción, pero puede producir errores reales (Cosmos DB serverless puede responder 429 ante una ráfaga), añadir latencia a clientes reales y disparar las alertas de 5xx, de disponibilidad y de tráfico alto (correos). Se corre fuera de horario y una sola vez. El costo por corrida es despreciable; el riesgo es de disponibilidad, no de dinero.
 
 | Resultado | Valor |
 | --- | --- |
@@ -361,18 +374,18 @@ Producción cuesta unos USD 10 al mes con el tráfico de la sección 2, muy por 
 | Salida de datos (egress) | Unos 18 GB al mes de imágenes, dentro de los primeros 100 GB gratuitos | 0,00 | 0 |
 | Application Insights y Log Analytics | Menos de 0,5 GB de datos al mes, dentro de los 5 GB gratuitos | 0,00 | 0 |
 | Prueba de disponibilidad estándar | Unas 5.760 ejecuciones al mes (2 ubicaciones, cada 15 minutos) | Pendiente: precio por ejecución de la página de precios | Pendiente |
-| Alertas de métricas | 2 reglas, unos 0,10 cada una | 0,20 | 2 |
+| Alertas de métricas | 3 reglas, unos 0,10 cada una | 0,30 | 4 |
 | Grupo de acción | Correo, sin costo | 0,00 | 0 |
 | Functions administradas | Incluidas en Static Web Apps | 0,00 | 0 |
 | Almacenamiento del estado de Terraform | Cuenta de Storage del tfstate | 0,02 | 0 |
-| Total sin la prueba de disponibilidad | | 9,8 | Unos 118 |
+| Total sin la prueba de disponibilidad | | 9,9 | Unos 119 |
 
 **Escenarios.**
 
 | Escenario | Qué incluye | USD al mes (aprox.) |
 | --- | --- | --- |
 | MVP | Prod con tráfico de prueba y dev en Free | 9 a 10 |
-| Producción | Los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes) | Unos 9,8 |
+| Producción | Los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes) | Unos 9,9 |
 
 Los dos escenarios no incluyen la prueba de disponibilidad hasta que se calcule su precio.
 

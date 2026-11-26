@@ -39,9 +39,9 @@ resource "azurerm_monitor_metric_alert" "availability" {
   description         = "Health probe failed from both locations."
   scopes              = [azurerm_application_insights_standard_web_test.health.id, var.app_insights_id]
   severity            = 1
-  frequency           = "PT5M"
-  # The probe runs every 900 s per location, so the window must span more than one run of both.
-  window_size = "PT15M"
+  # Probe runs every 900 s per location; the window spans at least two runs.
+  frequency   = "PT5M"
+  window_size = "PT30M"
 
   application_insights_web_test_location_availability_criteria {
     web_test_id           = azurerm_application_insights_standard_web_test.health.id

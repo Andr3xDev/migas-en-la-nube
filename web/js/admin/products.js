@@ -14,6 +14,8 @@ const UPLOAD_FAILED_MESSAGE = "No se pudo subir la imagen.";
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const PRODUCT_HEADINGS = ["Imagen", "Producto", "Categoría", "Variantes", "Acciones"];
+// Mirrors MAX_STOCK in api/app/api/schemas.py.
+const MAX_STOCK = 10_000;
 const STALE_PRODUCT_MESSAGE =
   "El producto cambió (por ejemplo, por un pedido). Recarga la página e inténtalo de nuevo.";
 
@@ -32,10 +34,18 @@ const currentImage = document.getElementById("current-image");
 const feedback = document.getElementById("feedback");
 const submit = document.getElementById("submit");
 const resetButton = document.getElementById("reset");
+const restockDialog = document.getElementById("restock-dialog");
+const restockForm = document.getElementById("restock-form");
+const restockVariant = document.getElementById("restock-variant");
+const restockCurrent = document.getElementById("restock-current");
+const restockUnits = document.getElementById("restock-units");
+const restockFeedback = document.getElementById("restock-feedback");
+const restockSubmit = document.getElementById("restock-submit");
 
 let products = [];
 let editing = null;
 let dialogTrigger = null;
+let restocking = null;
 
 function describeVariants(product) {
   return product.variants
@@ -78,7 +88,17 @@ function renderList() {
       "button-secondary",
     );
     editButton.dataset.editId = product.id;
-    actions.append(editButton, createButton("Eliminar", () => removeProduct(product), "button-danger"));
+    const restockButton = createButton(
+      "Hornear",
+      () => openRestockDialog(product),
+      "button-secondary",
+    );
+    restockButton.dataset.restockId = product.id;
+    actions.append(
+      restockButton,
+      editButton,
+      createButton("Eliminar", () => removeProduct(product), "button-danger"),
+    );
     row.append(
       createCell(createProductImage(product)),
       createCell(product.name),
@@ -300,6 +320,78 @@ form.addEventListener("submit", async (event) => {
   } finally {
     restore();
   }
+});
+
+const restockedVariant = () => restocking.variants[Number(restockVariant.value)];
+
+function syncRestockLimit() {
+  const { stock } = restockedVariant();
+  const room = MAX_STOCK - stock;
+  const full = room < 1;
+  restockCurrent.textContent = full ? `Stock actual: ${stock}. Stock máximo alcanzado` : `Stock actual: ${stock}`;
+  restockUnits.max = String(room);
+  restockUnits.disabled = full;
+  restockSubmit.disabled = full;
+}
+
+function openRestockDialog(product) {
+  restocking = product;
+  restockForm.reset();
+  restockVariant.replaceChildren(
+    ...product.variants.map((variant, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = variant.name;
+      return option;
+    }),
+  );
+  syncRestockLimit();
+  restockFeedback.replaceChildren();
+  restockDialog.showModal();
+}
+
+restockVariant.addEventListener("change", syncRestockLimit);
+
+restockForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const target = restockedVariant();
+  const stock = target.stock + restockUnits.valueAsNumber;
+  if (stock > MAX_STOCK) {
+    showMessage(restockFeedback, `El stock no puede superar ${MAX_STOCK} unidades.`);
+    return;
+  }
+  const restore = setBusy(restockSubmit, "Guardando…");
+  try {
+    const { id, name, category, description, imageUrl, prepMinutes, variants, etag } = restocking;
+    const saved = await updateProduct(id, {
+      name,
+      category,
+      description,
+      imageUrl,
+      prepMinutes,
+      variants: variants.map((variant) => ({
+        name: variant.name,
+        price: variant.price,
+        stock: variant === target ? stock : variant.stock,
+      })),
+      etag,
+    });
+    upsertLocal(saved);
+    restockDialog.close();
+    showMessage(listFeedback, `Stock actualizado: ${target.name} ahora tiene ${stock}.`, "success");
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error;
+    showMessage(restockFeedback, error.message);
+  } finally {
+    restore();
+  }
+});
+
+document.getElementById("restock-cancel").addEventListener("click", () => restockDialog.close());
+closeDialogOnBackdropClick(restockDialog);
+restockDialog.addEventListener("close", () => {
+  const trigger = list.querySelector(`[data-restock-id="${CSS.escape(restocking.id)}"]`);
+  (trigger ?? createButtonElement).focus();
 });
 
 document.getElementById("add-variant").addEventListener("click", () => addVariantRow());

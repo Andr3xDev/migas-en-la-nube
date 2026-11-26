@@ -64,8 +64,27 @@
         </form>
         <div id="feedback" aria-live="polite"></div>
       </dialog>
+      <dialog id="restock-dialog" aria-labelledby="restock-title">
+        <h2 id="restock-title">Hornear</h2>
+        <form id="restock-form">
+          <p>
+            <label for="restock-variant">Variante</label>
+            <select id="restock-variant" required></select>
+          </p>
+          <p id="restock-current"></p>
+          <p>
+            <label for="restock-units">Unidades a agregar</label>
+            <input id="restock-units" type="number" min="1" step="1" required />
+          </p>
+          <div class="form-actions">
+            <button type="submit" class="button" id="restock-submit">Agregar al stock</button>
+            <button type="button" class="button button-secondary" id="restock-cancel">Cancelar</button>
+          </div>
+        </form>
+        <div id="restock-feedback" aria-live="polite"></div>
+      </dialog>
     </main>
-    <footer><p>Pan de la Casa · Panel de administración</p></footer>
+    <footer><p>Migas en la Nube · Panel de administración</p></footer>
     <script type="module" src="/js/nav.js"></script>
     <script type="module" src="/js/admin/products.js"></script>
   </body>

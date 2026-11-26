@@ -81,7 +81,6 @@ export function createProductCard(product, { favorites, headingLevel = 2, onAdd 
   return card;
 }
 
-// rows and total are [label, value] pairs.
 export function createSummaryPanel({ title, rows, total, note }) {
   const panel = document.createElement("section");
   panel.className = "summary-panel";
@@ -168,7 +167,6 @@ export function endLoading(container) {
 }
 
 // For text-only buttons: the label is replaced by plain text, so icons are lost.
-// Returns a function that restores the button's label and enables it again.
 export function setBusy(button, busyText) {
   const label = button.textContent;
   button.disabled = true;

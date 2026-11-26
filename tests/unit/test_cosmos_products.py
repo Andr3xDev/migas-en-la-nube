@@ -1,4 +1,7 @@
+from dataclasses import replace
+
 import pytest
+from azure.core import MatchConditions
 from azure.cosmos.exceptions import (
     CosmosAccessConditionFailedError,
     CosmosResourceExistsError,
@@ -27,11 +30,19 @@ class FakeContainer:
     def __init__(self, fail_delete_of=None):
         self.documents: dict[tuple[str, str], dict] = {}
         self.fail_delete_of = fail_delete_of
+        self.queries: list[tuple[str, bool]] = []
+        self.replace_calls: list[dict] = []
+
+    def replace_item(self, item, body, etag, match_condition):
+        self.replace_calls.append({"etag": etag, "match_condition": match_condition})
+        self.documents[(body["category"], body["id"])] = {**body, "_etag": "new"}
+        return self.documents[(body["category"], body["id"])]
 
     def seed(self, product: Product) -> None:
         self.documents[(product.category, product.id)] = {**to_document(product), "_etag": "e"}
 
     def query_items(self, query, parameters=None, enable_cross_partition_query=False):
+        self.queries.append((query, enable_cross_partition_query))
         if parameters is None:
             return iter(self.documents.values())
         wanted = parameters[0]["value"]
@@ -131,6 +142,40 @@ def test_replace_maps_404_to_not_found():
 
     with pytest.raises(NotFoundError):
         CosmosProductRepository(MissingContainer()).replace(PRODUCT)
+
+
+def test_replace_sends_etag_with_if_not_modified_condition():
+    container = FakeContainer()
+    container.seed(PRODUCT)
+
+    result = CosmosProductRepository(container).replace(PRODUCT)
+
+    assert container.replace_calls == [
+        {"etag": "e", "match_condition": MatchConditions.IfNotModified}
+    ]
+    assert result.etag == "new"
+
+
+def test_list_all_queries_every_partition():
+    container = FakeContainer()
+    container.seed(PRODUCT)
+    container.seed(moved(replace(PRODUCT, id="p2"), "other"))
+
+    products = CosmosProductRepository(container).list_all()
+
+    assert sorted(p.id for p in products) == ["p1", "p2"]
+    assert container.queries == [("SELECT * FROM c", True)]
+
+
+def test_move_within_same_category_replaces_in_place_without_delete():
+    container = FakeContainer(fail_delete_of="c")
+    container.seed(PRODUCT)
+
+    result = CosmosProductRepository(container).move(replace(PRODUCT, name="renamed"))
+
+    assert result.name == "renamed"
+    assert container.replace_calls[0]["match_condition"] == MatchConditions.IfNotModified
+    assert list(container.documents) == [("c", "p1")]
 
 
 def test_move_with_stale_etag_raises_concurrency_conflict():

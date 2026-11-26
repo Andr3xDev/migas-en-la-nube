@@ -8,7 +8,7 @@ Todo llega a Azure por GitHub Actions: nada se despliega a mano. Este documento 
 
 Pipeline de CI/CD. Fuente editable: [pipeline.drawio](diagrams/pipeline.drawio).
 
-El workflow `ci` corre en el pull request y el workflow `deploy` corre al hacer merge. El despliegue no repite lint ni pruebas.
+El workflow `ci` corre en el pull request y el workflow `deploy` corre al hacer merge. El despliegue no repite lint ni seguridad, pero corre las pruebas antes del build y se detiene si fallan.
 
 | Etapa | Workflow y job | Qué hace | Qué bloquea si falla |
 | --- | --- | --- | --- |
@@ -17,6 +17,7 @@ El workflow `ci` corre en el pull request y el workflow `deploy` corre al hacer 
 | Pruebas | `ci`, `test` | `pytest` con cobertura mínima de 70 %: unitarias e integración por HTTP | Build |
 | Build | `ci`, `build` | Instala las dependencias del API y empaqueta `api/` y `web/` como artefactos | El check del pull request |
 | Plan de Terraform | `ci`, `terraform` | `init`, `validate` y `plan` de dev y prod con la identidad de solo lectura, sin refrescar ni bloquear el estado | El check del pull request |
+| Pruebas del despliegue | `deploy`, `test` | Las mismas pruebas de `ci` (`pytest` con cobertura mínima de 70 %), sobre el commit ya integrado | El build del despliegue y todo lo posterior |
 | Build del despliegue | `deploy`, `build` | El mismo empaquetado, sobre el commit ya integrado | El despliegue |
 | Despliegue | `deploy`, `deploy` | Login OIDC, `terraform apply`, carga de seeds (productos y administrador) y subida a Static Web Apps | El smoke test y el release |
 | Smoke test | `deploy`, acción `smoke` | Espera `/api/health` (hasta 12 reintentos, unos 2 minutos) y corre la colección Bruno | El release |
@@ -42,15 +43,15 @@ Un cambio se promueve así:
 3. Con dev verificado, se abre un pull request de `dev` hacia `main`. `ci` corre otra vez.
 4. Al hacer merge a `main`, `deploy` queda detenido en el environment `prod` hasta que el revisor aprueba. Luego despliega prod, corre el smoke de solo lectura y publica el release `vN`.
 
-En GitHub existe un ruleset `general` sobre `dev` y `main` que impide borrar la rama y hacer push forzado, exige pull request y exige checks. El ruleset está activo en `main` y `dev`, con los checks requeridos. Los checks requeridos deben ser los nombres de los jobs de `ci.yml`: `lint`, `security`, `test`, `build` y `terraform`. Como `deploy.yml` no vuelve a correr los tests, esta compuerta del pull request es lo que impide un despliegue roto.
+En GitHub existe un ruleset `general` sobre `dev` y `main` que impide borrar la rama y hacer push forzado, exige pull request y exige checks. El ruleset está activo en `main` y `dev` y exige como checks los jobs de `ci.yml`: `lint`, `security`, `test`, `build` y `terraform`. Además, `deploy.yml` corre las pruebas antes de construir y desplegar, así que un push con pruebas rotas nunca llega a Azure; el ruleset es una compuerta adicional sobre los pull requests.
 
 ## Ramas y disparadores
 
 | Evento | Qué corre |
 | --- | --- |
 | Pull request (`ci.yml`) | `lint`, luego `security` y `terraform` (plan de dev y prod), luego `test` y `build`. Sin permisos de escritura sobre Azure |
-| Push a `dev` (`deploy.yml`) | `build` y `deploy` en el environment `dev`: Terraform, seeds, subida y smoke completo. No hay `release` |
-| Push a `main` (`deploy.yml`) | `build`, `deploy` en el environment `prod` tras la aprobación, y `release` |
+| Push a `dev` (`deploy.yml`) | `test`, `build` y `deploy` en el environment `dev`: Terraform, seeds, subida y smoke completo. No hay `release` |
+| Push a `main` (`deploy.yml`) | `test`, `build`, `deploy` en el environment `prod` tras la aprobación, y `release` |
 | Ejecución manual de `rollback.yml` | Solo desde `main`, con el input `tag`. Aprobación de `prod`, vuelve a publicar el artefacto `release-<tag>` y corre el smoke de solo lectura |
 | Ejecución manual de `load.yml` | Inputs `environment` y `scenario`. `prod` pide aprobación del environment y corre solo desde `main`; el escenario `orders` se rechaza en `prod`. Solo llama a la URL pública del sitio, sin identidad de Azure |
 | Ejecución manual de `destroy.yml` | Inputs `environment` y `confirm`. Destruye con `terraform destroy` el ambiente elegido |

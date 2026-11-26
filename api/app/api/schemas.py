@@ -24,7 +24,7 @@ class CamelModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
-Email = Annotated[str, StringConstraints(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
+Email = Annotated[str, StringConstraints(max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
 ColombianPhone = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[0-9]{10}$")]
 Password = Annotated[str, StringConstraints(min_length=8, max_length=1024)]
 

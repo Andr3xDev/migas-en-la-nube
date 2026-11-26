@@ -93,13 +93,6 @@ def test_verify_token_returns_principal_from_claims(auth):
     assert (principal.user_id, principal.email, principal.role) == (user.id, user.email, ADMIN_ROLE)
 
 
-def test_verify_token_signed_with_other_key_is_rejected(auth):
-    forged = jwt.encode({"sub": "u1", "exp": datetime.now(UTC) + timedelta(hours=1)}, "x" * 40)
-
-    with pytest.raises(AuthenticationError):
-        auth.verify_token(forged)
-
-
 def valid_claims() -> dict:
     return {
         "sub": "u1",
@@ -107,6 +100,13 @@ def valid_claims() -> dict:
         "role": CUSTOMER_ROLE,
         "exp": datetime.now(UTC) + timedelta(hours=1),
     }
+
+
+def test_verify_token_signed_with_other_key_is_rejected(auth):
+    forged = jwt.encode(valid_claims(), "x" * 40)
+
+    with pytest.raises(AuthenticationError):
+        auth.verify_token(forged)
 
 
 def test_verify_token_expired_is_rejected(auth):

@@ -14,6 +14,7 @@
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "same-origin",
     "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://*.blob.core.windows.net; connect-src 'self' https://*.blob.core.windows.net; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
   }
 }

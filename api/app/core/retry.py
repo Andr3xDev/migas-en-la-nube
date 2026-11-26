@@ -8,8 +8,8 @@ T = TypeVar("T")
 MAX_CONFLICT_ATTEMPTS = 5
 
 
-def retry_on_conflict(operation: Callable[[], T], attempts: int = MAX_CONFLICT_ATTEMPTS) -> T:
-    for _ in range(attempts):
+def retry_on_conflict(operation: Callable[[], T]) -> T:
+    for _ in range(MAX_CONFLICT_ATTEMPTS):
         try:
             return operation()
         except ConcurrencyConflictError:

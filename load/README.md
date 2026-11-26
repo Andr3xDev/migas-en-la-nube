@@ -40,27 +40,11 @@ Los umbrales solo miden los escenarios `visits` y `orders`, y solo se registran 
 3. El workflow no inicia sesión en Azure: solo llama a la URL pública del sitio, fija por ambiente en el workflow (`BASE_URL`). Si se recrea la Static Web App, hay que actualizar esas URL.
 4. El workflow usa su propio grupo de concurrencia (`load-<ambiente>`) y no coordina con el despliegue: no lo lances mientras haya un despliegue en curso.
 
-## Resultados de las corridas
+## Resultados y evidencia
 
-Corridas del 26 de noviembre de 2026 (UTC). Las peticiones y las iteraciones incluyen el calentamiento y el `setup`.
+Los resultados de las corridas del 26 de noviembre de 2026, la evidencia de escalado y la demostración de la alerta están en [docs/hld.md](../docs/hld.md#prueba-de-carga). Cada corrida sube el artefacto `load-results-<ambiente>-<escenario>` (`summary.txt` y `summary.json`) y un resumen en la página de la corrida; en las corridas de esa fecha `summary.txt` muestra `undefined` en `Requests (...)`, y el conteo real está en `summary.json`.
 
-| Ambiente | Escenario | Corrida | p95 (ms) | Promedio / p90 / máximo (ms) | Fallidas | Peticiones | Iteraciones | Descartadas | VUs máximos | Resultado |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| dev | `realistic` | [45757984915](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45757984915) | 90 | 61 / 88 / 1.744 | 0 % | 271 | 31 | 0 | 3 | Pasa |
-| dev | `orders` | [45758851277](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45758851277) | 343 | 185 / 263 / 400 | 0 % | 30 | 24 | 0 | 3 | Pasa |
-| prod | `realistic` | [45759342723](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45759342723) | 74 | 40 / 62 / 132 | 0 % | 271 | 31 | 0 | 3 | Pasa |
-| prod | `peak3x` | [45763172806](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45763172806) | 91 | 55 / 87 / 671 | 0 % | 771 | 81 | 0 | 6 | Pasa |
-| prod | `stress` | [45761827371](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45761827371) | 111 | 54 / 92 / 4.835 | 0 % | 52.991 (unas 160 por segundo en promedio) | 5.303 | 41 | 62 | Falla solo por `dropped_iterations` |
-
-**Nota sobre `stress`.** El sistema absorbió unas 53.000 peticiones con 0 % de errores y un p95 de 111 ms. Las 41 iteraciones descartadas (0,77 %) vienen de que k6 no asignó VUs con la rapidez necesaria en los saltos de la rampa (`preAllocatedVUs` en 20; solo se usaron 62 de 200): es un límite del generador de carga, no un error del servidor. El máximo de 4,8 s es una cola aislada, probablemente un arranque en frío al escalar. La corrida usó `preAllocatedVUs` en 20; el script ya usa 100.
-
-El `summary.txt` de las corridas del 26 de noviembre muestra `undefined` en `Requests (...)`; las cifras reales están en `summary.json`. El script ya imprime el conteo real (registra el umbral `http_reqs{scenario:...}` con `count>=0`, solo para que la métrica exista en el resumen) y muestra `n/d` si no está.
-
-## Dónde ver los resultados
-
-- Log del paso `Run k6` y resumen en la página de la corrida (`GITHUB_STEP_SUMMARY`).
-- Artefacto `load-results-<ambiente>-<escenario>` con `summary.txt` y `summary.json`.
-- Los pedidos de la prueba quedan en dev con el nombre `k6 load test`. El stock de dev baja con cada pedido; se repone desde el panel de administración.
+Los pedidos de la prueba quedan en dev con el nombre `k6 load test`. El stock de dev baja con cada pedido; se repone desde el panel de administración.
 
 ## Costo
 
@@ -70,20 +54,3 @@ Cosmos DB serverless cobra por unidad de solicitud y Static Web Apps Standard (p
 
 `stress` sobre producción es la validación del escalado y está permitido, pero puede producir errores reales: Cosmos DB serverless puede responder 429 ante una ráfaga y los clientes reales pueden notar latencia. También puede disparar las alertas de 5xx, de disponibilidad de producción y de tráfico alto (correos). Córrelo fuera de horario de atención y una sola vez.
 
-## Evidencia de escalado y desescalado
-
-k6 no muestra instancias. Durante y después de `stress` en prod, en el portal (Application Insights, Logs) ejecuta:
-
-```kusto
-requests
-| where timestamp between (datetime(2026-11-26T05:25:00Z) .. datetime(2026-11-26T05:50:00Z))
-| summarize total = sum(itemCount) by ts = bin(timestamp, 5m), instancia = tostring(cloud_RoleInstance)
-| order by ts asc
-| render timechart
-```
-
-Resultado observado (26 de noviembre de 2026, UTC): 4 instancias durante `stress` y 1 desde las 05:40, es decir, escalado de 1 a 4 y desescalado a 1 (conteo por intervalo de 5 minutos). `Total Request Units` de Cosmos DB (portal, cuenta de Cosmos DB, Metrics) llegó a un pico de unas 14.300 hacia las 05:33 UTC. Ajusta el rango de fechas a tu corrida. La alerta de tráfico alto pasando a `Fired` y luego a `Resolved` también lo muestra. Las capturas van en [docs/hld.md](../docs/hld.md).
-
-## Demostración de la alerta de tráfico alto
-
-La alerta de prod se dispara con más de 1.500 peticiones al API en 5 minutos. `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Correr `stress` en prod es entonces la demostración de la alerta: pasa a `Fired`, llega el correo y se resuelve al terminar. El procedimiento y las capturas están en la sección de observabilidad de [docs/hld.md](../docs/hld.md).

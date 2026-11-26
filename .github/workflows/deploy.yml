@@ -12,8 +12,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-dev.txt
+      - run: pytest --cov --cov-fail-under=70
+
   build:
     name: build
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

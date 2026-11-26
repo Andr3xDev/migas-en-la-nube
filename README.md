@@ -73,9 +73,9 @@ All routes are under `/api`. Errors are JSON `{"detail": "..."}`.
 | Access | Routes |
 | --- | --- |
 | Public | `GET /health`, `GET /products`, `GET /products/{id}`, `POST /auth/register`, `POST /auth/login` |
-| Public or customer | `POST /orders` (guest or logged in; a logged-in order is linked to the user) |
+| Public or customer | `POST /orders` (guest or logged in; a logged-in order is linked to the user; an admin gets 403) |
 | Customer | `GET /me/orders`, `GET /me/favorites`, `PUT` and `DELETE /me/favorites/{productId}`, `GET /me/top-products` |
-| Admin | `POST /admin/products`, `PUT` and `DELETE /admin/products/{id}`, `POST /admin/products/{id}/image-upload-url`, `GET /admin/orders`, `PATCH /admin/orders/{id}/status` |
+| Admin | `POST /admin/products`, `PUT` and `DELETE /admin/products/{id}`, `POST /admin/products/{id}/image-upload-url`, `GET /admin/orders` (upcoming by default, `?scope=history` for past orders, or `?date=` for one day), `PATCH /admin/orders/{id}/status` |
 
 Authenticated calls send `X-Pdc-Token: Bearer <jwt>`. The standard `Authorization` header is not used because SWA managed Functions overwrite it (see [ADR 0003](docs/adr/0003-own-jwt-authentication.md)).
 

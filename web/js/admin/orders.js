@@ -1,5 +1,5 @@
 import { apiFetch, ApiError } from "../api.js";
-import { createEmptyState } from "../components.js";
+import { createEmptyState, endLoading, showLoading } from "../components.js";
 import { createStatusChip, formatPeso, showMessage, STATUS_LABELS } from "../format.js";
 import { requireAdmin } from "./guard.js";
 import { createButton, createCell } from "./table.js";
@@ -189,6 +189,7 @@ async function loadOrders() {
     ? `date=${encodeURIComponent(dateInput.value)}`
     : `scope=${view}`;
   const requestId = ++latestRequest;
+  showLoading(container);
   try {
     const loaded = await apiFetch(`/api/admin/orders?${query}`);
     if (requestId !== latestRequest) return;
@@ -197,6 +198,9 @@ async function loadOrders() {
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     if (requestId === latestRequest) showMessage(container, error.message);
+  } finally {
+    // A stale response must not clear the busy mark of the newer request.
+    if (requestId === latestRequest) endLoading(container);
   }
 }
 

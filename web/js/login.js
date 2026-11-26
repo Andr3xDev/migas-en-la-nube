@@ -1,4 +1,5 @@
 import { apiFetch, ApiError } from "./api.js";
+import { setBusy } from "./components.js";
 import { isAdmin, setToken } from "./auth.js";
 import { showMessage } from "./format.js";
 
@@ -11,7 +12,7 @@ const submit = document.getElementById("submit");
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(form);
-  submit.disabled = true;
+  const restore = setBusy(submit, "Ingresando…");
   try {
     const { accessToken } = await apiFetch("/api/auth/login", {
       method: "POST",
@@ -20,8 +21,8 @@ form.addEventListener("submit", async (event) => {
     setToken(accessToken);
     window.location.assign(isAdmin() ? "/admin/" : "/");
   } catch (error) {
+    restore();
     if (!(error instanceof ApiError)) throw error;
     showMessage(feedback, error.status === 401 ? GENERIC_LOGIN_ERROR : error.message);
-    submit.disabled = false;
   }
 });

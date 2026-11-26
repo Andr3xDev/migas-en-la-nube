@@ -1,10 +1,13 @@
 import { apiFetch } from "./api.js";
-import { createProductCard } from "./components.js";
+import { createProductCard, createSkeletonCards, endLoading, showLoading } from "./components.js";
 import { loadFavorites } from "./favorites.js";
 import { showMessage } from "./format.js";
 
+const SKELETON_CARD_COUNT = 8;
+
 const container = document.getElementById("catalog");
 
+showLoading(container, createSkeletonCards(SKELETON_CARD_COUNT));
 try {
   const products = await apiFetch("/api/products");
   if (products.length === 0) {
@@ -17,4 +20,6 @@ try {
   }
 } catch {
   showMessage(container, "No pudimos cargar el catálogo. Intenta de nuevo más tarde.");
+} finally {
+  endLoading(container);
 }

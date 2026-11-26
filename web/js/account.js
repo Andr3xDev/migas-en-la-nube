@@ -2,7 +2,7 @@ import { apiFetch, getToken } from "./api.js";
 import { isAdmin } from "./auth.js";
 import { addProductVariant } from "./cart.js";
 import { findVariant } from "./checkout.js";
-import { createProductCard } from "./components.js";
+import { createProductCard, endLoading, showLoading } from "./components.js";
 import { createStatusChip, formatPeso, showMessage } from "./format.js";
 import { createIconButton } from "./icons.js";
 
@@ -61,10 +61,13 @@ function createOrderSummary(order, catalog) {
 }
 
 async function renderSection(container, load) {
+  showLoading(container);
   try {
     await load();
   } catch {
     showMessage(container, "No pudimos cargar esta sección. Intenta de nuevo más tarde.");
+  } finally {
+    endLoading(container);
   }
 }
 

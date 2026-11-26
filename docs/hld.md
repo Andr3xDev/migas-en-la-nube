@@ -317,16 +317,15 @@ El correo de las alertas de producción es la variable `ALERT_EMAIL` del environ
 2. En el portal, en Monitor > Alertas, la alerta de tráfico alto pasa a `Fired` pocos minutos después de empezar.
 3. Llega el correo al buzón de `ALERT_EMAIL`.
 4. Al terminar la prueba y bajar el tráfico, la alerta se resuelve sola y llega el aviso de resuelta.
+5. Prueba del canal de correo sin generar tráfico: en el portal, grupo de acción `ag-<prefijo>-prod` > `Probar grupo de acción` (Test action group), tipo de muestra `Metric alert` (Alerta de métricas), y comprobar que llega el correo. El comando `az monitor action-group test-notifications create` existe, pero sus argumentos no se verificaron, por eso se documenta el botón del portal.
 
-**Resultado (verificado el 26 de noviembre de 2026).** `alert-pdc-prod-traffic` (severidad 3, `appi-pdc-prod`, `rg-pdc-prod`, "More than 1500 API requests in the evaluation window") se disparó durante la corrida de `stress` y se resolvió sola; el correo `Resolved` llegó a las 05:43:30 UTC, unos 8 minutos después de terminar `stress` (hacia las 05:35). La corrida `peak3x` (05:40) quedó por debajo del umbral. Los correos reales prueban el canal de correo. Las alertas de errores 5xx y de disponibilidad no se dispararon porque no hubo una falla real; no se simuló ninguna, así que su disparo no está verificado.
+**Resultado (verificado el 26 de noviembre de 2026).** `alert-pdc-prod-traffic` (severidad 3, `appi-pdc-prod`, `rg-pdc-prod`, "More than 1500 API requests in the evaluation window") pasó a `Fired` a las 05:32:22 UTC durante la corrida de `stress` (primera evaluación: 2,59 k frente al umbral de 1,5 k), con un pico de unas 28 k peticiones en la ventana de 5 minutos, y se resolvió sola: `Resolved` a las 05:43:30 UTC, unos 11 minutos después de dispararse. El detalle de la alerta muestra 32.433 peticiones al servidor en el periodo, consistente con las unas 32.000 llamadas al API planificadas para `stress`. La corrida `peak3x` (05:40) quedó por debajo del umbral. Los correos reales prueban el canal de correo. Las alertas de errores 5xx y de disponibilidad no se dispararon porque no hubo una falla real; no se simuló ninguna, así que su disparo no está verificado.
 
 ![Correo de alerta Fired](img/evidencia/alerta-trafico-fired.png)
 
 ![Correo de alerta Resolved](img/evidencia/alerta-trafico-resolved.png)
 
 ![Historial de la alerta en el portal, de Fired a Resolved](img/evidencia/alerta-trafico-historial.png)
-
-5. Prueba del canal de correo sin generar tráfico: en el portal, grupo de acción `ag-<prefijo>-prod` > `Probar grupo de acción` (Test action group), tipo de muestra `Metric alert` (Alerta de métricas), y comprobar que llega el correo. El comando `az monitor action-group test-notifications create` existe, pero sus argumentos no se verificaron, por eso se documenta el botón del portal.
 
 `stress` también puede disparar las alertas de 5xx, de disponibilidad y de tráfico alto; es esperado.
 
@@ -358,7 +357,7 @@ Umbrales: tasa de peticiones fallidas menor a 1 %, p95 del tiempo de respuesta m
 | dev | `realistic` | [45757984915](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45757984915) | 90 | 61 / 88 / 1.744 | 0 % | 271 | 31 | 0 | 3 | Pasa |
 | dev | `orders` | [45758851277](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45758851277) | 343 | 185 / 263 / 400 | 0 % | 30 | 24 | 0 | 3 | Pasa |
 | prod | `realistic` | [45759342723](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45759342723) | 74 | 40 / 62 / 132 | 0 % | 271 | 31 | 0 | 3 | Pasa |
-| prod | `peak3x` | [45763172806](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45763172806) | 91 | 55 / 87 / 671 | 0 % (0 de 771) | 771 | 81 | 0 | 6 | Pasa |
+| prod | `peak3x` | [45763172806](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45763172806) | 91 | 55 / 87 / 671 | 0 % | 771 | 81 | 0 | 6 | Pasa |
 | prod | `stress` | [45761827371](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45761827371) | 111 | 54 / 92 / 4.835 | 0 % | 52.991 (unas 160 por segundo en promedio) | 5.303 | 41 | 62 | Falla solo por `dropped_iterations` |
 
 | Resultado de `stress` en prod | Valor |
@@ -367,20 +366,25 @@ Umbrales: tasa de peticiones fallidas menor a 1 %, p95 del tiempo de respuesta m
 | Tasa de peticiones fallidas | 0 % |
 | Carga absorbida | Unas 53.000 peticiones con 0 % de errores |
 | Iteraciones descartadas | 41 (0,77 %) |
-| Instancias máximas observadas | Ver captura `escalado-instancias.png` (más abajo) |
+| Instancias máximas observadas | 4 (y vuelve a 1 al terminar) |
+| Pico de unidades de solicitud de Cosmos DB | Unas 14.300 (promedio, hacia las 05:33 UTC) |
+| Peticiones al API vistas por Application Insights | 32.433 (consistente con las unas 32.000 llamadas planificadas) |
 
 **Interpretación de `stress`.** El sistema absorbió unas 53.000 peticiones con 0 % de errores y un p95 de 111 ms. Las 41 iteraciones descartadas (0,77 %) se deben a que k6 no asignó VUs con la rapidez necesaria en los saltos de la rampa (`preAllocatedVUs` en 20; solo se usaron 62 de los 200 VUs máximos): es un límite del generador de carga, no un error del servidor. El máximo de 4,8 s es una cola aislada, probablemente un arranque en frío mientras escalaba. Por eso el umbral `dropped_iterations` marcó la corrida como fallida aunque la latencia y los errores cumplieron. Para próximas corridas `preAllocatedVUs` sube a 100 en `load/load.js`. `realistic` y `peak3x` (3 veces el pico) pasan todos los umbrales en prod.
 
-**Evidencia de escalado y desescalado.** k6 prueba que el sistema absorbe la carga (p95, errores, iteraciones descartadas), pero no cuántas instancias hubo. Durante y después de la corrida de `stress` en prod, en el portal (Application Insights, Logs) se ejecuta:
+**Evidencia de escalado y desescalado.** k6 prueba que el sistema absorbe la carga (p95, errores, iteraciones descartadas), pero no cuántas instancias hubo. Durante y después de la corrida de `stress` en prod, en el portal (Application Insights, Logs) se ejecutó:
 
 ```kusto
 requests
-| where timestamp > ago(1h)
-| summarize instancias = dcount(cloud_RoleInstance), peticiones = count() by bin(timestamp, 1m)
+| where timestamp between (datetime(2026-11-26T05:25:00Z) .. datetime(2026-11-26T05:50:00Z))
+| summarize total = sum(itemCount) by ts = bin(timestamp, 5m), instancia = tostring(cloud_RoleInstance)
+| order by ts asc
 | render timechart
 ```
 
-Se espera que `instancias` suba durante `stress` y baje unos minutos después de que termine (desescalado). No está verificado que las Functions administradas de Static Web Apps reporten un `cloud_RoleInstance` por instancia; si el gráfico muestra siempre 1, la evidencia es la latencia estable de k6 y las métricas de Cosmos DB. Cosmos DB serverless no tiene instancias: su evidencia es la métrica `Total Request Units` (portal, cuenta de Cosmos DB, Metrics) durante la corrida y si aparecieron respuestas 429. La alerta de tráfico alto pasando a `Fired` y luego a `Resolved` también muestra la subida y la bajada de la carga.
+Resultado: `cloud_RoleInstance` reporta una instancia por serie, y se ven 4 instancias distintas de Functions en los intervalos de 5 minutos de las 05:25 y las 05:30 (durante `stress`; cada una con unas 7.600 a 8.000 peticiones en el intervalo de las 05:30 a las 05:35). Desde las 05:40 (corrida `peak3x`) queda 1 sola instancia con unas 250 peticiones cada 5 minutos: escalado de 1 a 4 instancias y desescalado de vuelta a 1. El conteo de instancias es por intervalo de 5 minutos.
+
+Cosmos DB serverless no tiene instancias: su evidencia es la métrica `Total Request Units` (promedio) de la cuenta `cosmos-pdc-prod-webwdv`, con un pico de unas 14.300 hacia las 05:33 UTC y de vuelta a casi 0 hacia las 05:37. La captura no muestra respuestas 429; k6 registró 0 % de peticiones fallidas, así que ninguna limitación llegó a los clientes. La alerta de tráfico alto pasando a `Fired` y luego a `Resolved` también muestra la subida y la bajada de la carga.
 
 ![Instancias por minuto durante stress (05:25 a 05:50 UTC)](img/evidencia/escalado-instancias.png)
 

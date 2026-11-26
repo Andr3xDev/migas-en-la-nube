@@ -48,7 +48,7 @@ Corridas del 26 de noviembre de 2026 (UTC). Las peticiones y las iteraciones inc
 | dev | `realistic` | [45757984915](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45757984915) | 90 | 61 / 88 / 1.744 | 0 % | 271 | 31 | 0 | 3 | Pasa |
 | dev | `orders` | [45758851277](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45758851277) | 343 | 185 / 263 / 400 | 0 % | 30 | 24 | 0 | 3 | Pasa |
 | prod | `realistic` | [45759342723](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45759342723) | 74 | 40 / 62 / 132 | 0 % | 271 | 31 | 0 | 3 | Pasa |
-| prod | `peak3x` | [45763172806](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45763172806) | 91 | 55 / 87 / 671 | 0 % (0 de 771) | 771 | 81 | 0 | 6 | Pasa |
+| prod | `peak3x` | [45763172806](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45763172806) | 91 | 55 / 87 / 671 | 0 % | 771 | 81 | 0 | 6 | Pasa |
 | prod | `stress` | [45761827371](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45761827371) | 111 | 54 / 92 / 4.835 | 0 % | 52.991 (unas 160 por segundo en promedio) | 5.303 | 41 | 62 | Falla solo por `dropped_iterations` |
 
 **Nota sobre `stress`.** El sistema absorbió unas 53.000 peticiones con 0 % de errores y un p95 de 111 ms. Las 41 iteraciones descartadas (0,77 %) vienen de que k6 no asignó VUs con la rapidez necesaria en los saltos de la rampa (`preAllocatedVUs` en 20; solo se usaron 62 de 200): es un límite del generador de carga, no un error del servidor. El máximo de 4,8 s es una cola aislada, probablemente un arranque en frío al escalar. `preAllocatedVUs` sube a 100 para las próximas corridas.
@@ -75,12 +75,13 @@ k6 no muestra instancias. Durante y después de `stress` en prod, en el portal (
 
 ```kusto
 requests
-| where timestamp > ago(1h)
-| summarize instancias = dcount(cloud_RoleInstance), peticiones = count() by bin(timestamp, 1m)
+| where timestamp between (datetime(2026-11-26T05:25:00Z) .. datetime(2026-11-26T05:50:00Z))
+| summarize total = sum(itemCount) by ts = bin(timestamp, 5m), instancia = tostring(cloud_RoleInstance)
+| order by ts asc
 | render timechart
 ```
 
-`instancias` debe subir durante `stress` y bajar unos minutos después de que termine. No está verificado que las Functions administradas de Static Web Apps reporten un `cloud_RoleInstance` por instancia; si siempre muestra 1, la evidencia es la latencia estable de k6 y la métrica `Total Request Units` de Cosmos DB (portal, cuenta de Cosmos DB, Metrics), junto con la presencia de respuestas 429. La alerta de tráfico alto pasando a `Fired` y luego a `Resolved` también lo muestra. Las capturas van en [docs/hld.md](../docs/hld.md).
+Resultado observado (26 de noviembre de 2026, UTC): 4 instancias durante `stress` y 1 desde las 05:40, es decir, escalado de 1 a 4 y desescalado a 1 (conteo por intervalo de 5 minutos). `Total Request Units` de Cosmos DB (portal, cuenta de Cosmos DB, Metrics) llegó a un pico de unas 14.300 hacia las 05:33 UTC. Ajusta el rango de fechas a tu corrida. La alerta de tráfico alto pasando a `Fired` y luego a `Resolved` también lo muestra. Las capturas van en [docs/hld.md](../docs/hld.md).
 
 ## Demostración de la alerta de tráfico alto
 

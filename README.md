@@ -164,7 +164,7 @@ The final cleanup order (only after the project defense) is in [infra/bootstrap/
 
 - Dev uses the SWA Free tier. Prod uses Standard, which has a monthly price. See the Azure pricing calculator.
 - Cosmos DB is serverless, Blob Storage and Application Insights are pay per use at low volume. A subscription budget (50, 80 and 100 percent thresholds) is created by the bootstrap stack.
-- The prod availability test (one test, 15-minute interval, two locations) is the main recurring monitoring cost. Price it with the Azure pricing calculator before leaving prod running, and reduce it to one location if needed.
+- The prod availability test (one test, 15-minute interval, two locations) is the main recurring monitoring cost, about USD 3.3 per month. Prod totals about USD 15 per month (see `docs/costs/azure.xlsx`). Reduce the test to one location if needed.
 - Destroying an environment removes its billable resources.
 
 ## Known limits

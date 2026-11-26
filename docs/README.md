@@ -9,7 +9,7 @@ Estos son los entregables de diseño del proyecto del curso; el equipo los rende
 | HLD | [hld.md](hld.md) |
 | ADRs | [adr/](adr/README.md) (5 decisiones) |
 | Diagramas | [diagramas/](diagramas/) (contexto, arquitectura cloud, red y seguridad, pipeline, y rollback) |
-| Estimación de costos | [hld.md](hld.md) sección 8, más la calculadora y el Excel (externos, a cargo del equipo) |
+| Estimación de costos | [hld.md](hld.md) sección 8, más la exportación de la calculadora en [costs/azure.xlsx](costs/azure.xlsx) |
 | Diseño de despliegue | [despliegue.md](despliegue.md) |
 | Código en GitHub | [../README.md](../README.md) |
 | Prueba de carga | [hld.md](hld.md) sección 6 y [../load/README.md](../load/README.md) |

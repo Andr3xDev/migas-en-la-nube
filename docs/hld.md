@@ -69,7 +69,7 @@ El sistema cubre 8 requisitos funcionales y los 6 no funcionales que pide el cas
 
 | Requisito | Meta | Cómo se cumple | Cómo se comprueba |
 | --- | --- | --- | --- |
-| Presupuesto | Máximo USD 150 al mes en producción | Servicios serverless que se pagan por uso | Calculadora de Azure y presupuesto con alertas al 50, 80 y 100 % |
+| Presupuesto | Máximo USD 150 al mes en producción | Servicios serverless que se pagan por uso | Calculadora de Azure ([costs/azure.xlsx](costs/azure.xlsx)) y presupuesto con alertas al 50, 80 y 100 % |
 | Disponibilidad | 99,5 % en horario comercial | Servicios con SLA publicado de 99,9 % o más y escalado automático | Prueba de disponibilidad en Application Insights, cada 15 minutos desde 2 ubicaciones |
 | Seguridad | HTTPS, secretos fuera del código, mínimo privilegio | HTTPS por defecto, secretos generados por Terraform, una identidad por ambiente | Checkov y CodeQL en el pipeline, escaneo de secretos activado en el repositorio |
 | Respaldo | RPO 24 h y RTO 4 h | Respaldo continuo de 7 días en Cosmos DB y toda la infraestructura en Terraform | Procedimiento de restauración documentado (sección 5). Simulacro de restauración pendiente |
@@ -377,33 +377,31 @@ Todo llega a Azure por GitHub Actions: nada se despliega a mano. Cada etapa del 
 
 ## 8. Costos y FinOps
 
-Producción cuesta unos USD 10 al mes con el tráfico de la sección 2, muy por debajo del tope de USD 150. Los valores de esta sección son aproximados (USD) y se reemplazan por los de la calculadora de Azure y el Excel adjunto.
+Producción cuesta unos USD 15 al mes con el tráfico de la sección 2, muy por debajo del tope de USD 150. Los valores salen de la exportación de la calculadora de Azure (Central US, USD). Las entradas de Blob (1.000 GB de lectura y de escritura) y de Cosmos DB (copia de seguridad periódica) son conservadoras, más altas que el modelo de uso de este documento, así que el costo real debería ser menor.
 
-**Estimación mensual en producción (aproximada).**
+**Estimación mensual en producción.**
 
 | Servicio | Supuesto de uso | USD al mes | USD al año |
 | --- | --- | --- | --- |
 | Static Web Apps Standard (prod) | 1 app | 9,00 | 108 |
-| Static Web Apps Free (dev) | 1 app | 0,00 | 0 |
-| Cosmos DB serverless | Entre 1 y 1,5 millones de unidades de solicitud al mes (0,25 USD por millón) y menos de 1 GB guardado (0,25 USD por GB) | 0,50 | 6 |
-| Blob Storage LRS Hot | Menos de 1 GB de imágenes | 0,05 | 1 |
-| Salida de datos (egress) | Unos 18 GB al mes de imágenes, dentro de los primeros 100 GB gratuitos | 0,00 | 0 |
-| Application Insights y Log Analytics | Menos de 0,5 GB de datos al mes, dentro de los 5 GB gratuitos | 0,00 | 0 |
-| Prueba de disponibilidad estándar | Unas 5.760 ejecuciones al mes (2 ubicaciones, cada 15 minutos) | Pendiente: precio por ejecución de la página de precios | Pendiente |
-| Alertas de métricas | 3 reglas, unos 0,10 cada una | 0,30 | 4 |
+| Cosmos DB for NoSQL serverless | 1 millón de unidades de solicitud, 1 GB y copia de seguridad periódica | 0,67 | 8 |
+| Storage Accounts, Block Blob GPv2 LRS Hot | 1 GB, con entradas conservadoras de operaciones, lectura y escritura de datos | 1,77 | 21 |
+| Azure Monitor | Application Insights con 0,02 GB al día, 2 pruebas web estándar cada 15 minutos durante 730 h (5.840 ejecuciones), 3 series de alertas de métricas y logs | 3,59 | 43 |
+| Salida de datos (egress) | Unos 18 GB al mes de imágenes, dentro del ancho de banda incluido en Static Web Apps (100 GB gratuitos) | 0,00 | 0 |
 | Grupo de acción | Correo, sin costo | 0,00 | 0 |
-| Functions administradas | Incluidas en Static Web Apps | 0,00 | 0 |
-| Almacenamiento del estado de Terraform | Cuenta de Storage del tfstate | 0,02 | 0 |
-| Total sin la prueba de disponibilidad | | 9,9 | Unos 119 |
+| Soporte | Sin plan de soporte | 0,00 | 0 |
+| **Total** | | **15,0** | **180** |
+
+La exportación no desglosa Azure Monitor. Por diferencia, las pruebas web cuestan unos USD 3,3 al mes (3,59 menos unos 0,30 de alertas y logs menores); es una estimación.
+
+Dev (Static Web Apps Free, uso serverless mínimo) y el estado de Terraform (una cuenta de Storage de 1 GB) quedan fuera de la estimación por su costo despreciable.
 
 **Escenarios.**
 
 | Escenario | Qué incluye | USD al mes (aprox.) |
 | --- | --- | --- |
-| MVP | Prod con tráfico de prueba y dev en Free | 9 a 10 |
-| Producción | Los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes) | Unos 9,9 |
-
-Los dos escenarios no incluyen la prueba de disponibilidad hasta que se calcule su precio.
+| MVP | Prod con tráfico de prueba y dev en Free | Unos 15 |
+| Producción | Los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes) | Unos 15 |
 
 **Optimizaciones FinOps.**
 
@@ -411,13 +409,13 @@ Los dos escenarios no incluyen la prueba de disponibilidad hasta que se calcule 
 | --- | --- | --- |
 | Cosmos DB serverless | Capacidad aprovisionada mínima de 400 unidades por segundo, unos USD 23 al mes | Unos USD 22 |
 | Dev en plan Free de Static Web Apps, que puede destruirse a mano con `destroy.yml` cuando no se usa | Dev en Standard todo el mes | USD 9 |
-| Prueba de disponibilidad en 1 ubicación o cada 30 minutos | Prueba en 2 ubicaciones cada 15 minutos | Cerca del 50 % de esa línea |
+| Prueba de disponibilidad en 1 ubicación o cada 30 minutos | Prueba en 2 ubicaciones cada 15 minutos | Unos USD 1,6 al mes (cerca del 50 % de las pruebas web) |
 | Imágenes comprimidas y caché del navegador | Imágenes sin comprimir ni caché, con más salida de datos | Mantiene la salida dentro de los 100 GB gratuitos |
 | Muestreo y retención de 30 días en la telemetría | Telemetría completa que puede pasar los 5 GB gratuitos | Depende del tráfico, evita sobrecostos |
 
 Además hay un presupuesto mensual de la suscripción con alertas al 50, 80 y 100 %.
 
-Enlace de la calculadora: [PEGAR ENLACE]. Excel: [NOMBRE DEL ARCHIVO].
+Exportación de la calculadora de Azure (Central US, USD): [docs/costs/azure.xlsx](costs/azure.xlsx).
 
 ## 9. Riesgos y mitigaciones
 

@@ -550,9 +550,47 @@ a.product-card:hover {
   color: var(--color-accent-hover);
 }
 
-.button-secondary.is-active {
+.button-secondary.is-active,
+.button-secondary[aria-pressed="true"] {
   background: var(--color-accent-soft);
   border-color: var(--color-accent);
+}
+
+/* Admin orders */
+.orders-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+.orders-views,
+.orders-date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.cart-table .date-heading th {
+  text-transform: none;
+}
+
+.cart-table .date-heading th::first-letter {
+  text-transform: uppercase;
+}
+
+.cart-table .cell-code {
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+.orders-note {
+  margin-top: var(--space-3);
+  color: var(--color-muted);
 }
 
 .button-icon {
@@ -999,23 +1037,56 @@ main > section .product-card {
 }
 
 /* Admin */
-#panel > h2 {
+.list-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   margin-top: var(--space-8);
+}
+
+.list-heading h2 {
+  margin: 0;
+}
+
+#summary .summary-panel {
+  margin-bottom: var(--space-4);
+}
+
+#product-dialog {
+  width: min(52rem, calc(100% - var(--space-4)));
+  max-height: calc(100dvh - var(--space-4));
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-raised);
+}
+
+#product-dialog::backdrop {
+  background: rgb(59 42 30 / 55%);
+}
+
+#product-dialog h2 {
+  margin-top: 0;
 }
 
 #product-form {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-4);
-  padding: var(--space-6);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  box-shadow: var(--shadow);
 }
 
 #product-form p {
   margin: 0;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
 
 #product-form button {
@@ -1064,6 +1135,7 @@ input[type="date"] {
 
   #product-form fieldset,
   #product-form #current-image,
+  #product-form .form-actions,
   #product-form p:has(textarea) {
     grid-column: 1 / -1;
   }

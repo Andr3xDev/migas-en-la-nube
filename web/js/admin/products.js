@@ -1,4 +1,5 @@
 import { apiFetch, ApiError } from "../api.js";
+import { createSummaryPanel } from "../components.js";
 import { createProductImage, formatPeso, showMessage } from "../format.js";
 import { requireAdmin } from "./guard.js";
 
@@ -10,6 +11,10 @@ const STALE_PRODUCT_MESSAGE =
 const panel = document.getElementById("panel");
 const guardMessage = document.getElementById("guard-message");
 const list = document.getElementById("product-list");
+const summary = document.getElementById("summary");
+const listFeedback = document.getElementById("list-feedback");
+const dialog = document.getElementById("product-dialog");
+const createButtonElement = document.getElementById("create-product");
 const form = document.getElementById("product-form");
 const formTitle = document.getElementById("form-title");
 const variantsContainer = document.getElementById("variants");
@@ -21,6 +26,7 @@ const resetButton = document.getElementById("reset");
 
 let products = [];
 let editing = null;
+let dialogTrigger = null;
 
 function createButton(label, onClick, variant = "") {
   const button = document.createElement("button");
@@ -43,7 +49,25 @@ function describeVariants(product) {
     .join("; ");
 }
 
+function renderSummary() {
+  const outOfStock = products.filter((product) =>
+    product.variants.every((variant) => variant.stock <= 0),
+  ).length;
+  const perCategory = new Map();
+  for (const product of products) {
+    perCategory.set(product.category, (perCategory.get(product.category) ?? 0) + 1);
+  }
+  summary.replaceChildren(
+    createSummaryPanel({
+      title: "Resumen",
+      rows: [["Agotados", String(outOfStock)], ...[...perCategory].map(([name, count]) => [name, String(count)])],
+      total: ["Total de productos", String(products.length)],
+    }),
+  );
+}
+
 function renderList() {
+  renderSummary();
   if (products.length === 0) {
     showMessage(list, "No hay productos.");
     return;
@@ -54,10 +78,13 @@ function renderList() {
     const row = document.createElement("tr");
     const actions = document.createElement("div");
     actions.className = "table-actions";
-    actions.append(
-      createButton("Editar", () => startEdit(product), "button-secondary"),
-      createButton("Eliminar", () => removeProduct(product), "button-danger"),
+    const editButton = createButton(
+      "Editar",
+      (event) => openDialog(event.currentTarget, product),
+      "button-secondary",
     );
+    editButton.dataset.editId = product.id;
+    actions.append(editButton, createButton("Eliminar", () => removeProduct(product), "button-danger"));
     row.append(
       createCell(createProductImage(product)),
       createCell(product.name),
@@ -117,8 +144,15 @@ function resetForm() {
   variantsContainer.replaceChildren();
   addVariantRow();
   formTitle.textContent = "Nuevo producto";
-  resetButton.hidden = true;
   renderCurrentImage();
+}
+
+function openDialog(trigger, product = null) {
+  dialogTrigger = trigger;
+  if (product) startEdit(product);
+  else resetForm();
+  feedback.replaceChildren();
+  dialog.showModal();
 }
 
 function startEdit(product) {
@@ -131,9 +165,7 @@ function startEdit(product) {
   variantsContainer.replaceChildren();
   for (const variant of product.variants) addVariantRow(variant);
   formTitle.textContent = `Editar ${product.name}`;
-  resetButton.hidden = false;
   renderCurrentImage();
-  feedback.replaceChildren();
 }
 
 function validateImage(file) {
@@ -179,10 +211,10 @@ async function removeProduct(product) {
     await apiFetch(`/api/admin/products/${product.id}`, { method: "DELETE" });
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
-    showMessage(feedback, error.message);
+    showMessage(listFeedback, error.message);
     return;
   }
-  if (editing && editing.id === product.id) resetForm();
+  listFeedback.replaceChildren();
   products = products.filter((item) => item.id !== product.id);
   renderList();
 }
@@ -241,7 +273,6 @@ async function save(file) {
 function startEditKeepingValues(product) {
   editing = product;
   formTitle.textContent = `Editar ${product.name}`;
-  resetButton.hidden = false;
 }
 
 form.addEventListener("submit", async (event) => {
@@ -258,8 +289,8 @@ form.addEventListener("submit", async (event) => {
   try {
     const saved = await save(file);
     upsertLocal(saved);
-    resetForm();
-    showMessage(feedback, "Producto guardado.", "success");
+    dialog.close();
+    showMessage(listFeedback, "Producto guardado.", "success");
   } catch (error) {
     if (error instanceof UploadError) {
       showMessage(feedback, `${error.message} El producto no se guardó con la nueva imagen.`);
@@ -274,9 +305,18 @@ form.addEventListener("submit", async (event) => {
 });
 
 document.getElementById("add-variant").addEventListener("click", () => addVariantRow());
-resetButton.addEventListener("click", resetForm);
+resetButton.addEventListener("click", () => dialog.close());
+createButtonElement.addEventListener("click", (event) => openDialog(event.currentTarget));
+// Fires for Esc, Cancelar and a successful save. A save re-renders the rows, so the original
+// trigger may be detached: look its replacement up by product id.
+dialog.addEventListener("close", () => {
+  const target = dialogTrigger?.isConnected
+    ? dialogTrigger
+    : (editing && list.querySelector(`[data-edit-id="${CSS.escape(editing.id)}"]`)) ||
+      createButtonElement;
+  target.focus();
+});
 
 if (requireAdmin(panel, guardMessage)) {
-  resetForm();
   loadProducts();
 }

@@ -20,7 +20,15 @@
       <h1>Administrar productos</h1>
       <div id="guard-message" aria-live="polite"></div>
       <div id="panel" hidden>
+        <div id="summary"></div>
+        <div class="list-heading">
+          <h2>Productos</h2>
+          <button type="button" class="button" id="create-product">Crear producto</button>
+        </div>
+        <div id="list-feedback" aria-live="polite"></div>
         <div id="product-list"></div>
+      </div>
+      <dialog id="product-dialog" aria-labelledby="form-title">
         <h2 id="form-title">Nuevo producto</h2>
         <form id="product-form">
           <p>
@@ -49,11 +57,13 @@
             <input id="image" name="image" type="file" accept="image/jpeg,image/png,image/webp" />
           </p>
           <div id="current-image"></div>
-          <button type="submit" class="button" id="submit">Guardar</button>
-          <button type="button" class="button button-secondary" id="reset" hidden>Cancelar edición</button>
+          <div class="form-actions">
+            <button type="submit" class="button" id="submit">Guardar</button>
+            <button type="button" class="button button-secondary" id="reset">Cancelar</button>
+          </div>
         </form>
         <div id="feedback" aria-live="polite"></div>
-      </div>
+      </dialog>
     </main>
     <footer><p>Pan de la Casa · Panel de administración</p></footer>
     <script type="module" src="/js/nav.js"></script>

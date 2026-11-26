@@ -3,7 +3,7 @@ import { isAdmin, logout } from "./auth.js";
 import { CART_CHANGED_EVENT, getItemCount } from "./cart.js";
 import { createIcon } from "./icons.js";
 
-const SHOPPING_PAGES = ["/cart.html","/confirmation.html"];
+const SHOPPING_PAGES = ["/cart.html", "/confirmation.html"];
 
 // A page restored from the back/forward cache keeps the nav of the session it was left in.
 window.addEventListener("pageshow", (event) => {

@@ -1,9 +1,10 @@
 import { apiFetch } from "./api.js";
 import { LAST_ORDER_KEY } from "./cart.js";
 
+// Fixed UTC-5 (no DST).
 const SHOP_UTC_OFFSET = "-05:00";
 
-// datetime-local gives "YYYY-MM-DDTHH:mm"; the shop runs on fixed UTC-5.
+// datetime-local gives "YYYY-MM-DDTHH:mm".
 const toPickupIso = (localValue) => `${localValue}:00${SHOP_UTC_OFFSET}`;
 
 // The product is returned even when the variant is gone; both are undefined for unknown products.

@@ -40,7 +40,6 @@ let catalogPending = true;
 let favorites = null;
 let submitting = false;
 
-const findProduct = (item) => catalog.find((product) => product.id === item.productId);
 const selectedLines = () => getCart().filter((item) => !unselected.has(lineKey(item)));
 
 function createQuantityControl(item) {

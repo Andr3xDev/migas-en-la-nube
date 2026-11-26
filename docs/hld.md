@@ -151,7 +151,7 @@ El workflow manual `load.yml` (inputs `environment` y `scenario`) no usa ninguna
 | Token de despliegue de Static Web Apps | Salida de Terraform, leída y enmascarada en el mismo paso del pipeline (`::add-mask::`) | Terraform |
 | Contraseña inicial del administrador | Secreto `ADMIN_INITIAL_PASSWORD` de cada environment de GitHub | El equipo |
 
-Los IDs de tenant, suscripción e identidades son variables de GitHub, no secretos. Static Web Apps no tiene identidad administrada, por eso el API usa llaves de Cosmos DB y Storage en lugar de identidades.
+Los IDs de tenant, suscripción e identidades son variables de GitHub, no secretos. Las Functions administradas de Static Web Apps no admiten identidad administrada, por eso el API usa llaves de Cosmos DB y Storage en lugar de identidades.
 
 **Escaneo y análisis.** El pipeline corre Checkov sobre Terraform y CodeQL sobre Python. En el repositorio están activados el escaneo de secretos y su protección contra push (verificado con la API de GitHub el 25 de noviembre de 2026). La demostración de que un push con un secreto es bloqueado no está demostrada dentro del proyecto.
 
@@ -218,6 +218,7 @@ Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un
 | Presupuesto (suscripción) | El gasto real llega al 50, 80 y 100 % del monto mensual del presupuesto | Correo a `budget_email` |
 
 El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (sin valor por defecto; `infra/bootstrap/terraform.tfvars.example` usa 20): USD 20 al mes, con alertas al 50, 80 y 100 % (USD 10, 16 y 20; lo crea el stack de bootstrap). Se eligió cerca del gasto esperado (unos USD 15 al mes en prod más un dev despreciable) para notar pronto cualquier desvío: el 50 % y cerca del 75 % se alcanzan en un mes normal y el 100 % solo ante un exceso real. Los USD 150 del requisito son el tope que la arquitectura se mantiene muy por debajo de alcanzar, no el umbral de alerta.
+
 **Umbral de tráfico alto.** El umbral de 1.500 peticiones en 5 minutos es unas 10 veces el pico de un sábado (150 llamadas al API en 5 minutos) y unas 3,3 veces la carga de diseño de 3x (450 en 5 minutos). Solo cuentan las llamadas al API, porque los archivos estáticos los sirve Static Web Apps y no pasan por Functions. Los escenarios de [load/README.md](../load/README.md) quedan así: `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Umbral, ventana y frecuencia son las variables `traffic_spike_threshold`, `traffic_spike_window` y `traffic_spike_frequency` del módulo `alerts`.
 
 **Demostración de alertas.**
@@ -311,7 +312,7 @@ Todo llega a Azure por GitHub Actions: nada se despliega a mano. Cada etapa del 
 | Repositorio | https://github.com/Andr3xDev/migas-en-la-nube |
 
 - **Ambientes.** `dev` (rama `dev`, Static Web Apps Free, sin aprobación ni alertas) y `prod` (rama `main`, Standard, revisor requerido y alertas). Cada uno tiene su propio grupo de recursos, estado de Terraform, cuenta de Cosmos DB y de Storage e identidad.
-- **Promoción.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. El workflow `ci` corre en el pull request (lint, seguridad, pruebas con cobertura mínima de 70 %, build y plan de Terraform). Al hacer merge, `deploy` aplica Terraform, carga los seeds, sube la aplicación y corre el smoke test. En `main` espera la aprobación del environment `prod` y publica el release `vN`. El ruleset está activo en `main` y `dev` y exige como checks los jobs de `ci.yml`: `lint`, `security`, `test`, `build` y `terraform`.
+- **Promoción.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. El workflow `ci` corre en el pull request (lint, seguridad, pruebas con cobertura mínima de 70 %, build y plan de Terraform). Al hacer merge, `deploy` corre primero las pruebas y se detiene si fallan; luego aplica Terraform, carga los seeds, sube la aplicación y corre el smoke test. En `main` espera la aprobación del environment `prod` y publica el release `vN`. El ruleset está activo en `main` y `dev` y exige como checks los jobs de `ci.yml`: `lint`, `security`, `test`, `build` y `terraform`.
 - **OIDC.** El acceso a Azure usa las identidades de la sección 4, sin contraseñas guardadas. El único secreto en GitHub es la contraseña inicial del administrador, y los tokens leídos de las salidas de Terraform se enmascaran en los logs.
 - **Rollback.** De la aplicación: workflow manual `rollback` con el tag de una versión anterior, que vuelve a publicar su artefacto sin tocar la infraestructura. De la infraestructura: revertir el commit. De los datos: restauración de Cosmos DB (sección 5).
 - **Prueba de carga.** Workflow manual `load` (k6, inputs `environment` y `scenario`), sin identidad de Azure: solo llama a la URL pública. En `prod` pide aprobación y corre solo desde `main`; `orders` se rechaza en `prod`. Detalle en [load/README.md](../load/README.md).
@@ -321,29 +322,24 @@ Todo llega a Azure por GitHub Actions: nada se despliega a mano. Cada etapa del 
 
 Producción cuesta unos USD 15 al mes con el tráfico de la sección 2, muy por debajo del tope de USD 150. Los valores salen de la exportación de la calculadora de Azure (Central US, USD). Las entradas de Blob (1.000 GB de lectura y de escritura) y de Cosmos DB (copia de seguridad periódica) son conservadoras, más altas que el modelo de uso de este documento, así que el costo real debería ser menor.
 
-**Estimación mensual en producción.**
+**Estimación mensual por escenario.** El MVP es igual a producción salvo que Azure Monitor corre la prueba de disponibilidad desde 1 ubicación en lugar de 2 (3,59 menos 1,65 = 1,94).
 
-| Servicio | Supuesto de uso | USD al mes | USD al año |
-| --- | --- | --- | --- |
-| Static Web Apps Standard (prod) | 1 app | 9,00 | 108 |
-| Cosmos DB for NoSQL serverless | 1 millón de unidades de solicitud, 1 GB y copia de seguridad periódica | 0,67 | 8 |
-| Storage Accounts, Block Blob GPv2 LRS Hot | 1 GB, con entradas conservadoras de operaciones, lectura y escritura de datos | 1,77 | 21 |
-| Azure Monitor | Application Insights con 0,02 GB al día, 2 pruebas web estándar cada 15 minutos durante 730 h (5.840 ejecuciones), 3 series de alertas de métricas y logs | 3,59 | 43 |
-| Salida de datos (egress) | Unos 18 GB al mes de imágenes, dentro del ancho de banda incluido en Static Web Apps (100 GB gratuitos) | 0,00 | 0 |
-| Grupo de acción | Correo, sin costo | 0,00 | 0 |
-| Soporte | Sin plan de soporte | 0,00 | 0 |
-| **Total** | | **15,0** | **180** |
+| Servicio | Supuesto de uso (producción) | MVP USD al mes | MVP USD al año | Producción USD al mes | Producción USD al año |
+| --- | --- | --- | --- | --- | --- |
+| Static Web Apps Standard (prod) | 1 app | 9,00 | 108 | 9,00 | 108 |
+| Cosmos DB for NoSQL serverless | 1 millón de unidades de solicitud, 1 GB y copia de seguridad periódica | 0,67 | 8 | 0,67 | 8 |
+| Storage Accounts, Block Blob GPv2 LRS Hot | 1 GB, con entradas conservadoras de operaciones, lectura y escritura de datos | 1,77 | 21 | 1,77 | 21 |
+| Azure Monitor | Application Insights con 0,02 GB al día, 2 pruebas web estándar cada 15 minutos durante 730 h (5.840 ejecuciones), 3 series de alertas de métricas y logs (en el MVP, 1 ubicación) | 1,94 | 23 | 3,59 | 43 |
+| Salida de datos (egress) | Unos 18 GB al mes de imágenes, dentro del ancho de banda incluido en Static Web Apps (100 GB gratuitos) | 0,00 | 0 | 0,00 | 0 |
+| Grupo de acción | Correo, sin costo | 0,00 | 0 | 0,00 | 0 |
+| Soporte | Sin plan de soporte | 0,00 | 0 | 0,00 | 0 |
+| **Total** | | **13,4** | **161** | **15,0** | **180** |
 
 La exportación no desglosa Azure Monitor. Por diferencia, las pruebas web cuestan unos USD 3,3 al mes (3,59 menos unos 0,30 de alertas y logs menores); es una estimación.
 
 Dev (Static Web Apps Free, uso serverless mínimo) y el estado de Terraform (una cuenta de Storage de 1 GB) quedan fuera de la estimación por su costo despreciable.
 
-**Escenarios.**
-
-| Escenario | Qué incluye | USD al mes (aprox.) |
-| --- | --- | --- |
-| MVP | Static Web Apps Standard, 1 ubicación en la prueba de disponibilidad (la mitad de los unos USD 3,3 de pruebas web, unos 1,65) y tráfico de prueba; dev en Free | Unos 13,4 (unos 161 al año) |
-| Producción | Los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes), con la estimación de la calculadora (2 ubicaciones) | Unos 15,0 (unos 180 al año) |
+El MVP usa Static Web Apps Standard, 1 ubicación en la prueba de disponibilidad (la mitad de los unos USD 3,3 de pruebas web, unos 1,65) y tráfico de prueba, con dev en Free. Producción usa los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes) y la estimación de la calculadora (2 ubicaciones).
 
 Los dos escenarios quedan cerca porque Static Web Apps Standard (9,00) y la prueba de disponibilidad dominan el costo; Cosmos DB y Blob serverless crecen con el uso.
 
@@ -378,6 +374,7 @@ Los riesgos principales vienen de lo que se simplificó para el MVP, y cada uno 
 | Caída de la región Central US | Alto pero poco probable | Infraestructura en Terraform lista para recrear en otra región | Segunda región con Front Door |
 | Sin pagos en línea | Bajo para el negocio actual | Se paga al recoger | Pasarela de pagos |
 | Límites de la suscripción de estudiante (regiones y cuotas) | Medio | Región Central US y plan B West US 3 | Suscripción de pago para producción real |
+| Abuso de endpoints públicos (pedidos de invitado, registro y login sin límite de peticiones) | Medio | Límites por pedido (20 líneas, 50 unidades), la cancelación por el administrador restaura el stock, alerta de tráfico alto (1.500 peticiones en 5 minutos) y pausa de 0,5 s en el login fallido (bloquea un hilo; el escalado de Functions lo absorbe) | Front Door o WAF con límite de peticiones y CAPTCHA en el registro |
 | Gasto inesperado | Bajo | Presupuesto con alertas y servicios que se pagan por uso | Revisión mensual de costos |
 
 ## 10. Decisiones de arquitectura

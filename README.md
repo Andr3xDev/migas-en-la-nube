@@ -39,7 +39,7 @@ Source: [docs/diagrams/architecture.drawio](docs/diagrams/architecture.drawio). 
 
 Tech: Azure Static Web Apps + managed Functions (Python, FastAPI), Cosmos DB serverless, Blob Storage, Application Insights, Terraform, GitHub Actions with OIDC (no Azure secrets in GitHub).
 
-**Pipeline.** A pull request runs lint, security scans (Checkov, CodeQL), tests (70% coverage minimum) and a Terraform plan. A push to `dev` or `main` builds, applies Terraform, seeds data, deploys, runs the Bruno smoke tests in `smoke/`, and (on `main` only) publishes a release tag `v<run number>`. `rollback.yml` redeploys an older release. `load.yml` runs a k6 load test. Details: [docs/deployment.md](docs/deployment.md).
+**Pipeline.** A pull request runs lint, security scans (Checkov, CodeQL), tests (70% coverage minimum) and a Terraform plan. A push to `dev` or `main` runs the tests first and stops if they fail, then builds, applies Terraform, seeds data, deploys, runs the Bruno smoke tests in `smoke/`, and (on `main` only) publishes a release tag `v<run number>`. `rollback.yml` redeploys an older release. `load.yml` runs a k6 load test. Details: [docs/deployment.md](docs/deployment.md).
 
 ![CI/CD pipeline](docs/diagrams/pipeline.png)
 

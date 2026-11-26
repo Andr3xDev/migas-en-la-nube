@@ -8,6 +8,7 @@ SHOP_TZ = timezone(timedelta(hours=-5))
 CONTAINER_URL = "https://migasdev.blob.core.windows.net/images"
 IMAGE_URL = f"{CONTAINER_URL}/products/croissant/a.png"
 DAY = "2026-11-27"
+TODAY = datetime(2026, 11, 27, 12, 0, tzinfo=SHOP_TZ)
 PRODUCT_BODY = {
     "name": "Pan de bono",
     "category": "bakery",
@@ -40,6 +41,7 @@ def stack(client):
     from app.api.deps import (
         get_auth_provider,
         get_image_store,
+        get_now,
         get_order_repository,
         get_product_repository,
         get_user_repository,
@@ -67,6 +69,8 @@ def stack(client):
         ("LATE0000", DAY, 15),
         ("EARLY000", DAY, 9),
         ("NEXTDAY0", "2026-11-28", 8),
+        ("PAST0001", "2026-11-26", 10),
+        ("OLD00001", "2026-11-20", 10),
     ]:
         orders.create(
             Order(
@@ -96,6 +100,7 @@ def stack(client):
     overrides[get_auth_provider] = lambda: auth
     overrides[get_product_repository] = lambda: products
     overrides[get_order_repository] = lambda: orders
+    overrides[get_now] = lambda: TODAY
     overrides[get_image_store] = FakeImageStore
     overrides[get_settings] = lambda: Settings(images_container_url=CONTAINER_URL)
     return auth
@@ -231,8 +236,33 @@ def test_list_orders_returns_only_requested_day_earliest_first_with_contact(clie
     assert (body[0]["customerName"], body[0]["phone"]) == ("Ana", "300")
 
 
-@pytest.mark.parametrize("query", ["", "?date=2026-13-40"], ids=["missing", "invalid"])
-def test_list_orders_with_missing_or_invalid_date_returns_422(client, admin, query):
+def test_list_orders_returns_pickup_date_for_status_changes(client, admin):
+    body = client.get(f"/api/admin/orders?date={DAY}", headers=admin).json()
+
+    assert {o["pickupDate"] for o in body} == {DAY}
+
+
+def test_list_orders_defaults_to_upcoming_earliest_first_across_days(client, admin):
+    response = client.get("/api/admin/orders", headers=admin)
+
+    assert response.status_code == 200
+    assert [o["code"] for o in response.json()] == [
+        "EARLY000",
+        "LATE0000",
+        "ORDER001",
+        "NEXTDAY0",
+    ]
+
+
+def test_list_orders_history_returns_only_past_days_latest_first(client, admin):
+    response = client.get("/api/admin/orders?scope=history", headers=admin)
+
+    assert response.status_code == 200
+    assert [o["code"] for o in response.json()] == ["PAST0001", "OLD00001"]
+
+
+@pytest.mark.parametrize("query", ["?date=2026-13-40", "?scope=all"], ids=["date", "scope"])
+def test_list_orders_with_invalid_filter_returns_422(client, admin, query):
     assert client.get(f"/api/admin/orders{query}", headers=admin).status_code == 422
 
 

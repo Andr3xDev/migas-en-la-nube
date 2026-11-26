@@ -31,6 +31,36 @@ class FakeContainer:
         raise CosmosAccessConditionFailedError(status_code=412, message="stale")
 
 
+class QueryContainer:
+    def __init__(self):
+        self.calls = []
+
+    def query_items(self, query, **kwargs):
+        self.calls.append((query, kwargs))
+        return []
+
+
+def test_list_before_runs_capped_cross_partition_query_newest_first():
+    container = QueryContainer()
+
+    CosmosOrderRepository(container).list_before("2026-06-10", 5)
+
+    query, kwargs = container.calls[0]
+    assert "c.pickupDate < @date ORDER BY c.pickupTime DESC" in query and "TOP @limit" in query
+    assert {"name": "@limit", "value": 5} in kwargs["parameters"]
+    assert kwargs["enable_cross_partition_query"] is True
+
+
+def test_list_from_runs_cross_partition_query_earliest_first():
+    container = QueryContainer()
+
+    CosmosOrderRepository(container).list_from("2026-06-10")
+
+    query, kwargs = container.calls[0]
+    assert "c.pickupDate >= @date ORDER BY c.pickupTime" in query
+    assert kwargs["enable_cross_partition_query"] is True
+
+
 def test_get_returns_none_when_missing():
     assert CosmosOrderRepository(FakeContainer()).get("ABC123", "2026-06-10") is None
 

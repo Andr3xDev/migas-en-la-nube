@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -39,7 +39,7 @@ def add_order(
             id=order_id,
             customer_name="Ana",
             phone="300",
-            pickup_time=datetime(2026, 6, 10, hour, tzinfo=SHOP_TZ),
+            pickup_time=datetime.fromisoformat(pickup_date).replace(hour=hour, tzinfo=SHOP_TZ),
             pickup_date=pickup_date,
             items=[OrderItem("croissant", "Croissant", "Single", 6000, 2)],
             total=12000,
@@ -63,6 +63,27 @@ def test_list_by_date_returns_only_that_day_earliest_pickup_first(orders):
     add_order(orders, "OTHERDAY", pickup_date="2026-06-11")
 
     assert [o.id for o in orders_service.list_by_date(orders, DAY)] == ["EARLY000", "LATE0000"]
+
+
+def test_history_excludes_today_and_future_and_respects_limit(orders, monkeypatch):
+    now = datetime(2026, 6, 10, 23, 30, tzinfo=SHOP_TZ)
+    add_order(orders, "TODAY000")
+    add_order(orders, "FUTURE00", pickup_date="2026-06-11")
+    for day in ("2026-06-07", "2026-06-08", "2026-06-09"):
+        add_order(orders, f"P{day[-2:]}00000", pickup_date=day)
+    monkeypatch.setattr(orders_service, "HISTORY_LIMIT", 2)
+
+    assert [o.id for o in orders_service.list_history(orders, now)] == ["P0900000", "P0800000"]
+
+
+def test_upcoming_uses_shop_day_not_utc_day(orders):
+    # 23:30 in Bogota is already the next day in UTC; the shop day is still the 10th.
+    now = datetime(2026, 6, 11, 4, 30, tzinfo=UTC)
+    add_order(orders, "TODAY000")
+    add_order(orders, "PAST0000", pickup_date="2026-06-09")
+    add_order(orders, "FUTURE00", pickup_date="2026-06-11")
+
+    assert [o.id for o in orders_service.list_upcoming(orders, now)] == ["TODAY000", "FUTURE00"]
 
 
 @pytest.mark.parametrize(

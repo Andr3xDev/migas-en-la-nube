@@ -110,6 +110,25 @@ class CosmosOrderRepository:
         )
         return [from_document(document) for document in documents]
 
+    def list_from(self, pickup_date: str) -> list[Order]:
+        documents = self._container.query_items(
+            "SELECT * FROM c WHERE c.pickupDate >= @date ORDER BY c.pickupTime",
+            parameters=[{"name": "@date", "value": pickup_date}],
+            enable_cross_partition_query=True,
+        )
+        return [from_document(document) for document in documents]
+
+    def list_before(self, pickup_date: str, limit: int) -> list[Order]:
+        documents = self._container.query_items(
+            "SELECT TOP @limit * FROM c WHERE c.pickupDate < @date ORDER BY c.pickupTime DESC",
+            parameters=[
+                {"name": "@date", "value": pickup_date},
+                {"name": "@limit", "value": limit},
+            ],
+            enable_cross_partition_query=True,
+        )
+        return [from_document(document) for document in documents]
+
     def list_by_user(self, user_id: str) -> list[Order]:
         documents = self._container.query_items(
             "SELECT * FROM c WHERE c.userId = @userId",

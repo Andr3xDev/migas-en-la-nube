@@ -132,3 +132,4 @@ class StatusRequest(CamelModel):
 class AdminOrderResponse(OrderResponse):
     customer_name: str
     phone: str
+    pickup_date: str

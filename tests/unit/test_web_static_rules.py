@@ -22,6 +22,32 @@ class CspViolationFinder(HTMLParser):
             self.violations.append("<style> tag")
         if "style" in names:
             self.violations.append(f"style attribute on <{tag}>")
+        values = dict(attrs)
+        self.violations += [
+            f"inline handler {name} on <{tag}>" for name in names if name.startswith("on")
+        ]
+        if (values.get("href") or "").strip().lower().startswith("javascript:"):
+            self.violations.append(f"javascript: href on <{tag}>")
+        if tag == "script" and (values.get("src") or "").strip().startswith(("http", "//")):
+            self.violations.append("external <script src>")
+
+
+@pytest.mark.parametrize(
+    "html",
+    [
+        "<script>alert(1)</script>",
+        "<style>a{}</style>",
+        '<p style="color:red">x</p>',
+        '<button onclick="go()">x</button>',
+        '<a href="javascript:go()">x</a>',
+        '<script src="https://cdn.example.com/a.js"></script>',
+        '<script src="//cdn.example.com/a.js"></script>',
+    ],
+)
+def test_csp_finder_flags_violation(html: str) -> None:
+    finder = CspViolationFinder()
+    finder.feed(html)
+    assert len(finder.violations) == 1
 
 
 def test_web_files_are_discovered() -> None:

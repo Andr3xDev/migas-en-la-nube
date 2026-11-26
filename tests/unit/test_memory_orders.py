@@ -9,12 +9,13 @@ from app.domain.models import Order, OrderItem
 SHOP_TZ = timezone(timedelta(hours=-5))
 
 
-def make_order(order_id: str) -> Order:
+def make_order(order_id: str, hour: int = 10, status: str = "received") -> Order:
     return Order(
         id=order_id,
         customer_name="Ana",
         phone="3001234567",
-        pickup_time=datetime(2026, 6, 10, 10, 0, tzinfo=SHOP_TZ),
+        pickup_time=datetime(2026, 6, 10, hour, 0, tzinfo=SHOP_TZ),
+        status=status,
         pickup_date="2026-06-10",
         items=[OrderItem("croissant", "Croissant", "Single", 6000, 1)],
         total=6000,
@@ -63,3 +64,16 @@ def test_list_by_user_returns_only_that_users_orders():
     repo.create(make_order("OTHER222"))
 
     assert [o.id for o in repo.list_by_user("u1")] == ["MINE"]
+
+
+def test_list_by_statuses_filters_orders_newest_first_and_respects_limit():
+    repo = MemoryOrderRepository()
+    repo.create(make_order("OLDER001", hour=9, status="delivered"))
+    repo.create(make_order("NEWER001", hour=15, status="cancelled"))
+    repo.create(make_order("OPEN0001", hour=18, status="received"))
+
+    both = repo.list_by_statuses(["delivered", "cancelled"], newest_first=True)
+    capped = repo.list_by_statuses(["delivered", "cancelled"], newest_first=True, limit=1)
+
+    assert [o.id for o in both] == ["NEWER001", "OLDER001"]
+    assert [o.id for o in capped] == ["NEWER001"]

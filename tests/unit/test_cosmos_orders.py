@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from azure.core import MatchConditions
 from azure.cosmos.exceptions import (
     CosmosAccessConditionFailedError,
     CosmosResourceExistsError,
     CosmosResourceNotFoundError,
 )
 
-from app.adapters.cosmos.orders import CosmosOrderRepository, to_document
+from app.adapters.cosmos.orders import CosmosOrderRepository, from_document, to_document
 from app.domain.errors import ConcurrencyConflictError, ConflictError, NotFoundError
 from app.domain.models import Order, OrderItem, StockDecrement
 
@@ -50,7 +51,10 @@ class FakeContainer:
         return {**body, "_etag": "e1", "_rid": "r", "_ts": 1}
 
     def replace_item(self, *args, **kwargs):
-        raise self.replace_error
+        self.replace_kwargs = kwargs
+        if self.replace_error:
+            raise self.replace_error
+        return {**args[1], "_etag": "e2"}
 
 
 def test_create_maps_409_to_conflict():
@@ -116,6 +120,27 @@ def test_get_returns_none_when_missing():
 def test_replace_maps_412_to_concurrency_conflict():
     with pytest.raises(ConcurrencyConflictError):
         CosmosOrderRepository(FakeContainer(replace_error=STALE)).replace(ORDER)
+
+
+def test_replace_sends_etag_with_if_not_modified_condition():
+    container = FakeContainer()
+
+    replaced = CosmosOrderRepository(container).replace(ORDER)
+
+    assert container.replace_kwargs == {
+        "etag": "e1",
+        "match_condition": MatchConditions.IfNotModified,
+    }
+    assert replaced.etag == "e2"
+
+
+def test_legacy_document_without_user_id_or_stock_decrements_maps_with_defaults():
+    legacy = {k: v for k, v in to_document(ORDER).items() if k not in {"userId", "stockDecrements"}}
+
+    order = from_document({**legacy, "_etag": "e1"})
+
+    assert order.user_id is None
+    assert order.stock_decrements == []
 
 
 def test_document_round_trip_keeps_offset_and_decrements():

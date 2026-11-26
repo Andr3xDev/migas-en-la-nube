@@ -96,34 +96,23 @@ def test_create_order_with_unknown_product_or_variant_raises_rule_violation(
     assert orders.list_by_date(DAY) == []
 
 
-def test_create_order_at_closing_time_is_accepted(products, orders):
+@pytest.mark.parametrize(
+    ("pickup", "accepted"),
+    [(local(5, 59), False), (local(6, 0), True), (local(20, 0), True), (local(20, 1), False)],
+    ids=["before opening", "at opening", "at closing", "after closing"],
+)
+def test_create_order_accepts_pickup_only_within_business_hours(products, orders, pickup, accepted):
     products.create(make_product())
+    order = order_for(pickup, ("croissant", "Single", 1))
 
-    order = place(
-        products, orders, order_for(local(20, 0), ("croissant", "Single", 1)), now=local(4)
-    )
-
-    assert order.status == "received"
-    assert order.pickup_time == local(20, 0)
-
-
-@pytest.mark.parametrize("pickup", [local(5, 59), local(20, 1)])
-def test_create_order_outside_business_hours_raises_rule_violation(products, orders, pickup):
-    products.create(make_product())
-
-    with pytest.raises(RuleViolationError):
-        place(products, orders, order_for(pickup, ("croissant", "Single", 1)), now=local(4))
-    assert orders.list_by_date(DAY) == []
-
-
-def test_create_order_at_opening_time_is_accepted(products, orders):
-    products.create(make_product())
-
-    order = place(
-        products, orders, order_for(local(6, 0), ("croissant", "Single", 1)), now=local(4)
-    )
-
-    assert order.pickup_time == local(6, 0)
+    if accepted:
+        placed = place(products, orders, order, now=local(4))
+        assert placed.status == "received"
+        assert placed.pickup_time == pickup
+    else:
+        with pytest.raises(RuleViolationError):
+            place(products, orders, order, now=local(4))
+        assert orders.list_by_date(DAY) == []
 
 
 def test_create_order_converts_utc_pickup_to_shop_time_for_hours_and_partition(products, orders):
@@ -181,6 +170,7 @@ def test_create_order_with_pickup_in_the_past_raises_rule_violation(products, or
 
     with pytest.raises(RuleViolationError):
         place(products, orders, order_for(local(11), ("croissant", "Single", 1)))
+    assert stock_of(products) == 5 and orders.list_by_date(DAY) == []
 
 
 def test_create_order_beyond_pickup_horizon_raises_rule_violation(products, orders):

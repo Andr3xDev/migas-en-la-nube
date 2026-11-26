@@ -27,7 +27,7 @@ variable "alert_email" {
 }
 
 variable "traffic_spike_threshold" {
-  description = "API requests in the window above which the traffic alert fires. About 5x the Saturday peak at 3x."
+  description = "API requests in the window above which the traffic alert fires. About 10x the Saturday peak and above the 3x design load (450 per 5 minutes)."
   type        = number
   default     = 1500
 }

@@ -57,6 +57,7 @@ def test_post_order_as_guest_returns_201_with_code_and_total(client, stack):
         {"items": [{"productId": "croissant", "variantName": "Single", "quantity": 1}] * 21},
         {"customerName": "x" * 101},
         {"phone": "1" * 11},
+        {"phone": "1" * 9},
         {"phone": "300123456a"},
         {"pickupTime": "2026-06-10T13:00:00"},
     ],
@@ -69,7 +70,8 @@ def test_post_order_as_guest_returns_201_with_code_and_total(client, stack):
         "quantity over max",
         "too many items",
         "name too long",
-        "phone not 10 digits",
+        "phone too long",
+        "phone too short",
         "phone with letter",
         "pickup without offset",
     ],
@@ -85,6 +87,28 @@ def test_post_order_with_invalid_body_or_unknown_product_returns_422_and_stores_
 
     assert response.status_code == 422
     assert stack.orders.list_by_date("2026-06-10") == []
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"items": [{"productId": "croissant", "variantName": "Single", "quantity": 50}]},
+        {"items": [{"productId": "croissant", "variantName": "Single", "quantity": 1}] * 20},
+        {"phone": " 3001234567 "},
+        {"customerName": "x" * 100},
+    ],
+    ids=["max quantity", "max items", "phone with spaces", "max name length"],
+)
+def test_post_order_at_validation_boundary_returns_201_with_stripped_phone(client, stack, payload):
+    croissant = stack.products.get("croissant")
+    croissant.variants[0].stock = 100
+    stack.products.replace(croissant)
+
+    response = client.post("/api/orders", json=body(**payload))
+
+    assert response.status_code == 201
+    [stored] = stack.orders.list_by_date("2026-06-10")
+    assert stored.phone == "3001234567"
 
 
 def test_post_order_when_stock_retries_exhausted_returns_409(client, stack):

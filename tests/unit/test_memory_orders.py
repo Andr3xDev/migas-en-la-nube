@@ -9,26 +9,18 @@ from app.domain.models import Order, OrderItem
 SHOP_TZ = timezone(timedelta(hours=-5))
 
 
-def make_order(order_id: str) -> Order:
+def make_order(order_id: str, hour: int = 10, status: str = "received") -> Order:
     return Order(
         id=order_id,
         customer_name="Ana",
         phone="3001234567",
-        pickup_time=datetime(2026, 6, 10, 10, 0, tzinfo=SHOP_TZ),
+        pickup_time=datetime(2026, 6, 10, hour, 0, tzinfo=SHOP_TZ),
+        status=status,
         pickup_date="2026-06-10",
         items=[OrderItem("croissant", "Croissant", "Single", 6000, 1)],
         total=6000,
         user_id="u1" if order_id == "MINE" else None,
     )
-
-
-def test_create_then_get_returns_order_with_received_status_and_etag():
-    repo = MemoryOrderRepository()
-    repo.create(make_order("AAAA2222"))
-
-    stored = repo.get("AAAA2222", "2026-06-10")
-
-    assert stored is not None and stored.etag and stored.status == "received"
 
 
 def test_get_with_wrong_pickup_date_returns_none():

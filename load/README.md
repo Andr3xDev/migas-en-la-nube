@@ -1,6 +1,6 @@
 # Prueba de carga
 
-Prueba de carga con [k6](https://grafana.com/docs/k6/) que valida el requisito de escalabilidad del HLD (soportar 3 veces la carga del pico del sábado). Corre como el workflow `load.yml`, lo dispara una persona con `workflow_dispatch` y la evidencia son los logs y el artefacto de la corrida. No requiere instalar nada en local.
+Prueba de carga con [k6](https://grafana.com/docs/k6/) que valida el requisito de escalabilidad del HLD (soportar 3 veces la carga del pico del sábado). Corre como el workflow `load.yml`, lo dispara una persona con `workflow_dispatch` y la evidencia son los logs y el artefacto de la corrida.
 
 ## Supuestos y tasas
 
@@ -35,15 +35,16 @@ Los umbrales solo miden los escenarios `visits` y `orders`, y solo se registran 
 
 ## Cómo correrla
 
-1. En GitHub: Actions, workflow `load`, Run workflow. El workflow aparece en "Run workflow" solo después de que `load.yml` se fusione a la rama por defecto (`main`), y se lanza desde `main`.
+1. En GitHub: Actions, workflow `load`, Run workflow. En `prod` solo corre desde `main`; en otra rama el job `guard` lo rechaza.
 2. Elegir `environment` (`dev` o `prod`) y `scenario`. En `prod` el environment pide aprobación.
-3. El workflow usa su propio grupo de concurrencia (`load-<ambiente>`) y no coordina con el despliegue: no lo lances mientras haya un despliegue en curso.
+3. El workflow no inicia sesión en Azure: solo llama a la URL pública del sitio, fija por ambiente en el workflow (`BASE_URL`). Si se recrea la Static Web App, hay que actualizar esas URL.
+4. El workflow usa su propio grupo de concurrencia (`load-<ambiente>`) y no coordina con el despliegue: no lo lances mientras haya un despliegue en curso.
 
-## Resultados
+## Resultados y evidencia
 
-- Log del paso `Run k6` y resumen en la página de la corrida (`GITHUB_STEP_SUMMARY`).
-- Artefacto `load-results-<ambiente>-<escenario>` con `summary.txt` y `summary.json`.
-- Los pedidos de la prueba quedan en dev con el nombre `k6 load test`. El stock de dev baja con cada pedido; se repone desde el panel de administración.
+Los resultados de las corridas del 26 de noviembre de 2026, la evidencia de escalado y la demostración de la alerta están en [docs/hld.md](../docs/hld.md#prueba-de-carga). Cada corrida sube el artefacto `load-results-<ambiente>-<escenario>` (`summary.txt` y `summary.json`) y un resumen en la página de la corrida; en las corridas de esa fecha `summary.txt` muestra `undefined` en `Requests (...)`, y el conteo real está en `summary.json`.
+
+Los pedidos de la prueba quedan en dev con el nombre `k6 load test`. El stock de dev baja con cada pedido; se repone desde el panel de administración.
 
 ## Costo
 
@@ -53,6 +54,3 @@ Cosmos DB serverless cobra por unidad de solicitud y Static Web Apps Standard (p
 
 `stress` sobre producción es la validación del escalado y está permitido, pero puede producir errores reales: Cosmos DB serverless puede responder 429 ante una ráfaga y los clientes reales pueden notar latencia. También puede disparar las alertas de 5xx, de disponibilidad de producción y de tráfico alto (correos). Córrelo fuera de horario de atención y una sola vez.
 
-## Demostración de la alerta de tráfico alto
-
-La alerta de prod se dispara con más de 1.500 peticiones al API en 5 minutos. `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Correr `stress` en prod es entonces la demostración de la alerta: pasa a `Fired`, llega el correo y se resuelve al terminar. El procedimiento y las capturas están en la sección de observabilidad de [docs/hld.md](../docs/hld.md).

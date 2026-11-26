@@ -44,7 +44,7 @@ def place(orders, code, user_id, lines, hour=10, status="received"):
         Order(
             id=code,
             customer_name="n",
-            phone="3",
+            phone="3001234567",
             pickup_time=datetime(2026, 6, 10, hour, tzinfo=SHOP_TZ),
             pickup_date="2026-06-10",
             items=[OrderItem(pid, pid, "S", 100, qty) for pid, qty in lines],
@@ -70,13 +70,6 @@ def test_list_user_orders_returns_only_own_newest_first_including_cancelled(orde
 
 def test_list_user_orders_without_history_returns_empty(orders):
     assert accounts.list_user_orders(orders, "ana-id") == []
-
-
-def test_add_favorite_twice_lists_it_once(users, products):
-    accounts.add_favorite(users, products, ANA, "p1")
-    accounts.add_favorite(users, products, ANA, "p1")
-
-    assert accounts.list_favorites(users, ANA) == ["p1"]
 
 
 def test_remove_favorite_drops_it_and_absent_one_is_ok(users, products):

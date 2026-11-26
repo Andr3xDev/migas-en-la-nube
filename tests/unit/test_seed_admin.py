@@ -19,11 +19,11 @@ def seeding():
         login_failure_delay_seconds=0,
         sleep=lambda _: None,
     )
-    return seed_admin, auth, users
+    return auth, users
 
 
 def test_seed_admin_first_run_creates_admin_who_can_log_in(seeding):
-    seed_admin, auth, users = seeding
+    auth, users = seeding
 
     seed_admin({"ADMIN_EMAIL": EMAIL, "ADMIN_INITIAL_PASSWORD": PASSWORD}, auth)
 
@@ -32,7 +32,7 @@ def test_seed_admin_first_run_creates_admin_who_can_log_in(seeding):
 
 
 def test_seed_admin_rerun_is_idempotent(seeding):
-    seed_admin, auth, users = seeding
+    auth, users = seeding
     env = {"ADMIN_EMAIL": EMAIL, "ADMIN_INITIAL_PASSWORD": PASSWORD}
     seed_admin(env, auth)
 
@@ -46,8 +46,20 @@ def test_seed_admin_rerun_is_idempotent(seeding):
     assert auth.login(EMAIL, PASSWORD)
 
 
+def test_seed_admin_rerun_with_new_password_replaces_it_and_keeps_admin_role(seeding):
+    auth, users = seeding
+    seed_admin({"ADMIN_EMAIL": EMAIL, "ADMIN_INITIAL_PASSWORD": PASSWORD}, auth)
+
+    seed_admin({"ADMIN_EMAIL": EMAIL, "ADMIN_INITIAL_PASSWORD": "rotated-admin-pass"}, auth)
+
+    assert users.get_by_email("admin@example.com").role == ADMIN_ROLE
+    assert auth.login(EMAIL, "rotated-admin-pass")
+    with pytest.raises(AuthenticationError):
+        auth.login(EMAIL, PASSWORD)
+
+
 def test_seed_admin_retries_when_user_appears_between_read_and_create(seeding):
-    seed_admin, auth, users = seeding
+    auth, users = seeding
 
     real_create = users.create
     calls = []
@@ -71,7 +83,7 @@ def test_seed_admin_retries_when_user_appears_between_read_and_create(seeding):
 
 
 def test_seed_admin_promotes_existing_customer_and_replaces_password(seeding):
-    seed_admin, auth, users = seeding
+    auth, users = seeding
 
     customer = auth.register(EMAIL, "old-customer-pass")
     customer_id = customer.id
@@ -98,7 +110,7 @@ def test_seed_admin_promotes_existing_customer_and_replaces_password(seeding):
     ],
 )
 def test_seed_admin_missing_variable_exits_naming_it_and_creates_no_user(seeding, env, missing):
-    seed_admin, auth, users = seeding
+    auth, users = seeding
 
     with pytest.raises(SystemExit) as exit_info:
         seed_admin(env, auth)

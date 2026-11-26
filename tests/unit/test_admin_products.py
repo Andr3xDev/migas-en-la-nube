@@ -89,8 +89,9 @@ def test_create_product_with_negative_prep_minutes_raises(products):
     [
         "https://evil.example.com/images/products/p1/a.png",
         f"{CONTAINER_URL.removesuffix('/images')}/other/a.png",
+        f"{CONTAINER_URL}-evil/x.png",
     ],
-    ids=["foreign host", "path outside /images/"],
+    ids=["foreign host", "path outside /images/", "sibling prefix /images-evil/"],
 )
 def test_create_and_update_reject_image_url_outside_images_container(products, image_url):
     product = create(products)

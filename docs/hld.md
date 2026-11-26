@@ -1,10 +1,10 @@
 # HLD Migas en la Nube
 
-Nov 25, 2026 · @Andres
+26 de noviembre de 2026 · Andrés
 
 ## 1. Contexto del negocio y alcance
 
-Migas en la Nube es una panadería de barrio con una sede que hoy recibe pedidos por teléfono y WhatsApp. La solución lleva esa operación a la nube con una tienda web para pedir y recoger en tienda, sobre Azure, serverless y con un costo de producción menor a USD 150 al mes.
+El caso del curso es la Panadería «Pan de la Casa»; la plataforma se llama Migas en la Nube. Es una panadería de barrio con una sede que hoy recibe pedidos por teléfono y WhatsApp. La solución lleva esa operación a la nube con una tienda web para pedir y recoger en tienda, sobre Azure, serverless y con un costo de producción menor a USD 150 al mes.
 
 **Problema.** Los pedidos se pierden o se anotan mal, el cliente no sabe si un producto está disponible ni cuándo estará listo, y los fines de semana la demanda se triplica.
 
@@ -18,27 +18,11 @@ Migas en la Nube es una panadería de barrio con una sede que hoy recibe pedidos
 | Cliente registrado | Lo mismo, más historial de pedidos, favoritos, volver a pedir y sus productos más pedidos |
 | Administrador | Crea y edita productos, variantes e imágenes, ve los pedidos próximos y los históricos y cambia su estado. No puede hacer pedidos |
 
-```mermaid
-flowchart TB
-    guest["Cliente invitado<br/>[Persona]<br/>Consulta el catálogo y pide sin cuenta"]
-    customer["Cliente registrado<br/>[Persona]<br/>Pide, ve su historial y sus favoritos"]
-    admin["Administrador<br/>[Persona]<br/>Gestiona productos, imágenes y pedidos"]
+![Context diagram (C4 level 1)](diagrams/context.png)
 
-    system["Migas en la Nube<br/>[Sistema de software]<br/>Tienda web para pedir y recoger en tienda"]
+Diagrama de contexto. Fuente editable: [context.drawio](diagrams/context.drawio).
 
-    azure["Microsoft Azure<br/>[Sistema externo]<br/>Plataforma que aloja el sistema"]
-    github["GitHub<br/>[Sistema externo]<br/>Repositorio y GitHub Actions"]
-    mail["Correo electrónico<br/>[Sistema externo]<br/>Recibe las alertas de prod y del presupuesto"]
-
-    guest -->|"Consulta y pide por HTTPS"| system
-    customer -->|"Pide y consulta su cuenta por HTTPS"| system
-    admin -->|"Administra por HTTPS"| system
-    system -->|"Se ejecuta en"| azure
-    github -->|"Despliega con Terraform y OIDC"| azure
-    azure -->|"Envía alertas"| mail
-```
-
-**Alcance del MVP (implementado; desplegado en dev, prod se publica con el primer release (vN), pendiente de verificar).**
+**Alcance del MVP (implementado y desplegado en dev y prod; el smoke test de Bruno pasa en prod y las pruebas de carga del 26 de noviembre de 2026 corrieron contra prod).**
 
 - Catálogo con variantes, precio, imagen y estimado de preparación cuando no hay stock.
 - Carrito en el navegador, con selección de las líneas que se quieren pedir, y pedido como invitado.
@@ -69,12 +53,12 @@ El sistema cubre 8 requisitos funcionales y los 6 no funcionales que pide el cas
 
 | Requisito | Meta | Cómo se cumple | Cómo se comprueba |
 | --- | --- | --- | --- |
-| Presupuesto | Máximo USD 150 al mes en producción | Servicios serverless que se pagan por uso | Calculadora de Azure y presupuesto con alertas al 50, 80 y 100 % |
-| Disponibilidad | 99,5 % en horario comercial | Servicios con SLA publicado de 99,9 % o más y escalado automático | Prueba de disponibilidad en Application Insights, cada 15 minutos desde 2 ubicaciones |
+| Presupuesto | Máximo USD 150 al mes en producción | Servicios serverless que se pagan por uso | Calculadora de Azure ([costs/azure.xlsx](costs/azure.xlsx)) y presupuesto de USD 20 al mes con alertas al 50, 80 y 100 % |
+| Disponibilidad | 99,5 % en horario comercial | Servicios con SLA publicado de 99,9 % o más en la ruta del cliente (sección 5) y escalado automático | Prueba de disponibilidad en Application Insights, cada 15 minutos desde 2 ubicaciones |
 | Seguridad | HTTPS, secretos fuera del código, mínimo privilegio | HTTPS por defecto, secretos generados por Terraform, una identidad por ambiente | Checkov y CodeQL en el pipeline, escaneo de secretos activado en el repositorio |
-| Respaldo | RPO 24 h y RTO 4 h | Respaldo continuo de 7 días en Cosmos DB y toda la infraestructura en Terraform | Procedimiento de restauración documentado (sección 5). Simulacro de restauración pendiente |
+| Respaldo | RPO 24 h y RTO 4 h | Respaldo continuo de 7 días en Cosmos DB y toda la infraestructura en Terraform | Procedimiento de restauración documentado (sección 5), basado en la copia de seguridad continua de 7 días de Cosmos DB (restauración a un punto en el tiempo en una cuenta nueva) y Terraform. El simulacro de restauración no se ejecutó dentro del plazo del proyecto; se propone como primera tarea operativa después del lanzamiento |
 | Escalabilidad | Soportar 3 veces la carga en temporada alta | Functions y Cosmos DB serverless escalan solos | Cálculo de capacidad en la sección 3 |
-| Observabilidad | Logs centralizados, métricas y al menos una alerta | Application Insights sobre Log Analytics, alertas de errores, de disponibilidad y de tráfico alto | Prueba de las alertas en la demo (pendiente) |
+| Observabilidad | Logs centralizados, métricas y al menos una alerta | Application Insights sobre Log Analytics, alertas de errores, de disponibilidad y de tráfico alto | Alerta de tráfico verificada: se disparó y se resolvió con correos (sección 6). Las de disponibilidad y 5xx no se han disparado (no hubo una falla real) |
 
 ### Supuestos
 
@@ -96,29 +80,9 @@ Al mes son unas 23.000 visitas y 1.840 pedidos (22 × 500 + 8 × 1.500 y 22 × 4
 
 La solución es serverless sobre Azure: un sitio estático en Static Web Apps, un API en Python dentro de Azure Functions y datos en Cosmos DB. No hay servidores que administrar y todo escala solo con la demanda.
 
-```mermaid
-flowchart LR
-    Browser["Navegador<br/>HTML y módulos ES"]
-    subgraph SWA["Azure Static Web Apps"]
-        Static["Archivos estáticos de web/<br/>cabeceras CSP"]
-        Func["Functions administradas<br/>FastAPI (Python 3.11)"]
-    end
-    Cosmos[("Cosmos DB NoSQL<br/>serverless<br/>products, orders, users")]
-    Blob[("Blob Storage<br/>contenedor images")]
-    AI["Application Insights<br/>sobre Log Analytics"]
-    Probe["Prueba de disponibilidad<br/>(solo prod, 2 ubicaciones)"]
-    Mail["Correo de alertas<br/>(solo prod)"]
+![Cloud architecture](diagrams/architecture.png)
 
-    Browser -->|"HTML, CSS, JS"| Static
-    Browser -->|"/api/* JSON<br/>X-Pdc-Token: Bearer jwt"| Func
-    Func -->|"SDK de Cosmos<br/>ETag en stock y productos"| Cosmos
-    Func -->|"firma URL SAS<br/>(5 min, https)"| Browser
-    Browser -->|"PUT de la imagen con SAS<br/>(regla CORS)"| Blob
-    Func -->|"logs JSON por petición<br/>correlation_id"| AI
-    Probe -->|"GET /api/health cada 15 min"| Func
-    Probe --> AI
-    AI -->|"alertas de disponibilidad, errores 5xx y tráfico alto"| Mail
-```
+Arquitectura en la nube. Fuente editable: [architecture.drawio](diagrams/architecture.drawio).
 
 ### Servicios por capa
 
@@ -141,19 +105,11 @@ flowchart LR
 
 **Organización del código.** El API sigue el patrón de puertos y adaptadores. Las rutas de FastAPI llaman a servicios con las reglas de negocio, y los servicios hablan con repositorios que tienen versión para Cosmos DB, para Blob Storage y una en memoria que solo se permite con `PDC_ENVIRONMENT=local`, para las pruebas y el desarrollo.
 
-```mermaid
-flowchart TB
-    Routes["api/routes<br/>solo HTTP"] --> Services["services<br/>catálogo, pedidos, cuentas"]
-    Services --> Ports["ports<br/>repositorios, auth, imágenes"]
-    Ports --> Cosmos["adapters/cosmos"]
-    Ports --> Memory["adapters/memory<br/>(solo local)"]
-    Ports --> BlobA["adapters/blob"]
-    Ports --> Auth["adapters/local_auth<br/>scrypt + JWT"]
-```
+Capas, de arriba hacia abajo: `api/routes` (solo HTTP) llama a `services` (catálogo, pedidos y cuentas), que usan `ports` (repositorios, autenticación e imágenes), implementados por `adapters/cosmos`, `adapters/memory` (solo local), `adapters/blob` y `adapters/local_auth` (scrypt y JWT).
 
 **Concurrencia.** El stock y la edición de productos usan bloqueo optimista con el ETag de Cosmos DB: ante un conflicto el stock hace hasta 5 intentos y la edición de un producto devuelve 409. Es una limitación aceptada que dos clientes puedan tomar la última unidad a la vez: el segundo pedido se acepta como hecho por encargo.
 
-**Escalado para el pico del sábado (3x).** Con los supuestos de la sección 2, el pico es el sábado de 9:00 a 11:00, con unas 300 visitas por hora, es decir, menos de 1 visita por segundo (unas 0,08). Con un supuesto de unas 6 llamadas al API por visita son unas 0,5 llamadas por segundo, y aun con un margen de ráfaga de 5 por segundo. Functions administradas agrega instancias solo cuando la carga sube y Cosmos DB serverless admite miles de unidades de solicitud por segundo, así que el pico queda muy por debajo del límite. El costo de esto es el arranque en frío, que puede sumar algunos segundos a la primera petición después de un rato sin uso (valor estimado, no medido).
+**Escalado para el pico del sábado (3x).** Con los supuestos de la sección 2, el pico es el sábado de 9:00 a 11:00, con unas 300 visitas por hora, es decir, menos de 1 visita por segundo (unas 0,08). Con un supuesto de unas 6 llamadas al API por visita son unas 0,5 llamadas por segundo, y aun con un margen de ráfaga de 5 por segundo la carga sigue siendo baja. Functions administradas agrega instancias solo cuando la carga sube y Cosmos DB serverless admite miles de unidades de solicitud por segundo, así que el pico queda muy por debajo del límite. El costo de esto es el arranque en frío, que puede sumar algunos segundos a la primera petición después de un rato sin uso (valor estimado, no medido).
 
 **Región.** Central US: es el valor por defecto del bootstrap (`infra/bootstrap/variables.tf`) y los dos ambientes heredan la ubicación de su grupo de recursos. La elección parte de las regiones permitidas por la suscripción de estudiante. West US 3 queda como plan B y no está configurada en el código.
 
@@ -161,63 +117,9 @@ flowchart TB
 
 Toda la comunicación va por HTTPS, ningún secreto vive en el código y cada identidad tiene solo los permisos que necesita.
 
-```mermaid
-flowchart TB
-    subgraph Internet["Internet"]
-        User["Navegador<br/>cliente o administrador"]
-    end
+![Network and security](diagrams/network-security.png)
 
-    subgraph GH["GitHub: repositorio Andr3xDev/migas-en-la-nube"]
-        Actions["GitHub Actions<br/>environments dev y prod"]
-    end
-
-    subgraph Azure["Suscripción de Azure"]
-        subgraph RGProd["rg-pdc-prod"]
-            SwaProd["Static Web Apps Standard<br/>Functions administradas"]
-            CosmosProd[("Cosmos DB")]
-            BlobProd[("Blob Storage images")]
-            AiProd["Application Insights"]
-            Alerts["Alertas y prueba de disponibilidad"]
-        end
-
-        subgraph RGDev["rg-pdc-dev"]
-            SwaDev["Static Web Apps Free<br/>Functions administradas"]
-            CosmosDev[("Cosmos DB")]
-            BlobDev[("Blob Storage images")]
-            AiDev["Application Insights"]
-        end
-
-        subgraph RGTF["rg-pdc-tfstate"]
-            IdPlan["id-pdc-ci-plan<br/>Reader en rg-pdc-dev y rg-pdc-prod<br/>Blob Data Reader en la cuenta del estado"]
-            IdDev["id-pdc-deploy-dev<br/>Contributor en rg-pdc-dev<br/>Blob Data Contributor en tfstate-dev"]
-            IdProd["id-pdc-deploy-prod<br/>Contributor en rg-pdc-prod<br/>Blob Data Contributor en tfstate-prod"]
-            State[("Storage del estado de Terraform<br/>sin llaves compartidas ni acceso anónimo")]
-        end
-    end
-
-    Mail["Correo de alertas"]
-
-    User -->|"HTTPS"| SwaProd
-    User -->|"PUT de la imagen con SAS<br/>(5 min, https)"| BlobProd
-    User -->|"GET de imágenes (lectura pública)"| BlobProd
-    SwaProd -->|"llave de Cosmos<br/>(app setting)"| CosmosProd
-    SwaProd -->|"llave de Storage, firma el SAS<br/>(app setting)"| BlobProd
-    SwaProd -->|"logs JSON"| AiProd
-    AiProd --> Alerts
-    Alerts -->|"correo"| Mail
-    SwaDev --> CosmosDev
-    SwaDev --> BlobDev
-    SwaDev --> AiDev
-
-    Actions -->|"OIDC, subject pull_request"| IdPlan
-    Actions -->|"OIDC, subject environment:dev"| IdDev
-    Actions -->|"OIDC, subject environment:prod"| IdProd
-    IdDev -->|"terraform apply y sube el artefacto"| SwaDev
-    IdProd -->|"terraform apply y sube el artefacto"| SwaProd
-    IdPlan -->|"lee el estado"| State
-    IdDev -->|"estado de dev"| State
-    IdProd -->|"estado de prod"| State
-```
+Zonas, flujos e identidades. Fuente editable: [network-security.drawio](diagrams/network-security.drawio).
 
 **Usuarios de la aplicación.** El API maneja su propio registro e inicio de sesión con correo y contraseña (ADR 3).
 
@@ -238,6 +140,8 @@ flowchart TB
 
 Así, un error en dev no puede tocar prod, y un pull request no puede cambiar nada en Azure.
 
+El workflow manual `load.yml` (inputs `environment` y `scenario`) no usa ninguna identidad: solo llama a la URL pública del sitio. En `prod` pide aprobación del environment y corre solo desde `main`, y el escenario `orders` se rechaza en `prod`.
+
 **Secretos.**
 
 | Secreto | Dónde vive | Quién lo crea |
@@ -247,9 +151,9 @@ Así, un error en dev no puede tocar prod, y un pull request no puede cambiar na
 | Token de despliegue de Static Web Apps | Salida de Terraform, leída y enmascarada en el mismo paso del pipeline (`::add-mask::`) | Terraform |
 | Contraseña inicial del administrador | Secreto `ADMIN_INITIAL_PASSWORD` de cada environment de GitHub | El equipo |
 
-Los IDs de tenant, suscripción e identidades son variables de GitHub, no secretos. Static Web Apps no tiene identidad administrada, por eso el API usa llaves de Cosmos DB y Storage en lugar de identidades.
+Los IDs de tenant, suscripción e identidades son variables de GitHub, no secretos. Las Functions administradas de Static Web Apps no admiten identidad administrada, por eso el API usa llaves de Cosmos DB y Storage en lugar de identidades.
 
-**Escaneo y análisis.** El pipeline corre Checkov sobre Terraform y CodeQL sobre Python. En el repositorio están activados el escaneo de secretos y su protección contra push (verificado con la API de GitHub el 25 de noviembre de 2026). La demostración de que un push con un secreto es bloqueado queda como verificación pendiente.
+**Escaneo y análisis.** El pipeline corre Checkov sobre Terraform y CodeQL sobre Python. En el repositorio están activados el escaneo de secretos y su protección contra push (verificado con la API de GitHub el 25 de noviembre de 2026). La demostración de que un push con un secreto es bloqueado no está demostrada dentro del proyecto.
 
 **Protecciones adicionales.**
 
@@ -269,11 +173,17 @@ La solución cumple el 99,5 % en horario comercial, el RPO de 24 horas y el RTO 
 
 | Servicio | SLA del proveedor |
 | --- | --- |
-| Static Web Apps Standard (prod) | 99,95 % |
-| Cosmos DB en una región | 99,99 % |
-| Blob Storage LRS | 99,9 % en lectura |
+| Static Web Apps Standard (prod) | 99,95 % (el plan Free de dev no tiene SLA) |
+| Azure Functions (administradas dentro de Static Web Apps) | 99,95 % |
+| Blob Storage LRS, nivel Hot | 99,9 % en lectura y 99,9 % en escritura |
+| Cosmos DB en una región | 99,99 % solo con capacidad aprovisionada; la cuenta serverless no tiene SLA con créditos |
+| Application Insights y Azure Monitor | 99,9 % en consultas, reglas de alerta y envío de notificaciones |
 
-La combinación queda por encima del 99,5 % pedido: aun con 99,9 % en los tres servicios el producto es de 99,7 %. Los valores son los publicados por Microsoft y no se verifican en el repositorio, por lo que se deben confirmar en la página de SLA antes de entregar (pendiente). Producción usa el plan Standard de Static Web Apps (`infra/envs/prod/main.tf`) porque el plan Free no tiene SLA. Dev usa Free para ahorrar. El escalado automático evita caídas por carga en el pico de fin de semana, y la prueba de disponibilidad avisa si el sitio deja de responder.
+- **SLA compuesto.** La ruta que ve el cliente (Static Web Apps y Blob Storage) tiene un SLA compuesto de 99,95 % × 99,9 % ≈ 99,85 %, que supera el 99,5 % pedido en horario comercial. Producción usa el plan Standard de Static Web Apps (`infra/envs/prod/main.tf`) porque el plan Free no tiene SLA; dev usa Free para ahorrar.
+- **Cosmos DB serverless.** Queda fuera de ese cálculo porque el documento de SLA de Microsoft solo da créditos de servicio para capacidad aprovisionada. Es un compromiso aceptado por costo (ADR 2); pasar a capacidad aprovisionada o autoscale añadiría el SLA de 99,99 % por unos USD 23 al mes con 400 unidades por segundo (sección 8). Se mitiga con escalado automático para el pico de fin de semana y con la prueba de disponibilidad, que avisa si el sitio deja de responder.
+- **Evidencia.** Las pruebas de carga dieron 0 % de errores (`stress` falló solo por `dropped_iterations`, ver sección 6). No hay una medición de disponibilidad en el tiempo, así que el cumplimiento del 99,5 % se apoya en el diseño y estas pruebas, no en un porcentaje medido.
+
+Fuentes (documento de noviembre de 2026): [Service Level Agreements (SLA) for Online Services](https://www.microsoft.com/licensing/docs/view/Service-Level-Agreements-SLA-for-Online-Services) y [precios de Static Web Apps](https://azure.microsoft.com/pricing/details/app-service/static/), que indica que el plan Free no tiene SLA y el Standard sí.
 
 **Respaldo.** La cuenta de Cosmos DB se crea con respaldo continuo de 7 días (`type = "Continuous"`, `tier = "Continuous7Days"` en `infra/modules/cosmos/main.tf`), que permite restaurar los datos a cualquier momento de esa semana. Eso deja el RPO en minutos, muy por debajo de las 24 horas pedidas, siempre que el problema se detecte dentro de los 7 días. No hay respaldo periódico configurado. Las imágenes están en una cuenta de Blob Storage LRS con versionado y retención de borrado de 7 días (`infra/modules/storage/main.tf`): se puede recuperar una imagen reemplazada o borrada en ese plazo, pero no hay copia en otra región. Las imágenes subidas por el administrador no están en el repositorio.
 
@@ -284,7 +194,7 @@ La combinación queda por encima del 99,5 % pedido: aun con 99,9 % en los tres s
 3. Apuntar la aplicación a la cuenta restaurada y dejar a Terraform como dueño de ella. El detalle exacto de cómo Terraform adopta la cuenta restaurada se define y se ensaya en el simulacro.
 4. Volver a desplegar la aplicación y correr el smoke test.
 
-Tiempo estimado del procedimiento: entre 1 y 2 horas, dentro del RTO de 4 horas. Es una estimación, no una medición. El simulacro de restauración está pendiente y es el que valida el tiempo y los pasos 1 y 3.
+Tiempo estimado del procedimiento: entre 1 y 2 horas, dentro del RTO de 4 horas. Es una estimación, no una medición. El simulacro de restauración no se ejecutó dentro del plazo del proyecto; se propone como primera tarea operativa después del lanzamiento, y es el que validará el tiempo y los pasos 1 y 3.
 
 **Lo que no cubre.** Una caída completa de la región Central US. Para eso haría falta una segunda región, que se deja como evolución por costo (sección 9).
 
@@ -303,21 +213,29 @@ Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un
 | Alerta | Se dispara cuando | Acción |
 | --- | --- | --- |
 | Errores del API (prod) | Más de 5 peticiones fallidas con 5xx en 15 minutos (se evalúa cada 5 minutos) | Correo mediante un grupo de acción |
-| Disponibilidad (prod) | La prueba `GET /api/health`, que corre cada 15 minutos desde 2 ubicaciones (`us-tx-sn1-azr` y `us-il-ch1-azr`) con reintento, falla desde las 2 en una ventana de 30 minutos (se evalúa cada 5 minutos), de modo que las ejecuciones de las dos ubicaciones caen dentro de la ventana | Correo mediante el mismo grupo de acción. Se mantiene `failed_location_count = 2` para no alertar por una sola ubicación inestable. Se verificará en la demostración de alertas (pendiente) |
+| Disponibilidad (prod) | La prueba `GET /api/health`, que corre cada 15 minutos desde 2 ubicaciones (`us-tx-sn1-azr` y `us-il-ch1-azr`) con reintento, falla desde las 2 en una ventana de 30 minutos (se evalúa cada 5 minutos), de modo que las ejecuciones de las dos ubicaciones caen dentro de la ventana | Correo mediante el mismo grupo de acción. Se mantiene `failed_location_count = 2` para no alertar por una sola ubicación inestable. No se ha disparado porque no hubo una falla real; su disparo no está verificado |
 | Tráfico alto (prod) | Más de 1.500 peticiones al API (`requests/count`) en 5 minutos (se evalúa cada minuto, severidad 3, se resuelve sola al bajar el tráfico) | Correo mediante el mismo grupo de acción. Es un aviso de tráfico por encima del diseño, no una falla |
 | Presupuesto (suscripción) | El gasto real llega al 50, 80 y 100 % del monto mensual del presupuesto | Correo a `budget_email` |
 
-El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (el ejemplo del repositorio usa 20, menos que el tope de USD 150), así que los umbrales son porcentajes de ese monto y no de 150. Esta sección debe comprobarse en el portal (pendiente): que el presupuesto exista, porque en algunas suscripciones de estudiante puede ser rechazado, y que la alerta de errores se dispare con tráfico de prueba durante la demo.
+El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (sin valor por defecto; `infra/bootstrap/terraform.tfvars.example` usa 20): USD 20 al mes, con alertas al 50, 80 y 100 % (USD 10, 16 y 20; lo crea el stack de bootstrap). Se eligió cerca del gasto esperado (unos USD 15 al mes en prod más un dev despreciable) para notar pronto cualquier desvío: el 50 % y cerca del 75 % se alcanzan en un mes normal y el 100 % solo ante un exceso real. Los USD 150 del requisito son el tope que la arquitectura se mantiene muy por debajo de alcanzar, no el umbral de alerta.
 
-**Umbral de tráfico alto.** El umbral de 1.500 peticiones en 5 minutos es unas 5 veces el pico de un sábado a 3x (450 llamadas al API en 5 minutos). Solo cuentan las llamadas al API, porque los archivos estáticos los sirve Static Web Apps y no pasan por Functions. Los escenarios de [load/README.md](../load/README.md) quedan así: `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Umbral, ventana y frecuencia son las variables `traffic_spike_threshold`, `traffic_spike_window` y `traffic_spike_frequency` del módulo `alerts`.
+**Umbral de tráfico alto.** El umbral de 1.500 peticiones en 5 minutos es unas 10 veces el pico de un sábado (150 llamadas al API en 5 minutos) y unas 3,3 veces la carga de diseño de 3x (450 en 5 minutos). Solo cuentan las llamadas al API, porque los archivos estáticos los sirve Static Web Apps y no pasan por Functions. Los escenarios de [load/README.md](../load/README.md) quedan así: `realistic` (150) y `peak3x` (450) no la disparan; `stress` (unas 32.000 llamadas en 5 minutos) sí. Umbral, ventana y frecuencia son las variables `traffic_spike_threshold`, `traffic_spike_window` y `traffic_spike_frequency` del módulo `alerts`.
 
 **Demostración de alertas.**
 
 1. Fuera de horario, correr `stress` en prod desde el workflow `load.yml` (una sola vez).
-2. En el portal, en Monitor > Alertas, la alerta de tráfico alto pasa a `Fired` pocos minutos después de empezar. `[PENDIENTE: captura alerta Fired]`
-3. Llega el correo al buzón de `ALERT_EMAIL`. `[PENDIENTE: captura correo]`
+2. En el portal, en Monitor > Alertas, la alerta de tráfico alto pasa a `Fired` pocos minutos después de empezar.
+3. Llega el correo al buzón de `ALERT_EMAIL`.
 4. Al terminar la prueba y bajar el tráfico, la alerta se resuelve sola y llega el aviso de resuelta.
 5. Prueba del canal de correo sin generar tráfico: en el portal, grupo de acción `ag-<prefijo>-prod` > `Probar grupo de acción` (Test action group), tipo de muestra `Metric alert` (Alerta de métricas), y comprobar que llega el correo. El comando `az monitor action-group test-notifications create` existe, pero sus argumentos no se verificaron, por eso se documenta el botón del portal.
+
+**Resultado (verificado el 26 de noviembre de 2026).** `alert-pdc-prod-traffic` (severidad 3, `appi-pdc-prod`, `rg-pdc-prod`, "More than 1500 API requests in the evaluation window") pasó a `Fired` a las 05:32:22 UTC durante la corrida de `stress` (primera evaluación: 2,59 k frente al umbral de 1,5 k), con un pico de unas 28 k peticiones en la ventana de 5 minutos, y se resolvió sola: `Resolved` a las 05:43:30 UTC, unos 11 minutos después de dispararse. El detalle de la alerta muestra 32.433 peticiones al servidor en el periodo, consistente con las unas 32.000 llamadas al API planificadas para `stress`. La corrida `peak3x` (05:40) quedó por debajo del umbral. Los correos reales prueban el canal de correo. Las alertas de errores 5xx y de disponibilidad no se dispararon porque no hubo una falla real; no se simuló ninguna, así que su disparo no está verificado.
+
+![Correo de alerta Fired](img/evidence/traffic-alert-fired.png)
+
+![Correo de alerta Resolved](img/evidence/traffic-alert-resolved.png)
+
+![Historial de la alerta en el portal, de Fired a Resolved](img/evidence/traffic-alert-history.png)
 
 `stress` también puede disparar las alertas de 5xx, de disponibilidad y de tráfico alto; es esperado.
 
@@ -342,52 +260,90 @@ Umbrales: tasa de peticiones fallidas menor a 1 %, p95 del tiempo de respuesta m
 
 **Riesgo de `stress` en producción.** Es la validación del escalado y se permite en producción, pero puede producir errores reales (Cosmos DB serverless puede responder 429 ante una ráfaga), añadir latencia a clientes reales y disparar las alertas de 5xx, de disponibilidad y de tráfico alto (correos). Se corre fuera de horario y una sola vez. El costo por corrida es despreciable; el riesgo es de disponibilidad, no de dinero.
 
-| Resultado | Valor |
+**Resultados.** Corridas del workflow `load` del 26 de noviembre de 2026 (UTC). Las peticiones y las iteraciones incluyen el calentamiento y el `setup`.
+
+| Ambiente | Escenario | Corrida | p95 (ms) | Promedio / p90 / máximo (ms) | Peticiones fallidas | Peticiones | Iteraciones | Descartadas | VUs máximos | Resultado |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| dev | `realistic` | [45757984915](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45757984915) | 90 | 61 / 88 / 1.744 | 0 % | 271 | 31 | 0 | 3 | Pasa |
+| dev | `orders` | [45758851277](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45758851277) | 343 | 185 / 263 / 400 | 0 % | 30 | 24 | 0 | 3 | Pasa |
+| prod | `realistic` | [45759342723](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45759342723) | 74 | 40 / 62 / 132 | 0 % | 271 | 31 | 0 | 3 | Pasa |
+| prod | `peak3x` | [45763172806](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45763172806) | 91 | 55 / 87 / 671 | 0 % | 771 | 81 | 0 | 6 | Pasa |
+| prod | `stress` | [45761827371](https://github.com/Andr3xDev/migas-en-la-nube/actions/runs/45761827371) | 111 | 54 / 92 / 4.835 | 0 % | 52.991 (unas 160 por segundo en promedio) | 5.303 | 41 | 62 | Falla solo por `dropped_iterations` |
+
+| Resultado de `stress` en prod | Valor |
 | --- | --- |
-| p95 del tiempo de respuesta | [PENDIENTE: resultados de la corrida] |
-| Tasa de peticiones fallidas | [PENDIENTE: resultados de la corrida] |
-| Tasa máxima alcanzada sin degradación | [PENDIENTE: resultados de la corrida] |
-| Observaciones | [PENDIENTE: resultados de la corrida] |
+| p95 del tiempo de respuesta | 111 ms (umbral: 1000 ms) |
+| Tasa de peticiones fallidas | 0 % |
+| Carga absorbida | Unas 53.000 peticiones con 0 % de errores |
+| Iteraciones descartadas | 41 (0,77 %) |
+| Instancias máximas observadas | 4 (y vuelve a 1 al terminar) |
+| Pico de unidades de solicitud de Cosmos DB | Unas 14.300 (promedio, hacia las 05:33 UTC) |
+| Peticiones al API vistas por Application Insights | 32.433 (consistente con las unas 32.000 llamadas planificadas) |
+
+**Interpretación de `stress`.** El sistema absorbió unas 53.000 peticiones con 0 % de errores y un p95 de 111 ms. Las 41 iteraciones descartadas (0,77 %) se deben a que k6 no asignó VUs con la rapidez necesaria en los saltos de la rampa (`preAllocatedVUs` en 20; solo se usaron 62 de los 200 VUs máximos): es un límite del generador de carga, no un error del servidor. El máximo de 4,8 s es una cola aislada, probablemente un arranque en frío mientras escalaba. Por eso el umbral `dropped_iterations` marcó la corrida como fallida aunque la latencia y los errores cumplieron. Para próximas corridas `load/load.js` ya usa 100 en `preAllocatedVUs`. `realistic` y `peak3x` (3 veces el pico) pasan todos los umbrales en prod.
+
+**Evidencia de escalado y desescalado.** k6 prueba que el sistema absorbe la carga (p95, errores, iteraciones descartadas), pero no cuántas instancias hubo. Durante y después de la corrida de `stress` en prod, en el portal (Application Insights, Logs) se ejecutó:
+
+```kusto
+requests
+| where timestamp between (datetime(2026-11-26T05:25:00Z) .. datetime(2026-11-26T05:50:00Z))
+| summarize total = sum(itemCount) by ts = bin(timestamp, 5m), instancia = tostring(cloud_RoleInstance)
+| order by ts asc
+| render timechart
+```
+
+Resultado: `cloud_RoleInstance` reporta una instancia por serie, y se ven 4 instancias distintas de Functions en los intervalos de 5 minutos de las 05:25 y las 05:30 (durante `stress`; cada una con unas 7.600 a 8.000 peticiones en el intervalo de las 05:30 a las 05:35). Desde las 05:40 (corrida `peak3x`) queda 1 sola instancia con unas 250 peticiones cada 5 minutos: escalado de 1 a 4 instancias y desescalado de vuelta a 1. El conteo de instancias es por intervalo de 5 minutos.
+
+Cosmos DB serverless no tiene instancias: su evidencia es la métrica `Total Request Units` (promedio) de la cuenta `cosmos-pdc-prod-webwdv`, con un pico de unas 14.300 hacia las 05:33 UTC y de vuelta a casi 0 hacia las 05:37. La captura no muestra respuestas 429; k6 registró 0 % de peticiones fallidas, así que ninguna limitación llegó a los clientes. La alerta de tráfico alto pasando a `Fired` y luego a `Resolved` también muestra la subida y la bajada de la carga.
+
+![Instancias por intervalo de 5 minutos durante stress (05:25 a 05:50 UTC)](img/evidence/scaling-instances.png)
+
+![Total Request Units de Cosmos DB durante stress (05:25 a 05:50 UTC)](img/evidence/cosmos-ru.png)
 
 ## 7. Diseño de despliegue
 
-Todo llega a Azure por GitHub Actions: nada se despliega a mano. Cada etapa del pipeline bloquea a la siguiente si falla, y producción necesita aprobación. Las etapas, los disparadores, los secretos y el rollback paso a paso están en [despliegue.md](despliegue.md).
+Todo llega a Azure por GitHub Actions: nada se despliega a mano. Cada etapa del pipeline bloquea a la siguiente si falla, y producción necesita aprobación. Las etapas, los disparadores, los secretos y el rollback paso a paso están en [deployment.md](deployment.md).
+
+| Enlace | URL |
+| --- | --- |
+| Producción | https://salmon-stone-0be061010.6.azurestaticapps.net |
+| Desarrollo | https://wonderful-field-023b47e10.4.azurestaticapps.net |
+| Ejecuciones del pipeline | https://github.com/Andr3xDev/migas-en-la-nube/actions |
+| Repositorio | https://github.com/Andr3xDev/migas-en-la-nube |
 
 - **Ambientes.** `dev` (rama `dev`, Static Web Apps Free, sin aprobación ni alertas) y `prod` (rama `main`, Standard, revisor requerido y alertas). Cada uno tiene su propio grupo de recursos, estado de Terraform, cuenta de Cosmos DB y de Storage e identidad.
-- **Promoción.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. El workflow `ci` corre en el pull request (lint, seguridad, pruebas con cobertura mínima de 70 %, build y plan de Terraform). Al hacer merge, `deploy` aplica Terraform, carga los seeds, sube la aplicación y corre el smoke test. En `main` espera la aprobación del environment `prod` y publica el release `vN`. Los checks requeridos del ruleset de GitHub deben ser los jobs de `ci.yml`; su estado de aplicación está pendiente de verificar por el equipo.
+- **Promoción.** Todo cambio entra por pull request a `dev` y luego de `dev` a `main`. El workflow `ci` corre en el pull request (lint, seguridad, pruebas con cobertura mínima de 70 %, build y plan de Terraform). Al hacer merge, `deploy` corre primero las pruebas y se detiene si fallan; luego aplica Terraform, carga los seeds, sube la aplicación y corre el smoke test. En `main` espera la aprobación del environment `prod` y publica el release `vN`. El ruleset está activo en `main` y `dev` y exige como checks los jobs de `ci.yml`: `lint`, `security`, `test`, `build` y `terraform`.
 - **OIDC.** El acceso a Azure usa las identidades de la sección 4, sin contraseñas guardadas. El único secreto en GitHub es la contraseña inicial del administrador, y los tokens leídos de las salidas de Terraform se enmascaran en los logs.
 - **Rollback.** De la aplicación: workflow manual `rollback` con el tag de una versión anterior, que vuelve a publicar su artefacto sin tocar la infraestructura. De la infraestructura: revertir el commit. De los datos: restauración de Cosmos DB (sección 5).
+- **Prueba de carga.** Workflow manual `load` (k6, inputs `environment` y `scenario`), sin identidad de Azure: solo llama a la URL pública. En `prod` pide aprobación y corre solo desde `main`; `orders` se rechaza en `prod`. Detalle en [load/README.md](../load/README.md).
 - **Bootstrap.** Lo que el pipeline necesita antes de su primera ejecución (grupos de recursos, estado, identidades OIDC y presupuesto) vive en un Terraform aparte que se aplica una sola vez. El orden de limpieza final está en [infra/bootstrap/README.md](../infra/bootstrap/README.md).
 
 ## 8. Costos y FinOps
 
-Producción cuesta unos USD 10 al mes con el tráfico de la sección 2, muy por debajo del tope de USD 150. Los valores de esta sección son aproximados (USD) y se reemplazan por los de la calculadora de Azure y el Excel adjunto.
+Producción cuesta unos USD 15 al mes con el tráfico de la sección 2, muy por debajo del tope de USD 150. Los valores salen de la exportación de la calculadora de Azure (Central US, USD). Las entradas de Blob (1.000 GB de lectura y de escritura) y de Cosmos DB (copia de seguridad periódica) son conservadoras, más altas que el modelo de uso de este documento, así que el costo real debería ser menor.
 
-**Estimación mensual en producción (aproximada).**
+**Estimación mensual por escenario.** El MVP es igual a producción salvo que Azure Monitor corre la prueba de disponibilidad desde 1 ubicación en lugar de 2 (3,59 menos 1,65 = 1,94).
 
-| Servicio | Supuesto de uso | USD al mes | USD al año |
-| --- | --- | --- | --- |
-| Static Web Apps Standard (prod) | 1 app | 9,00 | 108 |
-| Static Web Apps Free (dev) | 1 app | 0,00 | 0 |
-| Cosmos DB serverless | Entre 1 y 1,5 millones de unidades de solicitud al mes (0,25 USD por millón) y menos de 1 GB guardado (0,25 USD por GB) | 0,50 | 6 |
-| Blob Storage LRS Hot | Menos de 1 GB de imágenes | 0,05 | 1 |
-| Salida de datos (egress) | Unos 18 GB al mes de imágenes, dentro de los primeros 100 GB gratuitos | 0,00 | 0 |
-| Application Insights y Log Analytics | Menos de 0,5 GB de datos al mes, dentro de los 5 GB gratuitos | 0,00 | 0 |
-| Prueba de disponibilidad estándar | Unas 5.760 ejecuciones al mes (2 ubicaciones, cada 15 minutos) | Pendiente: precio por ejecución de la página de precios | Pendiente |
-| Alertas de métricas | 3 reglas, unos 0,10 cada una | 0,30 | 4 |
-| Grupo de acción | Correo, sin costo | 0,00 | 0 |
-| Functions administradas | Incluidas en Static Web Apps | 0,00 | 0 |
-| Almacenamiento del estado de Terraform | Cuenta de Storage del tfstate | 0,02 | 0 |
-| Total sin la prueba de disponibilidad | | 9,9 | Unos 119 |
+| Servicio | Supuesto de uso (producción) | MVP USD al mes | MVP USD al año | Producción USD al mes | Producción USD al año |
+| --- | --- | --- | --- | --- | --- |
+| Static Web Apps Standard (prod) | 1 app | 9,00 | 108 | 9,00 | 108 |
+| Cosmos DB for NoSQL serverless | 1 millón de unidades de solicitud, 1 GB y copia de seguridad periódica | 0,67 | 8 | 0,67 | 8 |
+| Storage Accounts, Block Blob GPv2 LRS Hot | 1 GB, con entradas conservadoras de operaciones, lectura y escritura de datos | 1,77 | 21 | 1,77 | 21 |
+| Azure Monitor | Application Insights con 0,02 GB al día, 2 pruebas web estándar cada 15 minutos durante 730 h (5.840 ejecuciones), 3 series de alertas de métricas y logs (en el MVP, 1 ubicación) | 1,94 | 23 | 3,59 | 43 |
+| Salida de datos (egress) | Unos 18 GB al mes de imágenes, dentro del ancho de banda incluido en Static Web Apps (100 GB gratuitos) | 0,00 | 0 | 0,00 | 0 |
+| Grupo de acción | Correo, sin costo | 0,00 | 0 | 0,00 | 0 |
+| Soporte | Sin plan de soporte | 0,00 | 0 | 0,00 | 0 |
+| **Total** | | **13,4** | **161** | **15,0** | **180** |
 
-**Escenarios.**
+Los totales anuales se calculan sobre el total mensual y se redondean (por eso el total anual del MVP es 161 y no la suma de las filas, 160).
 
-| Escenario | Qué incluye | USD al mes (aprox.) |
-| --- | --- | --- |
-| MVP | Prod con tráfico de prueba y dev en Free | 9 a 10 |
-| Producción | Los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes) | Unos 9,9 |
+La exportación no desglosa Azure Monitor. Por diferencia, las pruebas web cuestan unos USD 3,3 al mes (3,59 menos unos 0,30 de alertas y logs menores); es una estimación.
 
-Los dos escenarios no incluyen la prueba de disponibilidad hasta que se calcule su precio.
+Dev (Static Web Apps Free, uso serverless mínimo) y el estado de Terraform (una cuenta de Storage de 1 GB) quedan fuera de la estimación por su costo despreciable.
+
+El MVP usa Static Web Apps Standard, 1 ubicación en la prueba de disponibilidad (la mitad de los unos USD 3,3 de pruebas web, unos 1,65) y tráfico de prueba, con dev en Free. Producción usa los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes) y la estimación de la calculadora (2 ubicaciones).
+
+Los dos escenarios quedan cerca porque Static Web Apps Standard (9,00) y la prueba de disponibilidad dominan el costo; Cosmos DB y Blob serverless crecen con el uso.
 
 **Optimizaciones FinOps.**
 
@@ -395,13 +351,13 @@ Los dos escenarios no incluyen la prueba de disponibilidad hasta que se calcule 
 | --- | --- | --- |
 | Cosmos DB serverless | Capacidad aprovisionada mínima de 400 unidades por segundo, unos USD 23 al mes | Unos USD 22 |
 | Dev en plan Free de Static Web Apps, que puede destruirse a mano con `destroy.yml` cuando no se usa | Dev en Standard todo el mes | USD 9 |
-| Prueba de disponibilidad en 1 ubicación o cada 30 minutos | Prueba en 2 ubicaciones cada 15 minutos | Cerca del 50 % de esa línea |
+| Prueba de disponibilidad en 1 ubicación o cada 30 minutos | Prueba en 2 ubicaciones cada 15 minutos | Unos USD 1,6 al mes (cerca del 50 % de las pruebas web) |
 | Imágenes comprimidas y caché del navegador | Imágenes sin comprimir ni caché, con más salida de datos | Mantiene la salida dentro de los 100 GB gratuitos |
 | Muestreo y retención de 30 días en la telemetría | Telemetría completa que puede pasar los 5 GB gratuitos | Depende del tráfico, evita sobrecostos |
 
 Además hay un presupuesto mensual de la suscripción con alertas al 50, 80 y 100 %.
 
-Enlace de la calculadora: [PEGAR ENLACE]. Excel: [NOMBRE DEL ARCHIVO].
+Exportación de la calculadora de Azure (Central US, USD): [docs/costs/azure.xlsx](costs/azure.xlsx). Estimación compartida: [enlace](https://pruebacorreoescuelaingeduco-my.sharepoint.com/:f:/g/personal/andres_chavarro-p_mail_escuelaing_edu_co/IgCR8FX61djzRbgw5dP906NYAepx9R_9yznGnveKeQa_p98?e=jm11ry).
 
 ## 9. Riesgos y mitigaciones
 
@@ -420,6 +376,7 @@ Los riesgos principales vienen de lo que se simplificó para el MVP, y cada uno 
 | Caída de la región Central US | Alto pero poco probable | Infraestructura en Terraform lista para recrear en otra región | Segunda región con Front Door |
 | Sin pagos en línea | Bajo para el negocio actual | Se paga al recoger | Pasarela de pagos |
 | Límites de la suscripción de estudiante (regiones y cuotas) | Medio | Región Central US y plan B West US 3 | Suscripción de pago para producción real |
+| Abuso de endpoints públicos (pedidos de invitado, registro y login sin límite de peticiones) | Medio | Límites por pedido (20 líneas, 50 unidades), la cancelación por el administrador restaura el stock, alerta de tráfico alto (1.500 peticiones en 5 minutos) y pausa de 0,5 s en el login fallido (bloquea un hilo; el escalado de Functions lo absorbe) | Front Door o WAF con límite de peticiones y CAPTCHA en el registro |
 | Gasto inesperado | Bajo | Presupuesto con alertas y servicios que se pagan por uso | Revisión mensual de costos |
 
 ## 10. Decisiones de arquitectura
@@ -452,7 +409,7 @@ Se tomaron 5 decisiones principales. Cada una responde qué problema había, qu�
 
 **Decisión.** Cosmos DB serverless con la base `migas` y un contenedor por colección (`products` por `/category`, `orders` por `/pickupDate`, `users` por `/email`). El stock se protege con bloqueo optimista usando el ETag.
 
-**Consecuencias.** Se paga por solicitud y almacenamiento, sin esquema que migrar y con seeds idempotentes. A cambio, leer un producto por id es una consulta entre particiones, y el bloqueo con ETag no cubre una caída entre pasos de stock ni evita que la última unidad se venda dos veces en una carrera. Ambas ventanas se aceptan.
+**Consecuencias.** Se paga por solicitud y almacenamiento, sin esquema que migrar y con seeds idempotentes. A cambio, la cuenta serverless no tiene el SLA financiero de 99,99 % de la capacidad aprovisionada, leer un producto por id es una consulta entre particiones y el bloqueo con ETag no cubre una caída entre pasos de stock ni evita que la última unidad se venda dos veces en una carrera. Ambas ventanas se aceptan.
 
 ### ADR 3. Autenticación propia con JWT
 

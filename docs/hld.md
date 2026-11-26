@@ -78,17 +78,19 @@ El sistema cubre 8 requisitos funcionales y los 6 no funcionales que pide el cas
 
 ### Supuestos
 
-| Supuesto | Valor normal | Valor en pico (3x) |
+| Supuesto | Entre semana (22 días al mes) | Fin de semana, pico 3x (8 días al mes) |
 | --- | --- | --- |
 | Sedes | 1 | 1 |
-| Visitas al día | 3.000 | 9.000 |
-| Pedidos al día | 150 | 450 |
+| Visitas al día | 500 | 1.500 |
+| Pedidos al día | 40 | 120 |
 | Pedidos de clientes registrados | 20 % | 20 % |
+| Productos por pedido | 3 | 3 |
 | Productos en catálogo | 60, con 1 a 4 variantes cada uno | 60 |
-| Tamaño de cada imagen | 200 KB | 200 KB |
-| Horario comercial | 6:00 a 20:00 todos los días | 6:00 a 20:00 |
+| Tamaño de cada imagen | Unos 100 KB después de comprimir (supuesto) | Unos 100 KB |
+| Horario comercial | 6:00 a 20:00 | 6:00 a 20:00 |
+| Hora de más movimiento | Sin pico marcado | Sábado de 9:00 a 11:00, unas 300 visitas por hora |
 
-El pico se da los fines de semana. Estos mismos números se usan en la estimación de costos y en el cálculo de escalado. La hora de recogida se valida en la zona horaria de la tienda (UTC-5) entre las 6:00 y las 20:00.
+Al mes son unas 23.000 visitas y 1.840 pedidos (22 × 500 + 8 × 1.500 y 22 × 40 + 8 × 120). Estos mismos números se usan en la estimación de costos y en el cálculo de escalado. La hora de recogida se valida en la zona horaria de la tienda (UTC-5) entre las 6:00 y las 20:00.
 
 ## 3. Arquitectura propuesta
 
@@ -151,7 +153,7 @@ flowchart TB
 
 **Concurrencia.** El stock y la edición de productos usan bloqueo optimista con el ETag de Cosmos DB: ante un conflicto el stock hace hasta 5 intentos y la edición de un producto devuelve 409. Es una limitación aceptada que dos clientes puedan tomar la última unidad a la vez: el segundo pedido se acepta como hecho por encargo.
 
-**Escalado para el pico de 3x.** Con los supuestos de la sección 2, el pico es de 9.000 visitas y 450 pedidos en un día de 14 horas. Si la mitad del tráfico llega en las 3 horas de más movimiento, son unas 1.500 visitas por hora, menos de 1 visita por segundo. Con un supuesto de unas 5 llamadas al API por visita son unas 2 llamadas por segundo, y se toma 10 por segundo como margen de ráfaga. Functions agrega instancias solo cuando la carga sube y Cosmos DB serverless admite miles de unidades de solicitud por segundo, así que el pico queda muy por debajo del límite. El costo de esto es el arranque en frío, que puede sumar algunos segundos a la primera petición después de un rato sin uso (valor estimado, no medido).
+**Escalado para el pico de 3x.** Con los supuestos de la sección 2, el pico es el sábado de 9:00 a 11:00, con unas 300 visitas por hora, es decir, menos de 1 visita por segundo (unas 0,08). Con un supuesto de unas 6 llamadas al API por visita son unas 0,5 llamadas por segundo, unas pocas por segundo incluso con ráfagas. Functions administradas agrega instancias solo cuando la carga sube y Cosmos DB serverless admite miles de unidades de solicitud por segundo, así que el pico queda muy por debajo del límite. El costo de esto es el arranque en frío, que puede sumar algunos segundos a la primera petición después de un rato sin uso (valor estimado, no medido).
 
 **Región.** Central US: es el valor por defecto del bootstrap (`infra/bootstrap/variables.tf`) y los dos ambientes heredan la ubicación de su grupo de recursos. La elección parte de las regiones permitidas por la suscripción de estudiante. West US 3 queda como plan B y no está configurada en el código.
 
@@ -301,7 +303,7 @@ Todos los logs y métricas llegan a un solo lugar, Application Insights sobre un
 | Alerta | Se dispara cuando | Acción |
 | --- | --- | --- |
 | Errores del API (prod) | Más de 5 peticiones fallidas con 5xx en 15 minutos (se evalúa cada 5 minutos) | Correo mediante un grupo de acción |
-| Disponibilidad (prod) | La prueba `GET /api/health`, que corre cada 15 minutos desde 2 ubicaciones (`us-tx-sn1-azr` y `us-il-ch1-azr`) con reintento, falla desde las 2 en una ventana de 5 minutos | Correo mediante el mismo grupo de acción. Con sondeo cada 900 s, esta combinación puede no dispararse nunca; se verificará en la demostración de alertas, y el ajuste previsto es `failed_location_count = 1` o una `window_size` mayor. La alerta de 5xx es la que cubre de forma fiable el RNF de "al menos una alerta" |
+| Disponibilidad (prod) | La prueba `GET /api/health`, que corre cada 15 minutos desde 2 ubicaciones (`us-tx-sn1-azr` y `us-il-ch1-azr`) con reintento, falla desde las 2 en una ventana de 15 minutos (se evalúa cada 5 minutos), de modo que las ejecuciones de las dos ubicaciones caen dentro de la ventana | Correo mediante el mismo grupo de acción. Se mantiene `failed_location_count = 2` para no alertar por una sola ubicación inestable. Se verificará en la demostración de alertas (pendiente) |
 | Presupuesto (suscripción) | El gasto real llega al 50, 80 y 100 % del monto mensual del presupuesto | Correo a `budget_email` |
 
 El correo de las alertas de producción es la variable `ALERT_EMAIL` del environment `prod`. Dev no tiene alertas ni prueba de disponibilidad. El monto del presupuesto lo fija `budget_amount` del bootstrap (el ejemplo del repositorio usa 20, menos que el tope de USD 150), así que los umbrales son porcentajes de ese monto y no de 150. Esta sección debe comprobarse en el portal (pendiente): que el presupuesto exista, porque en algunas suscripciones de estudiante puede ser rechazado, y que la alerta de errores se dispare con tráfico de prueba durante la demo.
@@ -380,26 +382,31 @@ El rollback de la aplicación no vuelve a correr Terraform a propósito, para no
 
 ## 8. Costos y FinOps
 
-Producción cuesta unos USD 10 al mes, muy por debajo del tope de USD 150. Los valores de esta sección son aproximados y se reemplazan por los de la calculadora de Azure y el Excel adjunto.
+Producción cuesta unos USD 10 al mes con el tráfico de la sección 2, muy por debajo del tope de USD 150. Los valores de esta sección son aproximados (USD) y se reemplazan por los de la calculadora de Azure y el Excel adjunto.
 
 **Estimación mensual en producción (aproximada).**
 
 | Servicio | Supuesto de uso | USD al mes | USD al año |
 | --- | --- | --- | --- |
-| Static Web Apps Standard | 1 app | 9,00 | 108 |
-| Cosmos DB serverless | Unos 4 millones de unidades de solicitud y 1 GB guardado | 1,25 | 15 |
-| Blob Storage | Menos de 1 GB de imágenes | 0,10 | 1 |
-| Application Insights y Log Analytics | Menos de 5 GB de datos al mes, dentro de lo gratuito | 0,00 | 0 |
-| Prueba de disponibilidad | 1 prueba, 2 ubicaciones, cada 15 minutos | Por calcular en la calculadora (pendiente) | Por calcular |
+| Static Web Apps Standard (prod) | 1 app | 9,00 | 108 |
+| Static Web Apps Free (dev) | 1 app | 0,00 | 0 |
+| Cosmos DB serverless | Entre 1 y 1,5 millones de unidades de solicitud al mes (0,25 USD por millón) y menos de 1 GB guardado (0,25 USD por GB) | 0,50 | 6 |
+| Blob Storage LRS Hot | Menos de 1 GB de imágenes | 0,05 | 1 |
+| Salida de datos (egress) | Unos 18 GB al mes de imágenes, dentro de los primeros 100 GB gratuitos | 0,00 | 0 |
+| Application Insights y Log Analytics | Menos de 0,5 GB de datos al mes, dentro de los 5 GB gratuitos | 0,00 | 0 |
+| Prueba de disponibilidad estándar | Unas 5.760 ejecuciones al mes (2 ubicaciones, cada 15 minutos) | Pendiente: precio por ejecución de la página de precios | Pendiente |
+| Alertas de métricas | 2 reglas, unos 0,10 cada una | 0,20 | 2 |
+| Grupo de acción | Correo, sin costo | 0,00 | 0 |
 | Functions administradas | Incluidas en Static Web Apps | 0,00 | 0 |
-| Total sin la prueba de disponibilidad | | 10,35 | 124 |
+| Almacenamiento del estado de Terraform | Cuenta de Storage del tfstate | 0,02 | 0 |
+| Total sin la prueba de disponibilidad | | 9,8 | Unos 118 |
 
 **Escenarios.**
 
 | Escenario | Qué incluye | USD al mes (aprox.) |
 | --- | --- | --- |
-| MVP | Dev en Free y prod en Standard con tráfico de prueba | 9 a 10 |
-| Producción | Los supuestos de la sección 2 con el pico de 3x | 10 a 15 |
+| MVP | Prod con tráfico de prueba y dev en Free | 9 a 10 |
+| Producción | Los supuestos de la sección 2 (unas 23.000 visitas y 1.840 pedidos al mes) | Unos 9,8 |
 
 Los dos escenarios no incluyen la prueba de disponibilidad hasta que se calcule su precio.
 
@@ -407,8 +414,10 @@ Los dos escenarios no incluyen la prueba de disponibilidad hasta que se calcule 
 
 | Optimización | Alternativa sin optimizar | Ahorro estimado al mes |
 | --- | --- | --- |
-| Cosmos DB serverless | Capacidad aprovisionada mínima de 400 unidades por segundo, unos USD 23 | Unos USD 22 |
-| Dev en plan Free de Static Web Apps y puede destruirse con `destroy.yml` cuando no se usa (manual) | Dev en Standard todo el mes | USD 9 |
+| Cosmos DB serverless | Capacidad aprovisionada mínima de 400 unidades por segundo, unos USD 23 al mes | Unos USD 22 |
+| Dev en plan Free de Static Web Apps, que puede destruirse a mano con `destroy.yml` cuando no se usa | Dev en Standard todo el mes | USD 9 |
+| Prueba de disponibilidad en 1 ubicación o cada 30 minutos | Prueba en 2 ubicaciones cada 15 minutos | Cerca del 50 % de esa línea |
+| Imágenes comprimidas y caché del navegador | Imágenes sin comprimir ni caché, con más salida de datos | Mantiene la salida dentro de los 100 GB gratuitos |
 | Muestreo y retención de 30 días en la telemetría | Telemetría completa que puede pasar los 5 GB gratuitos | Depende del tráfico, evita sobrecostos |
 
 Además hay un presupuesto mensual de la suscripción con alertas al 50, 80 y 100 %.

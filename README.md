@@ -38,7 +38,8 @@ More detail in [docs/diagramas/architecture.md](docs/diagramas/architecture.md).
 | `infra/` | Terraform: `bootstrap/` (one-time, local), `modules/`, `envs/dev`, `envs/prod` |
 | `tests/` | Unit and integration tests |
 | `smoke/` | Bruno smoke collection run after each deploy |
-| `.github/` | Workflows (`ci`, `deploy`, `rollback`, `destroy`) and composite actions |
+| `load/` | k6 load test script and notes (run by the `load` workflow) |
+| `.github/` | Workflows (`ci`, `deploy`, `rollback`, `destroy`, `load`) and composite actions |
 | `docs/` | HLD, deployment design, ADRs, Mermaid diagrams, screenshots |
 
 ## Local run
@@ -137,6 +138,10 @@ traces | where message has "<correlation-id>" | order by timestamp desc
 ### Rollback
 
 `rollback.yml` redeploys the stored artifact of an earlier prod release (for example `v12`), runs from `main` and needs the `prod` approval. It does not run Terraform and does not change data. Steps and diagram: [docs/despliegue.md](docs/despliegue.md#rollback).
+
+### Load test
+
+`load.yml` runs a k6 load test against `dev` or `prod` on manual dispatch. Scenarios `realistic`, `peak3x` and `stress` only read, so they are allowed on prod; `stress` can still cause real errors and fire the prod alerts, so run it off-hours and once. `orders` creates orders and is refused on prod. Details and assumptions: [load/README.md](load/README.md).
 
 ### Destroy
 

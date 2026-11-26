@@ -314,6 +314,28 @@ El correo de las alertas de producción es la variable `ALERT_EMAIL` del environ
 
 **Operación del día a día.** El administrador gestiona productos y pedidos desde el panel. Los cambios de código o infraestructura solo entran por pull request y pipeline, nunca a mano en el portal.
 
+### Prueba de carga
+
+Para comprobar el requisito de escalabilidad (3 veces la carga del pico) se usa k6 desde el workflow manual `load.yml` (detalle en [load/README.md](../load/README.md)). Parte de los supuestos de la sección 2: unas 300 visitas por hora en el pico del sábado y 10 peticiones por visita (4 estáticas y 6 llamadas al API, como en la sección 3). Las tasas son tan bajas que `stress` es el escenario que demuestra el escalado.
+
+| Escenario | Carga | Ambiente |
+| --- | --- | --- |
+| `realistic` | 5 visitas por minuto (el pico) durante 5 minutos: 25 visitas, 250 peticiones, 150 al API | dev y prod, solo lectura |
+| `peak3x` | 15 visitas por minuto (3 veces el pico) durante 5 minutos: 75 visitas, 750 peticiones, 450 al API | dev y prod, solo lectura |
+| `stress` | Rampa de 5 minutos hasta 40 visitas por segundo (unas 480 veces el pico): unas 5.340 visitas, unas 53.400 peticiones, unas 32.000 al API y hasta 240 llamadas al API por segundo | dev y prod, solo lectura |
+| `orders` | 6 pedidos de invitado por minuto durante 3 minutos | solo dev, escribe datos |
+
+Umbrales: tasa de peticiones fallidas menor a 1 %, p95 del tiempo de respuesta menor a 1000 ms y ninguna iteración descartada (`dropped_iterations` igual a 0), sin contar el calentamiento inicial de 30 s que absorbe el arranque en frío.
+
+**Riesgo de `stress` en producción.** Es la validación del escalado y se permite en producción, pero puede producir errores reales (Cosmos DB serverless puede responder 429 ante una ráfaga), añadir latencia a clientes reales y disparar las alertas de 5xx y de disponibilidad (correos). Se corre fuera de horario y una sola vez. El costo por corrida es despreciable; el riesgo es de disponibilidad, no de dinero.
+
+| Resultado | Valor |
+| --- | --- |
+| p95 del tiempo de respuesta | [PENDIENTE: resultados de la corrida] |
+| Tasa de peticiones fallidas | [PENDIENTE: resultados de la corrida] |
+| Tasa máxima alcanzada sin degradación | [PENDIENTE: resultados de la corrida] |
+| Observaciones | [PENDIENTE: resultados de la corrida] |
+
 ## 7. Diseño de despliegue
 
 Todo llega a Azure por GitHub Actions: nada se despliega a mano. Cada etapa del pipeline bloquea a la siguiente si falla, y producción necesita aprobación. Las etapas, los disparadores, los secretos y el rollback paso a paso están en [despliegue.md](despliegue.md).

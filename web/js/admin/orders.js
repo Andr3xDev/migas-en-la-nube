@@ -30,6 +30,8 @@ const feedback = document.getElementById("feedback");
 let view = UPCOMING;
 let orders = [];
 let latestRequest = 0;
+// Table rows by order code, so a status change swaps one row instead of re-rendering the scroller.
+const rows = new Map();
 
 function formatPickup(pickupTime) {
   return new Date(pickupTime).toLocaleTimeString("es-CO", {
@@ -93,6 +95,9 @@ function createDayHeading(pickupDate) {
 
 function createUpcomingRow(order) {
   const row = document.createElement("tr");
+  // Lets focus land on the row when its status leaves no action button.
+  row.tabIndex = -1;
+  rows.set(order.code, row);
   row.append(
     createCell(formatPickup(order.pickupTime), "cell-time"),
     createCell(`${order.customerName} (${order.phone})`),
@@ -130,6 +135,7 @@ function createEmpty() {
 }
 
 function render() {
+  rows.clear();
   if (orders.length === 0) {
     container.replaceChildren(createEmpty());
     return;
@@ -197,7 +203,12 @@ async function changeStatus(order, status) {
       { method: "PATCH", body: { status } },
     );
     orders = orders.map((item) => (item.code === updated.code ? updated : item));
-    render();
+    // The row stays in the open list until the next load, now without actions once delivered or cancelled.
+    const previous = rows.get(updated.code);
+    if (!previous?.isConnected) return;
+    const row = createUpcomingRow(updated);
+    previous.replaceWith(row);
+    (row.querySelector("button") ?? row).focus();
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     showMessage(feedback, error.message);

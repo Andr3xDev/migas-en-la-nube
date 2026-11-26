@@ -1,5 +1,11 @@
 import { apiFetch, ApiError } from "../api.js";
-import { closeDialogOnBackdropClick, createSummaryPanel } from "../components.js";
+import {
+  closeDialogOnBackdropClick,
+  createSummaryPanel,
+  endLoading,
+  setBusy,
+  showLoading,
+} from "../components.js";
 import { createProductImage, formatPeso, showMessage } from "../format.js";
 import { requireAdmin } from "./guard.js";
 import { createButton, createCell } from "./table.js";
@@ -182,12 +188,18 @@ async function uploadImage(productId, file) {
 }
 
 async function loadProducts() {
+  showLoading(summary);
+  showLoading(list);
   try {
     products = await apiFetch("/api/products");
     renderList();
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
+    summary.replaceChildren();
     showMessage(list, error.message);
+  } finally {
+    endLoading(summary);
+    endLoading(list);
   }
 }
 
@@ -271,7 +283,7 @@ form.addEventListener("submit", async (event) => {
       return;
     }
   }
-  submit.disabled = true;
+  const restore = setBusy(submit, "Guardando…");
   try {
     const saved = await save(file);
     upsertLocal(saved);
@@ -286,7 +298,7 @@ form.addEventListener("submit", async (event) => {
       throw error;
     }
   } finally {
-    submit.disabled = false;
+    restore();
   }
 });
 

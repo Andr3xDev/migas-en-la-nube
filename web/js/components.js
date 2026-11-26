@@ -113,6 +113,55 @@ export function createEmptyState({ icon, title, text, action }) {
   return block;
 }
 
+export function createLoadingState(text = "Cargando…") {
+  const block = document.createElement("div");
+  block.className = "loading-state";
+  block.setAttribute("role", "status");
+  block.setAttribute("aria-live", "polite");
+  const spinner = document.createElement("span");
+  spinner.className = "spinner";
+  spinner.setAttribute("aria-hidden", "true");
+  block.append(spinner, text);
+  return block;
+}
+
+export function createSkeletonCards(count) {
+  return Array.from({ length: count }, () => {
+    const card = document.createElement("div");
+    card.className = "product-card skeleton-card";
+    card.setAttribute("aria-hidden", "true");
+    for (const part of ["skeleton-image", "skeleton-line", "skeleton-line skeleton-short"]) {
+      const block = document.createElement("div");
+      block.className = `skeleton ${part}`;
+      card.append(block);
+    }
+    return card;
+  });
+}
+
+// Marks the container busy while it shows `content`; endLoading clears the mark.
+export function showLoading(container, content = createLoadingState()) {
+  container.setAttribute("aria-busy", "true");
+  container.replaceChildren(...[content].flat());
+}
+
+export function endLoading(container) {
+  container.removeAttribute("aria-busy");
+}
+
+// Returns a function that restores the button's label and enables it again.
+export function setBusy(button, busyText) {
+  const label = button.textContent;
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  button.textContent = busyText;
+  return () => {
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+    button.textContent = label;
+  };
+}
+
 function isOutsideBox(event, element) {
   const box = element.getBoundingClientRect();
   return (

@@ -9,7 +9,13 @@ import {
   setQuantity,
 } from "./cart.js";
 import { estimateWaitMinutes, findVariant, placeOrder } from "./checkout.js";
-import { createEmptyState, createProductCard, createSummaryPanel } from "./components.js";
+import {
+  createEmptyState,
+  createLoadingState,
+  createProductCard,
+  createSummaryPanel,
+  setBusy,
+} from "./components.js";
 import { loadFavorites } from "./favorites.js";
 import { createProductImage, formatMinutes, formatPeso, isInStock, showMessage } from "./format.js";
 import { createIcon, createIconButton } from "./icons.js";
@@ -30,6 +36,7 @@ const recommendationList = document.getElementById("recommendation-list");
 const unselected = new Set();
 let catalog = [];
 let catalogLoaded = false;
+let catalogPending = true;
 let favorites = null;
 let submitting = false;
 
@@ -101,7 +108,8 @@ function createLineCard(item) {
         ? `Por encargo: listo en ${formatMinutes(product.prepMinutes)}`
         : "Disponible",
     );
-  } else prep.hidden = true;
+  } else if (catalogPending) prep.append(createLoadingState("Cargando detalles…"));
+  else prep.hidden = true;
 
   const remove = createIconButton({
     icon: "trash-2",
@@ -131,6 +139,11 @@ function announceAdded(product) {
 }
 
 function renderRecommendations(items) {
+  if (catalogPending) {
+    recommendations.hidden = false;
+    recommendationList.replaceChildren(createLoadingState());
+    return;
+  }
   const inCart = new Set(items.map((item) => item.productId));
   const cartCategories = new Set(items.map((item) => findProduct(item)?.category));
   const candidates = catalog.filter(
@@ -165,6 +178,8 @@ function renderItems() {
   } else {
     itemsContainer.replaceChildren(...items.map(createLineCard));
   }
+  itemsContainer.setAttribute("aria-busy", String(catalogPending));
+  recommendations.setAttribute("aria-busy", String(catalogPending));
   renderRecommendations(items);
   renderSide();
   if (focusKey) {
@@ -180,7 +195,8 @@ function renderSide() {
   const wait = estimateWaitMinutes(lines, catalog);
   let ready = "-";
   if (lines.length > 0) {
-    if (!catalogLoaded) ready = "No disponible";
+    if (catalogPending) ready = "Calculando…";
+    else if (!catalogLoaded) ready = "No disponible";
     else ready = wait === 0 ? "De inmediato" : `Hasta ${formatMinutes(wait)}`;
   }
 
@@ -205,7 +221,7 @@ form.addEventListener("submit", async (event) => {
   if (lines.length === 0) return;
 
   submitting = true;
-  submit.disabled = true;
+  const restore = setBusy(submit, "Enviando…");
   try {
     await placeOrder(new FormData(form), lines);
     for (const line of lines) removeItem(line.productId, line.variantName);
@@ -216,7 +232,7 @@ form.addEventListener("submit", async (event) => {
       error instanceof ApiError ? error.message : "No se pudo enviar el pedido. Intenta de nuevo.",
     );
     submitting = false;
-    submit.disabled = false;
+    restore();
   }
 });
 
@@ -231,5 +247,6 @@ if (!isAdmin()) {
   } catch {
     // Without the catalog the cart still works; images, prep times and recommendations are skipped.
   }
+  catalogPending = false;
   renderItems();
 }

@@ -909,6 +909,64 @@ form p {
   color: var(--color-accent);
 }
 
+/* Loading */
+.loading-state {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-6);
+  color: var(--color-muted);
+}
+
+.line-prep .loading-state {
+  justify-content: flex-start;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.spinner {
+  flex: none;
+  width: var(--size-icon);
+  height: var(--size-icon);
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+.skeleton {
+  border-radius: var(--radius-small);
+  background: var(--color-wheat);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.skeleton-image {
+  aspect-ratio: 4 / 3;
+}
+
+.skeleton-line {
+  height: 1rem;
+  margin-top: var(--space-3);
+}
+
+.skeleton-short {
+  width: 50%;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
 /* Order confirmation */
 .confirmation-card {
   display: flex;

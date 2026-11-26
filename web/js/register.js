@@ -1,4 +1,5 @@
 import { apiFetch, ApiError } from "./api.js";
+import { setBusy } from "./components.js";
 import { showMessage } from "./format.js";
 
 const form = document.getElementById("register-form");
@@ -8,7 +9,7 @@ const submit = document.getElementById("submit");
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(form);
-  submit.disabled = true;
+  const restore = setBusy(submit, "Creando…");
   try {
     await apiFetch("/api/auth/register", {
       method: "POST",
@@ -16,8 +17,8 @@ form.addEventListener("submit", async (event) => {
     });
     window.location.assign("/login.html");
   } catch (error) {
+    restore();
     if (!(error instanceof ApiError)) throw error;
     showMessage(feedback, error.message);
-    submit.disabled = false;
   }
 });

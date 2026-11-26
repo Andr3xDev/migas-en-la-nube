@@ -2,7 +2,7 @@ import { apiFetch, ApiError } from "../api.js";
 import { createEmptyState, endLoading, showLoading } from "../components.js";
 import { createStatusChip, formatPeso, showMessage, STATUS_LABELS } from "../format.js";
 import { requireAdmin } from "./guard.js";
-import { createButton, createCell } from "./table.js";
+import { createButton, createCell, createTableHead, createTableScroller } from "./table.js";
 
 const SHOP_TIMEZONE = "America/Bogota";
 // Mirrors HISTORY_LIMIT in api/app/services/orders.py: a full page means older orders are hidden.
@@ -13,7 +13,8 @@ const UPCOMING_COLUMNS = 6;
 
 const NEXT_STATUS = { received: "preparing", preparing: "ready", ready: "delivered" };
 const CANCELLABLE = ["received", "preparing", "ready"];
-const HISTORY_HEADINGS = ["Código", "Entrega", "Cliente", "Estado", "Productos", "Total"];
+const UPCOMING_HEADINGS = ["Hora", "Cliente", "Productos", "Total", "Estado", "Acciones"];
+const HISTORY_HEADINGS =["Código", "Entrega", "Cliente", "Estado", "Productos", "Total"];
 
 const panel = document.getElementById("panel");
 const guardMessage = document.getElementById("guard-message");
@@ -116,19 +117,6 @@ function createHistoryRow(order) {
   return row;
 }
 
-function createHistoryHead() {
-  const head = document.createElement("thead");
-  const row = document.createElement("tr");
-  for (const label of HISTORY_HEADINGS) {
-    const cell = document.createElement("th");
-    cell.scope = "col";
-    cell.textContent = label;
-    row.append(cell);
-  }
-  head.append(row);
-  return head;
-}
-
 function createEmpty() {
   const text = {
     [UPCOMING]: "No hay pedidos próximos.",
@@ -149,8 +137,8 @@ function render() {
   const isHistory = view === HISTORY && !dateInput.value;
   const table = document.createElement("table");
   table.className = "cart-table";
+  table.append(createTableHead(isHistory ? HISTORY_HEADINGS : UPCOMING_HEADINGS));
   if (isHistory) {
-    table.append(createHistoryHead());
     table.append(...orders.map(createHistoryRow));
   } else {
     let currentDay = null;
@@ -162,10 +150,7 @@ function render() {
       table.append(createUpcomingRow(order));
     }
   }
-  const scroller = document.createElement("div");
-  scroller.className = "table-scroll";
-  scroller.append(table);
-  container.replaceChildren(scroller);
+  container.replaceChildren(createTableScroller(table, "Pedidos"));
   if (isHistory && orders.length >= HISTORY_LIMIT) {
     const note = document.createElement("p");
     note.className = "orders-note";

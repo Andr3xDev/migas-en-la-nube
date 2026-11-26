@@ -8,11 +8,12 @@ import {
 } from "../components.js";
 import { createProductImage, formatPeso, showMessage } from "../format.js";
 import { requireAdmin } from "./guard.js";
-import { createButton, createCell } from "./table.js";
+import { createButton, createCell, createTableHead, createTableScroller } from "./table.js";
 
 const UPLOAD_FAILED_MESSAGE = "No se pudo subir la imagen.";
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const PRODUCT_HEADINGS = ["Imagen", "Producto", "Categoría", "Variantes", "Acciones"];
 const STALE_PRODUCT_MESSAGE =
   "El producto cambió (por ejemplo, por un pedido). Recarga la página e inténtalo de nuevo.";
 
@@ -87,10 +88,8 @@ function renderList() {
     );
     table.append(row);
   }
-  const scroller = document.createElement("div");
-  scroller.className = "table-scroll";
-  scroller.append(table);
-  list.replaceChildren(scroller);
+  table.prepend(createTableHead(PRODUCT_HEADINGS));
+  list.replaceChildren(createTableScroller(table, "Lista de productos"));
 }
 
 function addVariantRow(variant = { name: "", price: "", stock: "" }) {

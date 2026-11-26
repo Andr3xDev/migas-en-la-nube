@@ -6,6 +6,8 @@ import { createProductCard, endLoading, showLoading } from "./components.js";
 import { createStatusChip, formatPeso, showMessage } from "./format.js";
 import { createIconButton } from "./icons.js";
 
+const ORDERS_PAGE_SIZE = 10;
+
 function renderProductCards(container, products, favorites, emptyText) {
   if (products.length === 0) return showMessage(container, emptyText);
   container.replaceChildren(...products.map((product) => createProductCard(product, { favorites, headingLevel: 3 })));
@@ -60,6 +62,33 @@ function createOrderSummary(order, catalog) {
   return summary;
 }
 
+function renderOrders(container, orders, catalog) {
+  let shown = 0;
+  const moreButton = document.createElement("button");
+  moreButton.type = "button";
+  moreButton.className = "button button-secondary load-more";
+  moreButton.textContent = "Mostrar más";
+
+  const showNextPage = () => {
+    const page = orders
+      .slice(shown, shown + ORDERS_PAGE_SIZE)
+      .map((order) => createOrderSummary(order, catalog));
+    moreButton.before(...page);
+    shown += page.length;
+    moreButton.hidden = shown >= orders.length;
+    return page;
+  };
+
+  moreButton.addEventListener("click", () => {
+    // The button may hide itself, so focus moves to the first new order.
+    const [firstNew] = showNextPage();
+    firstNew.tabIndex = -1;
+    firstNew.focus();
+  });
+  container.replaceChildren(moreButton);
+  showNextPage();
+}
+
 async function renderSection(container, load) {
   showLoading(container);
   try {
@@ -92,7 +121,7 @@ async function main() {
         apiFetch("/api/products"),
       ]);
       if (orders.length === 0) return showMessage(ordersContainer, "Aún no has hecho pedidos.");
-      ordersContainer.replaceChildren(...orders.map((order) => createOrderSummary(order, catalog)));
+      renderOrders(ordersContainer, orders, catalog);
     }),
     renderSection(favoritesContainer, async () => {
       const [favorites, catalog] = await Promise.all([getFavorites(), apiFetch("/api/products")]);

@@ -113,11 +113,13 @@ export function createEmptyState({ icon, title, text, action }) {
   return block;
 }
 
-export function createLoadingState(text = "Cargando…") {
+export function createLoadingState(text = "Cargando…", { announce = true } = {}) {
   const block = document.createElement("div");
   block.className = "loading-state";
-  block.setAttribute("role", "status");
-  block.setAttribute("aria-live", "polite");
+  if (announce) {
+    block.setAttribute("role", "status");
+    block.setAttribute("aria-live", "polite");
+  }
   const spinner = document.createElement("span");
   spinner.className = "spinner";
   spinner.setAttribute("aria-hidden", "true");
@@ -139,8 +141,8 @@ export function createSkeletonCards(count) {
   });
 }
 
-// Marks the container busy while it shows `content`; endLoading clears the mark.
-export function showLoading(container, content = createLoadingState()) {
+// Containers are live regions already: the spinner stays silent and aria-busy marks the wait; endLoading clears it.
+export function showLoading(container, content = createLoadingState(undefined, { announce: false })) {
   container.setAttribute("aria-busy", "true");
   container.replaceChildren(...[content].flat());
 }

@@ -188,17 +188,14 @@ async function uploadImage(productId, file) {
 }
 
 async function loadProducts() {
-  showLoading(summary);
   showLoading(list);
   try {
     products = await apiFetch("/api/products");
     renderList();
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
-    summary.replaceChildren();
     showMessage(list, error.message);
   } finally {
-    endLoading(summary);
     endLoading(list);
   }
 }

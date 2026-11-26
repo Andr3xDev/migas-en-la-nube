@@ -21,3 +21,5 @@ export function getRole() {
     return null;
   }
 }
+
+export const isAdmin = () => getRole() === "admin";

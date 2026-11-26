@@ -1,4 +1,5 @@
 import { apiFetch } from "./api.js";
+import { isAdmin } from "./auth.js";
 import { addProductVariant } from "./cart.js";
 import { createFavoriteButton, loadFavorites } from "./favorites.js";
 import { createIconButton, createIconLink } from "./icons.js";
@@ -58,7 +59,7 @@ function renderProduct(product, favorites) {
 
   const actions = document.createElement("div");
   actions.className = "card-actions";
-  actions.append(addButton);
+  if (!isAdmin()) actions.append(addButton);
   if (favorites) actions.append(createFavoriteButton(product, favorites));
 
   const info = document.createElement("div");

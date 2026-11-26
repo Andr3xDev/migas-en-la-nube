@@ -1,14 +1,28 @@
 import { getToken } from "./api.js";
-import { getRole, logout } from "./auth.js";
+import { isAdmin, logout } from "./auth.js";
 import { CART_CHANGED_EVENT, getItemCount } from "./cart.js";
 import { createIcon } from "./icons.js";
+
+const SHOPPING_PAGES = ["/cart.html", "/checkout.html", "/confirmation.html"];
+
+// A page restored from the back/forward cache keeps the nav of the session it was left in.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) window.location.reload();
+});
+
+if (isAdmin() && SHOPPING_PAGES.includes(window.location.pathname)) {
+  window.location.replace("/admin/");
+}
 
 const signedIn = Boolean(getToken());
 for (const link of document.querySelectorAll("[data-guest]")) link.hidden = signedIn;
 for (const link of document.querySelectorAll("[data-user]")) link.hidden = !signedIn;
+for (const link of document.querySelectorAll('header nav a[href="/cart.html"]')) {
+  link.hidden = isAdmin();
+}
 
 // Admin pages already link to /admin/ in their own nav.
-if (getRole() === "admin" && !window.location.pathname.startsWith("/admin/")) {
+if (isAdmin() && !window.location.pathname.startsWith("/admin/")) {
   const adminLink = document.createElement("a");
   adminLink.href = "/admin/";
   adminLink.dataset.icon = "shield-check";
